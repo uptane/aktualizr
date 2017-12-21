@@ -79,14 +79,14 @@ include_directories(. ed25519 uptane)
 add_library(uptane_partial_lib STATIC ${LIBRARY_SOURCES})
 target_compile_options(uptane_partial_lib PUBLIC -Os -g -Wpedantic -Wno-long-long -fno-inline-small-functions -fno-inline-functions-called-once)
 
-include_directories(extern/uds-c/deps/isotp-c/src extern/uds-c/deps/bitfield-c/src/)
-set(ISOTP_SOURCES extern/uds-c/deps/isotp-c/src/isotp/isotp.c
-	extern/uds-c/deps/isotp-c/src/isotp/isotp.c
-	extern/uds-c/deps/isotp-c/src/isotp/receive.c
-	extern/uds-c/deps/isotp-c/src/isotp/send.c
-	extern/uds-c/deps/bitfield-c/src/bitfield/8byte.c
-	extern/uds-c/deps/bitfield-c/src/bitfield/bitarray.c
-	extern/uds-c/deps/bitfield-c/src/bitfield/bitfield.c
+include_directories(extern/isotp-c/src extern/isotp-c/deps/bitfield-c/src/)
+set(ISOTP_SOURCES extern/isotp-c/src/isotp/isotp.c
+	extern/isotp-c/src/isotp/isotp.c
+	extern/isotp-c/src/isotp/receive.c
+	extern/isotp-c/src/isotp/send.c
+	extern/isotp-c/deps/bitfield-c/src/bitfield/8byte.c
+	extern/isotp-c/deps/bitfield-c/src/bitfield/bitarray.c
+	extern/isotp-c/deps/bitfield-c/src/bitfield/bitfield.c
 	)
 add_library(isotp_lib STATIC ${ISOTP_SOURCES})
 target_compile_options(isotp_lib PUBLIC -Os -g -Wpedantic -Wno-long-long -fno-inline-small-functions -fno-inline-functions-called-once)

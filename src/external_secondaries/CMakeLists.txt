@@ -7,8 +7,8 @@ add_executable(example-interface ${MAIN_ECU_INTERFACE_SRC} example_flasher.cc)
 target_link_libraries(example-interface aktualizr_static_lib ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_compile_options(example-interface PUBLIC -DECUFLASHER_EXAMPLE)
 
-set(ISOTP_PATH_PREFIX ../../partial/extern/uds-c/deps/isotp-c/src)
-set(BITFIELD_PATH_PREFIX ../../partial/extern/uds-c/deps/isotp-c/deps/bitfield-c/src)
+set(ISOTP_PATH_PREFIX ../../partial/extern/isotp-c/src)
+set(BITFIELD_PATH_PREFIX ../../partial/extern/isotp-c/deps/bitfield-c/src)
 set(ISOTP_SRCS ${ISOTP_PATH_PREFIX}/isotp/isotp.c
                ${ISOTP_PATH_PREFIX}/isotp/send.c
                ${ISOTP_PATH_PREFIX}/isotp/receive.c
