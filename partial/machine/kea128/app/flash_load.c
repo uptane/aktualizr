@@ -71,7 +71,7 @@ int flash_load_prepare(uint32_t addr, uint32_t size) {
 	return 1;
 }
 
-int flash_load_continue(uint8_t* data, uint32_t len) {
+int flash_load_continue(const uint8_t* data, uint32_t len) {
 	uint32_t i_buf = flash_load_curaddr & 0x1FF;
 	int i;
 
