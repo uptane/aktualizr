@@ -340,7 +340,7 @@ void TestIsotpInterface::populateEcus() {
   uint8_t payload_hwid[3] = {0x22, (HW_ID_DID >> 8), (HW_ID_DID & 0xFF)};
   uint8_t payload_serial[3] = {0x22, (ECU_SERIAL_DID >> 8), (ECU_SERIAL_DID & 0xFF)};
 
-  struct timeval timeout = {0, 10000};  // 10ms
+  struct timeval timeout = {0, 20000};  // 20ms
 
   for (uint8_t id = 0x01; id <= 0x1f; id++) {
     std::string resp;
