@@ -33,5 +33,6 @@ endif(BUILD_WITH_CODE_COVERAGE)
 aktualizr_source_file_checks(${MAIN_ECU_INTERFACE_SRC} ${ECU_INTERFACE_HEADERS} example_flasher.cc test_isotp_interface.cc isotp_allocate.cc isotp_protocol.cc validate_secondary_interface_test.cc)
 
 install(TARGETS example-interface RUNTIME DESTINATION bin)
+install(TARGETS isotp-test-interface RUNTIME DESTINATION bin)
 
 # vim: set tabstop=4 shiftwidth=4 expandtab:
