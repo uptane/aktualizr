@@ -3,4 +3,4 @@
 	url = https://github.com/advancedtelematic/tuf-test-vectors/
 [submodule "partial/extern/isotp-c"]
 	path = partial/extern/isotp-c
-	url = git@github.com:advancedtelematic/isotp-c.git
+	url = https://github.com/advancedtelematic/isotp-c.git
