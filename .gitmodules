@@ -16,3 +16,7 @@
 [submodule "partial/extern/jsmn"]
 	path = partial/extern/jsmn
 	url = https://github.com/zserge/jsmn.git
+[submodule "RIOT"]
+	path = partial/extern/RIOT
+	url = git@github.com:OYTIS/RIOT.git
+	branch = s9kea

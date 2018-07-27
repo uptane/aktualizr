@@ -1,12 +1,11 @@
-#include "crypto_api.h"
+#include "libuptiny/crypto_api.h"
 #include <stdlib.h>
 #include <string.h>
-typedef int wint_t;
 #include <strings.h>
-#include "debug.h"
+#include "libuptiny/debug.h"
 #include "ed25519/edsign.h"
 #include "ed25519/sha512.h"
-#include "utils.h"
+#include "libuptiny/utils.h"
 
 typedef struct {
   int sig_len;
