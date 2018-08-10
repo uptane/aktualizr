@@ -4,6 +4,8 @@
 
 #include "libuptiny/root.h"
 #include "libuptiny/targets.h"
+#include "libuptiny/manifest.h"
+#include "libuptiny/firmware.h"
 
 #define LIBUPTINY_ISOTP_SECONDARY_CANID 0x7E8
 #define LIBUPTINY_ISOTP_PRIMARY_CANID 0x7D8
@@ -48,6 +50,9 @@ typedef enum {
   UPTANE_PUT_IMAGE_CHUNK = 0x08,
   UPTANE_PUT_IMAGE_CHUNK_ACK_ERR = 0x48,
 } uptane_isotp_message_type_t;
+
+bool upload_in_progress = false;
+int upload_seqn = 0;
 
 int uptane_recv(void) {
     int ret;
@@ -94,14 +99,21 @@ int uptane_recv(void) {
 		case  UPTANE_GET_ROOT_VER:
 			break;
 		case  UPTANE_GET_MANIFEST:
+			isotp_buf[0] = UPTANE_GET_MANIFEST_RESP;
+			strcpy(isotp_buf+1, "{\"signatures\":");
+			uptane_write_manifest(isotp_buf+300,isotp_buf+15);
+			memmove(isotp_buf+1+strlen(isotp_buf+1), isotp_buf+300, strlen(isotp_buf+300));
+			conn_can_isotp_send(&conn_isotp, &isotp_buf, 1+strlen(isotp_buf+1), 0);
 			break;
+
 		case  UPTANE_PUT_ROOT:
 			if (uptane_parse_root(isotp_buf+1, ret-1, &in_root)) {
 				state_set_root(&in_root);
 			} else {
-				/*TODO: set error*/
+				state_set_attack(ATTACK_ROOT_THRESHOLD);
 			}
 			break;
+
 		case  UPTANE_PUT_TARGETS: {
 			uint16_t targets_result = 0x0000;
 			uptane_parse_targets_init();
@@ -109,11 +121,47 @@ int uptane_recv(void) {
 			if(targets_result == RESULT_END_FOUND) {
 				state_set_targets(&in_targets);
 			} else {
-				/*TODO: set error*/
+				state_set_attack(ATTACK_TARGETS_THRESHOLD);
 			}
 			break;
 		}
+
 		case  UPTANE_PUT_IMAGE_CHUNK:
+			if(ret < 3 || isotp_buf[2] > isotp_buf[1]) {
+				isotp_buf[0] = UPTANE_PUT_IMAGE_CHUNK_ACK_ERR;
+				isotp_buf[1] = 0xFE;
+				conn_can_isotp_send(&conn_isotp, &isotp_buf, 2, 0);
+				upload_in_progress = false;
+				break;
+			}
+
+			if(!upload_in_progress) {
+				if(!uptane_verify_firmware_init()) {
+					isotp_buf[0] = UPTANE_PUT_IMAGE_CHUNK_ACK_ERR;
+					isotp_buf[1] = 0xFE;
+					conn_can_isotp_send(&conn_isotp, &isotp_buf, 2, 0);
+					upload_in_progress = false;
+					break;
+				}
+				upload_in_progress = true;
+				upload_seqn = 0;
+			}
+
+			if(isotp_buf[1] != upload_seqn+1) {
+				isotp_buf[0] = UPTANE_PUT_IMAGE_CHUNK_ACK_ERR;
+				isotp_buf[1] = 0xFE;
+				conn_can_isotp_send(&conn_isotp, &isotp_buf, 2, 0);
+				upload_in_progress = false;
+				break;
+			}
+			uptane_verify_firmware_feed((const uint8_t*)isotp_buf+3, ret-3);
+			if(isotp_buf[1] == isotp_buf[2]) {
+				upload_in_progress = 0;
+				if (uptane_verify_firmware_finalize()) {
+					uptane_firmware_confirm();
+				}
+			}
+			++upload_seqn;
 			isotp_buf[0] = UPTANE_PUT_IMAGE_CHUNK_ACK_ERR;
 			isotp_buf[1] = 0x00;
 			conn_can_isotp_send(&conn_isotp, &isotp_buf, 2, 0);

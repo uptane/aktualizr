@@ -21,6 +21,8 @@ crypto_key_t* alloc_crypto_key(void);
 void free_crypto_key(crypto_key_t* key);
 void free_all_crypto_keys(void);
 
+extern crypto_hash_ctx_t hash_context;
+
 #ifdef __cplusplus
 }
 #endif

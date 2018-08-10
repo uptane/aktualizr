@@ -23,6 +23,8 @@ enum class SecondaryType {
   kIpUptane,  // Custom Uptane protocol over TCP/IP network
 
   kVirtualUptane,  // Partial UPTANE secondary implemented inside primary
+  kIsoTpUptane,  // Custom Uptane protocol over ISO/TP network
+
 };
 
 class SecondaryConfig {
@@ -89,6 +91,9 @@ class SecondaryConfig {
   boost::filesystem::path flasher;  // SecondaryType::kLegacy
 
   sockaddr_storage ip_addr{};  // SecondaryType::kIpUptane
+
+  uint16_t can_id; // SecondaryType::kIsoTpUptane;
+  std::string can_iface; // SecondaryType::kIsoTpUptane;
 };
 }  // namespace Uptane
 

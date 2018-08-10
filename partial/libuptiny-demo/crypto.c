@@ -26,6 +26,12 @@ struct crypto_verify_ctx {
   const uint8_t* pub;
 };
 
+struct crypto_hash_ctx {
+  size_t bytes_fed;
+  uint8_t block[SHA512_BLOCK_SIZE];
+  struct sha512_state sha_state;
+};
+
 static alg_match_t keytypes[] = {{32, 64, "ed25519"}};
 
 static hash_match_t hashtypes[] = {{64, "sha512"}};
@@ -50,6 +56,30 @@ crypto_hash_algorithm_t crypto_str_to_hashtype(const char* hashtype, size_t len)
   return CRYPTO_HASH_UNKNOWN;
 }
 
+void crypto_hash_init(crypto_hash_ctx_t* ctx) {
+  ctx->bytes_fed = 0;
+  sha512_init(&ctx->sha_state);
+}
+
+void crypto_hash_feed(crypto_hash_ctx_t* ctx, const uint8_t* data, size_t len) {
+  unsigned int i;
+
+  for (i = 0; i < len; i++) {
+    /* Trust compiler to use masking instead of actual division */
+    int ind = ctx->bytes_fed % SHA512_BLOCK_SIZE;
+    ctx->block[ind] = data[i];
+
+    if (ind == SHA512_BLOCK_SIZE - 1) {
+      sha512_block(&ctx->sha_state, ctx->block);
+    }
+    ++ctx->bytes_fed;
+  }
+}
+
+void crypto_hash_result(crypto_hash_ctx_t* ctx, crypto_hash_t* hash) {
+  sha512_final(&ctx->sha_state, ctx->block, ctx->bytes_fed);
+  sha512_get(&ctx->sha_state, hash->hash, 0, SHA512_HASH_SIZE);
+}
 
 void crypto_verify_init(crypto_verify_ctx_t* ctx, crypto_key_and_signature_t* sig) {
   ctx->bytes_fed = 0;

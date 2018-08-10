@@ -20,6 +20,14 @@ struct crypto_verify_ctx {
   const uint8_t* pub;
 };
 
+struct crypto_hash_ctx {
+  size_t bytes_fed;
+  uint8_t block[SHA512_BLOCK_SIZE];
+  struct sha512_state sha_state;
+};
+
+crypto_hash_ctx_t hash_context;
+
 #define CRYPTO_CONTEXT_POOL_SIZE 4
 crypto_verify_ctx_t crypto_ctx_pool_data[CRYPTO_CONTEXT_POOL_SIZE];
 crypto_verify_ctx_t* crypto_ctx_pool[] = {

@@ -56,4 +56,12 @@ void free_all_crypto_keys() {
   allocated_keys.clear();
 }
 
+struct crypto_hash_ctx {
+  size_t bytes_fed;
+  uint8_t block[SHA512_BLOCK_SIZE];
+  struct sha512_state sha_state;
+};
+
+crypto_hash_ctx_t hash_context;
+
 }
