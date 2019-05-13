@@ -82,6 +82,9 @@ Json::Value Repo::signTuf(const Uptane::Role &role, const Json::Value &json) {
     case KeyType::kED25519:
       signature["method"] = "ed25519";
       break;
+    case KeyType::kDummy:
+      signature["method"] = "dummy";
+      break;
     default:
       throw std::runtime_error("Unknown key type");
   }

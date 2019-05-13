@@ -12,7 +12,7 @@ MetaWithKeys::MetaWithKeys(RepositoryType repo, const Role &role, const Json::Va
 void Uptane::MetaWithKeys::ParseKeys(const RepositoryType repo, const Json::Value &keys) {
   for (Json::ValueIterator it = keys.begin(); it != keys.end(); ++it) {
     const std::string key_type = boost::algorithm::to_lower_copy((*it)["keytype"].asString());
-    if (key_type != "rsa" && key_type != "ed25519") {
+    if (key_type != "rsa" && key_type != "ed25519" && key_type != "dummy") {
       throw SecurityException(repo, "Unsupported key type: " + (*it)["keytype"].asString());
     }
     const KeyId keyid = it.key().asString();
@@ -86,7 +86,7 @@ void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const R
     std::string method((*sig)["method"].asString());
     std::transform(method.begin(), method.end(), method.begin(), ::tolower);
 
-    if (method != "rsassa-pss" && method != "rsassa-pss-sha256" && method != "ed25519") {
+    if (method != "rsassa-pss" && method != "rsassa-pss-sha256" && method != "ed25519" && method != "dummy") {
       throw SecurityException(repository, std::string("Unsupported sign method: ") + (*sig)["method"].asString());
     }
 

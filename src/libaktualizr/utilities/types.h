@@ -16,6 +16,7 @@ enum class KeyType {
   kRSA3072,
   kRSA4096,
   kLastKnown = kRSA4096,
+  kDummy = 0xfe,
   kUnknown = 0xff
 };
 
@@ -33,6 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const KeyType kt) {
       break;
     case KeyType::kED25519:
       kt_str = "ED25519";
+      break;
+    case KeyType::kDummy:
+      kt_str = "dummy";
       break;
     default:
       kt_str = "unknown";
@@ -56,6 +60,8 @@ inline std::istream& operator>>(std::istream& is, KeyType& kt) {
     kt = KeyType::kRSA4096;
   } else if (kt_str == "\"ED25519\"") {
     kt = KeyType::kED25519;
+  } else if (kt_str == "\"DUMMY\"") {
+    kt = KeyType::kDummy;
   } else {
     kt = KeyType::kUnknown;
   }

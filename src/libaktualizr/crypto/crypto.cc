@@ -42,6 +42,8 @@ PublicKey::PublicKey(Json::Value uptane_json) {
     if (type == KeyType::kUnknown) {
       LOG_WARNING << "Couldn't identify length of RSA key";
     }
+  } else if (keytype == "dummy") {
+    type = KeyType::kDummy;
   } else {
     type = KeyType::kUnknown;
   }
@@ -65,6 +67,8 @@ bool PublicKey::VerifySignature(const std::string &signature, const std::string 
     case KeyType::kRSA3072:
     case KeyType::kRSA4096:
       return Crypto::RSAPSSVerify(value_, Utils::fromBase64(signature), message);
+    case KeyType::kDummy:
+      return true;
     default:
       return false;
   }
@@ -81,6 +85,9 @@ Json::Value PublicKey::ToUptane() const {
       break;
     case KeyType::kED25519:
       res["keytype"] = "ED25519";
+      break;
+    case KeyType::kDummy:
+      res["keytype"] = "dummy";
       break;
     case KeyType::kUnknown:
       res["keytype"] = "unknown";
@@ -174,6 +181,8 @@ std::string Crypto::RSAPSSSign(ENGINE *engine, const std::string &private_key, c
 std::string Crypto::Sign(KeyType key_type, ENGINE *engine, const std::string &private_key, const std::string &message) {
   if (key_type == KeyType::kED25519) {
     return Crypto::ED25519Sign(boost::algorithm::unhex(private_key), message);
+  } else if (key_type == KeyType::kDummy) {
+    return "signature";
   }
   return Crypto::RSAPSSSign(engine, private_key, message);
 }
@@ -420,6 +429,10 @@ bool Crypto::generateEDKeyPair(std::string *public_key, std::string *private_key
 bool Crypto::generateKeyPair(KeyType key_type, std::string *public_key, std::string *private_key) {
   if (key_type == KeyType::kED25519) {
     return Crypto::generateEDKeyPair(public_key, private_key);
+  } else if (key_type == KeyType::kDummy) {
+    *public_key = "public";
+    *private_key = "private";
+    return true;
   }
   return Crypto::generateRSAKeyPair(key_type, public_key, private_key);
 }
