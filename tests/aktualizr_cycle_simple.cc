@@ -35,6 +35,15 @@ int updateOneCycle(const boost::filesystem::path &storage_dir, const std::string
 
     aktualizr.Initialize();
 
+    // BUG
+    const auto bug_flag = conf.storage.path / "bug.flag";
+    if (boost::filesystem::exists(bug_flag)) {
+      throw std::runtime_error("Fatal: bug flag was found");
+    }
+    Utils::writeFile(bug_flag, std::string("bug"));
+    // if this is made to fail, the bug will show up
+    boost::filesystem::remove(bug_flag);
+
     result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
     if (update_result.status != result::UpdateStatus::kUpdatesAvailable) {
       LOG_ERROR << "no update available";
