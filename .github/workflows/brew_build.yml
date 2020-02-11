@@ -1,0 +1,39 @@
+name: Build aktualizr on macOS with homebrew bottle
+on: 
+  push:
+    branches:
+      - test/OTA-4241/build_aktualizr_by_homebrew
+jobs:
+  macOS:
+    name: Build macOS homebrew bottle for aktualizr release page
+    runs-on: macos-10.15
+    steps:
+    - name: Attempt to auto-update recipe and build bottle
+      run: |
+        curl -O "https://raw.githubusercontent.com/advancedtelematic/homebrew-otaconnect/fix/OTA-4241/fix-aktualizr-brewing/aktualizr.rb"
+        VERSION="2020.2"
+        RELEASE_URL="https://github.com/advancedtelematic/aktualizr/releases/download/${VERSION}/"
+        sed -i '' -E "s/  version = \"20[1-2][0-9].[0-9]+\"/  version = \"${VERSION}\"/" aktualizr.rb
+        brew install -v --build-bottle ./aktualizr.rb
+        brew bottle --json --no-rebuild --force-core-tap --root-url=${RELEASE_URL} aktualizr
+        brew bottle --merge --write --no-commit ./aktualizr--${VERSION}.catalina.bottle.json
+        rm aktualizr.rb
+        echo "Bottle and recipe creation succeeded!"
+        echo "You should now open a PR at https://github.com/advancedtelematic/homebrew/otaconnect"
+        echo "Here's the new recipe. It's also attached to this job as an artifact"
+        echo "------------------------------------------------------------------------------------"
+        brew cat aktualizr | tee aktualizr.rb
+        echo "------------------------------------------------------------------------------------"
+        mv aktualizr--${VERSION}.catalina.bottle.tar.gz aktualizr-${VERSION}.catalina.bottle.tar.gz
+    - name: Upload bottle to github release page
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        brew install ghr 
+        VERSION="2020.2"
+        ghr -u "${GITHUB_REPOSITORY%/*}" -r "${GITHUB_REPOSITORY#*/}" ${VERSION} aktualizr-${VERSION}.catalina.bottle.tar.gz
+    - name: Save recipe as build artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: aktualizr.rb
+        path: aktualizr.rb
