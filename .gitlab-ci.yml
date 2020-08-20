@@ -1,0 +1,7 @@
+stages:
+  - test
+
+include:
+  - template: SAST.gitlab-ci.yml # https://gitlab.com/gitlab-org/gitlab-foss/blob/master/lib/gitlab/ci/templates/Security/SAST.gitlab-ci.yml
+# You can override the above template(s) by including variable overrides
+# See https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
