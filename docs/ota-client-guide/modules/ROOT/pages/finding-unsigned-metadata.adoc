@@ -1,0 +1,25 @@
+= Find the unsigned Root and Targets metadata
+ifdef::env-github[]
+
+[NOTE]
+====
+We recommend that you link:https://docs.ota.here.com/ota-client/latest/{docname}.html[view this article in our documentation portal]. Not all of our articles render correctly in GitHub.
+====
+endif::[]
+
+If you want to use your own PKI you will need to know where in your local repository can you find the metadata you want to sign.
+It may be `root.json` or `targets.json` files, both are stored under `tuf/<reponame>/roles/unsigned` path.
+
+NOTE: <reponame> is the name you specified during your repository initialization with `garage-sign init`
+
+If, however, the `unsigned/` folder is empty, most likely it means you have to do a pulling first:
+
+* Use `garage-sign root pull` to pull the unsigned `root.json`
+* Use `garage-sign targets pull` to pull the unsigned `targets.json`
+
+If you haven't previously created any targets - use `garage-sign targets init` which will create the unsigned `targets.json` as well.
+
+== Generate Root and Targets metadata in canonical form
+
+To generate unsigned metadata in canonical form, use the `garage-sign root get-unsigned` and `garage-sign targets get-unsigned`
+for unsigned `root.json` and `targets.json` files respectively which also will be stored in `unsigned/` folder.
