@@ -7,17 +7,19 @@ We recommend that you link:https://docs.ota.here.com/ota-client/latest/{docname}
 ====
 endif::[]
 
-If you want to use your own PKI you will need to know where in your local repository can you find the metadata you want to sign.
-It may be `root.json` or `targets.json` files, both are stored under `tuf/<reponame>/roles/unsigned` path.
+If you want to use your own PKI, you need to know where in your local repository you can find the metadata that you want to sign.
+It may be `root.json` or `targets.json` files. You can find both files in the `tuf/<reponame>/roles/unsigned` folder. 
 
-NOTE: <reponame> is the name you specified during your repository initialization with `garage-sign init`
+NOTE: <reponame> is the name you specified when you initialized your repository using `garage-sign init`.
 
-If, however, the `unsigned/` folder is empty, most likely it means you have to do a pulling first:
+If the `unsigned/` folder is empty, you need to pull the metadata files:
 
-* Use `garage-sign root pull` to pull the unsigned `root.json`
-* Use `garage-sign targets pull` to pull the unsigned `targets.json`
+* To pull the unsigned `root.json` file, use `garage-sign root pull`.
+* To pull the unsigned `targets.json`, use `garage-sign targets pull`.
 
-If you haven't previously created any targets - use `garage-sign targets init` which will create the unsigned `targets.json` as well.
+If you have not created any targets, to create the unsigned `targets.json` file, use `garage-sign targets init`.
+
+To learn more about the `garage-sign` commands and options, see its xref:garage-sign-reference.adoc[reference] documentation.
 
 == Generate Root and Targets metadata in canonical form
 
