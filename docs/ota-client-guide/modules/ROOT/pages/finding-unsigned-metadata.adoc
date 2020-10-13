@@ -21,7 +21,7 @@ If you have not created any targets, to create the unsigned `targets.json` file,
 
 To learn more about the `garage-sign` commands and options, see its xref:garage-sign-reference.adoc[reference] documentation.
 
-== Generate Root and Targets metadata in canonical form
+== Generate Root and Targets metadata in a canonical form
 
-To generate unsigned metadata in canonical form, use the `garage-sign root get-unsigned` and `garage-sign targets get-unsigned`
-for unsigned `root.json` and `targets.json` files respectively which also will be stored in `unsigned/` folder.
+To generate unsigned metadata in a canonical form, use the `garage-sign root get-unsigned` and `garage-sign targets get-unsigned` commands
+for the unsigned `root.json` and `targets.json` files respectively. The files that you get are stored in the `unsigned/` folder.
