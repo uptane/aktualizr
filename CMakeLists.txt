@@ -408,4 +408,7 @@ add_custom_target(tags
     COMMAND ctags -R --c++-kinds=+p --fields=+iaS --extra=+q src
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+# Needed to suppress cmake warning.
+set(ignoreMe "${USE_OSCP}")
+
 # vim: set tabstop=4 shiftwidth=4 expandtab:

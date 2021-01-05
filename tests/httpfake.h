@@ -156,6 +156,8 @@ class HttpFake : public HttpInterface {
                         void *userp, curl_off_t from) override {
     return downloadAsync(url, write_cb, progress_cb, userp, from, nullptr).get();
   }
+  
+  void setUseOscpStapling(bool /*oscp*/) {}
 
   const std::string tls_server = "https://tlsserver.com";
   Json::Value last_manifest;
