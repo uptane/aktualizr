@@ -308,6 +308,11 @@ class Aktualizr {
    */
   void SetSecondaryData(const Uptane::EcuSerial& ecu, const std::string& data);
 
+  /* Make it possible for the client application to disable download/install of updates
+   * @param status true to disable updates and false to enable updates
+   */
+  void DisableUpdates(bool status);
+
   /**
    * Returns a list of the registered Secondaries, along with some associated
    * metadata
@@ -350,6 +355,8 @@ class Aktualizr {
   std::shared_ptr<INvStorage> storage_;
   std::shared_ptr<event::Channel> sig_;
   std::unique_ptr<api::CommandQueue> api_queue_;
+
+  bool updates_disabled_;
 };
 
 #endif  // AKTUALIZR_H_

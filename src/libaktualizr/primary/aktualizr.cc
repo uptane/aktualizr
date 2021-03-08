@@ -26,6 +26,8 @@ Aktualizr::Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in,
   storage_->importData(config_.import);
 
   uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_);
+
+  updates_disabled_ = false;
 }
 
 Aktualizr::~Aktualizr() { api_queue_.reset(nullptr); }
@@ -35,9 +37,13 @@ void Aktualizr::Initialize() {
   api_queue_->run();
 }
 
+void Aktualizr::DisableUpdates(bool status) {
+  updates_disabled_ = status;
+}
+
 bool Aktualizr::UptaneCycle() {
   result::UpdateCheck update_result = CheckUpdates().get();
-  if (update_result.updates.empty()) {
+  if (update_result.updates.empty() || updates_disabled_) {
     if (update_result.status == result::UpdateStatus::kError) {
       // If the metadata verification failed, inform the backend immediately.
       SendManifest().get();
