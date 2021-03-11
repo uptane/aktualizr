@@ -44,7 +44,8 @@ enum class InstalledVersionUpdateMode { kNone, kCurrent, kPending };
 // store* functions normally write the complete content. save* functions just add an entry.
 class INvStorage {
  public:
-  explicit INvStorage(StorageConfig config, StorageClient client = StorageClient::kUptane): config_(std::move(config)), client_(client) { }
+  explicit INvStorage(StorageConfig config, StorageClient client = StorageClient::kUptane)
+      : config_(std::move(config)), client_(client) {}
   virtual ~INvStorage() = default;
   INvStorage(const INvStorage&) = delete;
   INvStorage(INvStorage&&) = delete;
@@ -183,6 +184,7 @@ class INvStorage {
 
  protected:
   const StorageConfig config_;
+
  private:
   StorageClient client_;
 };
