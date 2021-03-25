@@ -28,6 +28,7 @@ class CurlGlobalInitWrapper {
 class HttpClient : public HttpInterface {
  public:
   explicit HttpClient(const std::vector<std::string> *extra_headers = nullptr);
+  HttpClient(const std::string &socket);
   HttpClient(const HttpClient & /*curl_in*/);
   ~HttpClient() override;
   HttpResponse get(const std::string &url, int64_t maxsize) override;
