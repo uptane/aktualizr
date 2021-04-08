@@ -4,6 +4,7 @@
 #include "logging/logging.h"
 #include "utilities/fault_injection.h"
 #include "utilities/utils.h"
+#include "compose_manager.h"
 
 #include <sstream>
 
@@ -69,6 +70,36 @@ void DockerComposeSecondaryConfig::dump(const boost::filesystem::path& file_full
 
 DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryConfig sconfig_in)
     : ManagedSecondary(std::move(sconfig_in)) {}
+
+data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target) {
+  auto str = secondary_provider_->getTargetFileHandle(target);
+
+  /* Here we try to make container updates "as atomic as possible". So we save
+   * the updated docker-compose file with another name (<firmware_path>.tmp), run
+   * docker-compose commands to pull and run the containers, and if it fails
+   * we still have the previous docker-compose file to "roolback" to the current
+   * version of the containers.
+   */
+
+  std::string compose_file = sconfig.firmware_path.string();
+  std::string compose_file_new = compose_file + ".tmp";
+
+  std::ofstream out_file(compose_file_new, std::ios::binary);
+  out_file << str.rdbuf();
+  str.close();
+  out_file.close();
+
+  ComposeManager compose = ComposeManager(compose_file, compose_file_new);
+
+  if (compose.update() == true) {
+    Utils::writeFile(sconfig.target_name_path, target.filename());
+    return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
+  }
+  else {
+    compose.roolback();
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "");
+  }
+}
 
 bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const {
   std::string content;
