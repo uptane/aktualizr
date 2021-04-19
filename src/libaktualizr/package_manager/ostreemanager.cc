@@ -270,6 +270,7 @@ data::InstallationResult OstreeManager::finalizeInstall(const Uptane::Target &ta
 }
 
 void OstreeManager::updateNotify() { bootloader_->updateNotify(); }
+void OstreeManager::installNotify(const Uptane::Target &target) { bootloader_->installNotify(target); }
 
 OstreeManager::OstreeManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
                              const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
