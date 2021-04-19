@@ -8,8 +8,9 @@ class INvStorage;
 class Bootloader {
  public:
   Bootloader(BootloaderConfig config, INvStorage& storage);
-  void setBootOK() const;
-  void updateNotify() const;
+  virtual ~Bootloader() {}
+  virtual void setBootOK() const;
+  virtual void updateNotify() const;
 
   // Reboot handling (uses storage)
   //
@@ -22,11 +23,12 @@ class Bootloader {
   bool rebootDetected() const;
   void rebootFlagSet();
   void rebootFlagClear();
-  void reboot(bool fake_reboot = false);
+  void reboot(bool fake = false);
 
- private:
+ protected:
   const BootloaderConfig config_;
 
+ private:
   INvStorage& storage_;
   boost::filesystem::path reboot_sentinel_;
   std::string reboot_command_;

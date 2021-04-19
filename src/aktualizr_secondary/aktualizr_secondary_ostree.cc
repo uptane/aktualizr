@@ -1,4 +1,6 @@
+
 #include "aktualizr_secondary_ostree.h"
+#include "bootloader/bootloader.h"
 #include "package_manager/ostreemanager.h"
 #include "update_agent_ostree.h"
 

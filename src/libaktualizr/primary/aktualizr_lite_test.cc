@@ -7,6 +7,7 @@
 
 #include <boost/process.hpp>
 
+#include "bootloader/bootloader.h"
 #include "http/httpclient.h"
 #include "image_repo.h"
 #include "libaktualizr/config.h"
