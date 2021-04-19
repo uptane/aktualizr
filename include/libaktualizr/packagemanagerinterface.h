@@ -54,6 +54,7 @@ class PackageManagerInterface {
   virtual void completeInstall() const { throw std::runtime_error("Unimplemented"); }
   virtual data::InstallationResult finalizeInstall(const Uptane::Target& target) = 0;
   virtual void updateNotify() {}
+  virtual void installNotify(const Uptane::Target& target) { (void)target; }
   virtual bool fetchTarget(const Uptane::Target& target, Uptane::Fetcher& fetcher, const KeyManager& keys,
                            const FetcherProgressCb& progress_cb, const api::FlowControlToken* token);
   virtual TargetStatus verifyTarget(const Uptane::Target& target) const;

@@ -11,6 +11,7 @@ class Bootloader {
   virtual ~Bootloader() {}
   virtual void setBootOK() const;
   virtual void updateNotify() const;
+  virtual void installNotify(const Uptane::Target& target) const { (void)target; }
 
   // Reboot handling (uses storage)
   //
