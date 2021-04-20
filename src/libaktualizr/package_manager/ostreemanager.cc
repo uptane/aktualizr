@@ -243,9 +243,9 @@ void OstreeManager::updateNotify() { bootloader_->updateNotify(); }
 
 OstreeManager::OstreeManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
                              const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
-                             std::unique_ptr<Bootloader> bootloader)
+                             Bootloader *bootloader)
     : PackageManagerInterface(pconfig, BootloaderConfig(), storage, http),
-      bootloader_(bootloader == nullptr ? std_::make_unique<Bootloader>(bconfig, *storage) : std::move(bootloader)) {
+      bootloader_(bootloader == nullptr ? new Bootloader(bconfig, *storage) : bootloader) {
   GObjectUniquePtr<OstreeSysroot> sysroot_smart = OstreeManager::LoadSysroot(config.sysroot);
   if (sysroot_smart == nullptr) {
     throw std::runtime_error("Could not find OSTree sysroot at: " + config.sysroot.string());

@@ -42,7 +42,7 @@ class OstreeManager : public PackageManagerInterface {
  public:
   OstreeManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
                 const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
-                std::unique_ptr<Bootloader> bootloader = nullptr);
+                Bootloader *bootloader = nullptr);
   ~OstreeManager() override;
   std::string name() const override { return "ostree"; }
   Json::Value getInstalledPackages() const override;
