@@ -7,8 +7,6 @@ import threading
 
 import sys
 
-from time import sleep
-
 
 class OstreeRepo(object):
     def __init__(self):
