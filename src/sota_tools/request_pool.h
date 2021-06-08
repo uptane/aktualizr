@@ -13,6 +13,12 @@ class RequestPool {
  public:
   RequestPool(TreehubServer& server, int max_curl_requests, RunMode mode);
   ~RequestPool();
+  // Non-Copyable, Non-Movable
+  RequestPool(const RequestPool&) = delete;
+  RequestPool(RequestPool&&) = delete;
+  RequestPool& operator=(const RequestPool&) = delete;
+  RequestPool& operator=(RequestPool&&) = delete;
+
   void AddQuery(const OSTreeObject::ptr& request);
   void AddUpload(const OSTreeObject::ptr& request);
   void Abort() {

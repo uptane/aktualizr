@@ -19,7 +19,12 @@ class OSTreeRef;
 class OSTreeRepo {
  public:
   using ptr = std::shared_ptr<OSTreeRepo>;
+  OSTreeRepo() = default;
+  // Non-copyable, Non-movable
+  OSTreeRepo(const OSTreeRepo&) = delete;
+  OSTreeRepo(OSTreeRepo&&) = delete;
   OSTreeRepo& operator=(const OSTreeRepo&) = delete;
+  OSTreeRepo& operator=(OSTreeRepo&&) = delete;
 
   virtual ~OSTreeRepo() = default;
   virtual bool LooksValid() const = 0;
