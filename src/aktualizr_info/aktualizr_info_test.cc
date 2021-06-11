@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <boost/asio/io_service.hpp>
-#include <boost/process.hpp>
+#include <boost/filesystem.hpp>
 
 #include "libaktualizr/config.h"
 #include "storage/sqlstorage.h"
