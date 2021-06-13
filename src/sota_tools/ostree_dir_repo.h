@@ -9,6 +9,11 @@
 class OSTreeDirRepo : public OSTreeRepo {
  public:
   explicit OSTreeDirRepo(boost::filesystem::path root_path) : root_(std::move(root_path)) {}
+  // Non-copyable, non-movable
+  OSTreeDirRepo(const OSTreeDirRepo&) = delete;
+  OSTreeDirRepo(OSTreeDirRepo&&) = delete;
+  OSTreeDirRepo& operator=(const OSTreeDirRepo&) = delete;
+  OSTreeDirRepo& operator=(const OSTreeDirRepo&&) = delete;
   ~OSTreeDirRepo() override = default;
 
   bool LooksValid() const override;
