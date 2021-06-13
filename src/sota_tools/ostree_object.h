@@ -11,6 +11,7 @@
 #include "gtest/gtest_prod.h"
 
 #include "garage_common.h"
+#include "ostree_hash.h"
 #include "treehub_server.h"
 
 class OSTreeRepo;
@@ -21,16 +22,23 @@ enum class PresenceOnServer { kObjectStateUnknown, kObjectPresent, kObjectMissin
 enum class CurrentOp { kOstreeObjectUploading, kOstreeObjectPresenceCheck };
 
 /**
- * Broad categories for server response codes.
- * There is no category for a permanent failure at the moment: we are unable to
- * detect a failure that is definitely permanent.
+ * Broad categories for the result of attempting an upload.
+ * At the moment all errors from the server are considered temporary, because
+ * we are unable to detect a server failure that is definitely permanent.
  */
-enum class ServerResponse { kNoResponse, kOk, kTemporaryFailure };
+enum class ServerResponse {
+  /** The upload hasn't been attempted yet */
+  kNoResponse,
+  /** The upload was successful */
+  kOk,
+  /** There was an error uploading the object, but a retry may work */
+  kTemporaryFailure,
+};
 
 class OSTreeObject {
  public:
   using ptr = boost::intrusive_ptr<OSTreeObject>;
-  OSTreeObject(const OSTreeRepo& repo, const std::string& object_name);
+  OSTreeObject(const OSTreeRepo& repo, OSTreeHash hash, OstreeObjectType object_type);
   OSTreeObject(const OSTreeObject&) = delete;
   OSTreeObject operator=(const OSTreeObject&) = delete;
   OSTreeObject(const OSTreeObject&&) = delete;
@@ -52,7 +60,7 @@ class OSTreeObject {
   /* Process a completed curl transaction (presence check or upload). */
   void CurlDone(CURLM* curl_multi_handle, RequestPool& pool);
 
-  uintmax_t GetSize() { return boost::filesystem::file_size(file_path_); }
+  uintmax_t GetSize() const;
 
   PresenceOnServer is_on_server() const { return is_on_server_; }
   CurrentOp operation() const { return current_operation_; }
@@ -60,6 +68,8 @@ class OSTreeObject {
   void LaunchNotify() { is_on_server_ = PresenceOnServer::kObjectInProgress; }
   std::chrono::steady_clock::time_point RequestStartTime() const { return request_start_time_; }
   ServerResponse LastOperationResult() const { return last_operation_result_; }
+
+  bool Fsck() const;
 
  private:
   using childiter = std::list<OSTreeObject::ptr>::iterator;
@@ -96,6 +106,9 @@ class OSTreeObject {
 
   static size_t curl_handle_write(void* buffer, size_t size, size_t nmemb, void* userp);
 
+  /** Full path on disk to this object */
+  boost::filesystem::path PathOnDisk() const;
+
   FRIEND_TEST(OstreeObject, Request);
   FRIEND_TEST(OstreeObject, UploadDryRun);
   FRIEND_TEST(OstreeObject, UploadFail);
@@ -104,8 +117,10 @@ class OSTreeObject {
   friend void intrusive_ptr_release(OSTreeObject* /*h*/);
   friend std::ostream& operator<<(std::ostream& stream, const OSTreeObject& o);
 
-  const boost::filesystem::path file_path_;  // Full path to the object
-  const std::string object_name_;            // OSTree name of the object
+  // SHA256 Hash of the object
+  const OSTreeHash hash_;
+  // Type of the object
+  const OstreeObjectType type_;
   const OSTreeRepo& repo_;
   int refcount_;  // refcounts and intrusive_ptr are used to simplify
                   // interaction with curl
@@ -120,7 +135,6 @@ class OSTreeObject {
 
   std::chrono::steady_clock::time_point request_start_time_;
   ServerResponse last_operation_result_{ServerResponse::kNoResponse};
-  OstreeObjectType type_{OSTREE_OBJECT_TYPE_UNKNOWN};
 };
 
 OSTreeObject::ptr ostree_object_from_curl(CURL* curlhandle);

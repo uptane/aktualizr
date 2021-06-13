@@ -8,16 +8,12 @@ OSTreeObject::ptr OSTreeRepo::GetObject(const uint8_t sha256[32], const OstreeOb
 }
 
 OSTreeObject::ptr OSTreeRepo::GetObject(const OSTreeHash hash, const OstreeObjectType type) const {
+  // If we've already seen this object, return another pointer to it
   otable::const_iterator obj_it = ObjectTable.find(hash);
   if (obj_it != ObjectTable.cend()) {
     return obj_it->second;
   }
 
-  const std::map<OstreeObjectType, std::string> exts{{OstreeObjectType::OSTREE_OBJECT_TYPE_FILE, ".filez"},
-                                                     {OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_TREE, ".dirtree"},
-                                                     {OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_META, ".dirmeta"},
-                                                     {OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT, ".commit"}};
-  const std::string objpath = hash.string().insert(2, 1, '/');
   OSTreeObject::ptr object;
 
   for (int i = 0; i < 3; ++i) {
@@ -25,24 +21,37 @@ OSTreeObject::ptr OSTreeRepo::GetObject(const OSTreeHash hash, const OstreeObjec
       LOG_WARNING << "OSTree hash " << hash << " not found. Retrying (attempt " << i << " of 3)";
     }
     if (type != OSTREE_OBJECT_TYPE_UNKNOWN) {
-      if (CheckForObject(hash, objpath + exts.at(type), object)) {
+      if (CheckForObject(hash, type, &object)) {
         return object;
       }
     } else {
-      for (auto it = exts.cbegin(); it != exts.cend(); ++it) {
-        if (CheckForObject(hash, objpath + it->second, object)) {
-          return object;
-        }
+      // If we don't know the type for any reason, try the object types we know
+      // about.
+      if (CheckForObject(hash, OSTREE_OBJECT_TYPE_FILE, &object)) {
+        return object;
+      }
+      if (CheckForObject(hash, OSTREE_OBJECT_TYPE_DIR_META, &object)) {
+        return object;
+      }
+      if (CheckForObject(hash, OSTREE_OBJECT_TYPE_DIR_TREE, &object)) {
+        return object;
+      }
+      if (CheckForObject(hash, OSTREE_OBJECT_TYPE_COMMIT, &object)) {
+        return object;
       }
     }
   }
+  // We don't already have the object, and can't fetch it after a few retries => fail
   throw OSTreeObjectMissing(hash);
 }
 
-bool OSTreeRepo::CheckForObject(const OSTreeHash &hash, const std::string &path, OSTreeObject::ptr &object) const {
-  if (FetchObject(std::string("objects/") + path)) {
-    object = OSTreeObject::ptr(new OSTreeObject(*this, path));
+bool OSTreeRepo::CheckForObject(const OSTreeHash &hash, OstreeObjectType type, OSTreeObject::ptr *object_out) const {
+  boost::filesystem::path path("objects");
+  path /= GetPathForHash(hash, type);
+  if (FetchObject(path)) {
+    auto object = OSTreeObject::ptr(new OSTreeObject(*this, hash, type));
     ObjectTable[hash] = object;
+    *object_out = object;
     LOG_DEBUG << "Fetched OSTree object " << path;
     return true;
   }

@@ -138,11 +138,11 @@ void RequestPool::LoopListen() {
   do {
     CURLMsg* msg = curl_multi_info_read(multi_, &msgs_in_queue);
     if ((msg != nullptr) && msg->msg == CURLMSG_DONE) {
-      OSTreeObject::ptr h = ostree_object_from_curl(msg->easy_handle);
-      h->CurlDone(multi_, *this);
-      const bool server_responded_ok = h->LastOperationResult() == ServerResponse::kOk;
-      const RateController::clock::time_point start_time = h->RequestStartTime();
-      const RateController::clock::time_point end_time = RateController::clock::now();
+      OSTreeObject::ptr completed_object = ostree_object_from_curl(msg->easy_handle);
+      completed_object->CurlDone(multi_, *this);
+      auto start_time = completed_object->RequestStartTime();
+      auto end_time = RateController::clock::now();
+      bool server_responded_ok = completed_object->LastOperationResult() == ServerResponse::kOk;
       rate_controller_.RequestCompleted(start_time, end_time, server_responded_ok);
       if (rate_controller_.ServerHasFailed()) {
         Abort();

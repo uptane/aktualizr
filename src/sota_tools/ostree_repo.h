@@ -50,7 +50,7 @@ class OSTreeRepo {
    * */
   virtual bool FetchObject(const boost::filesystem::path& path) const = 0;
 
-  bool CheckForObject(const OSTreeHash& hash, const std::string& path, OSTreeObject::ptr& object) const;
+  bool CheckForObject(const OSTreeHash& hash, OstreeObjectType type, OSTreeObject::ptr* object) const;
 
   using otable = std::map<OSTreeHash, OSTreeObject::ptr>;
   mutable otable ObjectTable;  // Makes sure that the same commit object is not added twice

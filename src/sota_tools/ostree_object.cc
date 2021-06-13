@@ -1,11 +1,11 @@
 #include "ostree_object.h"
 
+#include <glib.h>
+#include <ostree.h>
 #include <sys/stat.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>
-
-#include <glib.h>
 
 #include "logging/logging.h"
 #include "ostree_repo.h"
@@ -14,16 +14,17 @@
 
 using std::string;
 
-OSTreeObject::OSTreeObject(const OSTreeRepo &repo, const std::string &object_name)
-    : file_path_(repo.root() / "/objects/" / object_name),
-      object_name_(object_name),
+OSTreeObject::OSTreeObject(const OSTreeRepo &repo, OSTreeHash hash, OstreeObjectType object_type)
+    : hash_(hash),
+      type_(object_type),
       repo_(repo),
       refcount_(0),
       is_on_server_(PresenceOnServer::kObjectStateUnknown),
       curl_handle_(nullptr),
       fd_(nullptr) {
-  if (!boost::filesystem::is_regular_file(file_path_)) {
-    throw std::runtime_error(file_path_.native() + " is not a valid OSTree object.");
+  auto file_path = PathOnDisk();
+  if (!boost::filesystem::is_regular_file(file_path)) {
+    throw std::runtime_error(file_path.native() + " is not a valid OSTree object.");
   }
 }
 
@@ -72,14 +73,13 @@ void OSTreeObject::AppendChild(const OSTreeObject::ptr &child) {
 
 // Can throw OSTreeObjectMissing if the repo is corrupt
 void OSTreeObject::PopulateChildren() {
-  const boost::filesystem::path ext = file_path_.extension();
   const GVariantType *content_type;
   bool is_commit;
 
-  if (ext.compare(".commit") == 0) {
+  if (type_ == OSTREE_OBJECT_TYPE_COMMIT) {
     content_type = OSTREE_COMMIT_GVARIANT_FORMAT;
     is_commit = true;
-  } else if (ext.compare(".dirtree") == 0) {
+  } else if (type_ == OSTREE_OBJECT_TYPE_DIR_TREE) {
     content_type = OSTREE_TREE_GVARIANT_FORMAT;
     is_commit = false;
   } else {
@@ -87,10 +87,11 @@ void OSTreeObject::PopulateChildren() {
   }
 
   GError *gerror = nullptr;
-  GMappedFile *mfile = g_mapped_file_new(file_path_.c_str(), FALSE, &gerror);
+  auto file_path = PathOnDisk();
+  GMappedFile *mfile = g_mapped_file_new(file_path.c_str(), FALSE, &gerror);
 
   if (mfile == nullptr) {
-    throw std::runtime_error("Failed to map metadata file " + file_path_.native());
+    throw std::runtime_error("Failed to map metadata file " + file_path.native());
   }
 
   GVariant *contents =
@@ -176,7 +177,20 @@ void OSTreeObject::QueryChildren(RequestPool &pool) {
   }
 }
 
-string OSTreeObject::Url() const { return "objects/" + object_name_; }
+string OSTreeObject::Url() const {
+  boost::filesystem::path p("objects");
+  p /= OSTreeRepo::GetPathForHash(hash_, type_);
+  return p.string();
+}
+
+boost::filesystem::path OSTreeObject::PathOnDisk() const {
+  auto path = repo_.root();
+  path /= "objects";
+  path /= OSTreeRepo::GetPathForHash(hash_, type_);
+  return path;
+}
+
+uintmax_t OSTreeObject::GetSize() const { return boost::filesystem::file_size(PathOnDisk()); }
 
 void OSTreeObject::MakeTestRequest(const TreehubServer &push_target, CURLM *curl_multi_handle) {
   assert(!curl_handle_);
@@ -228,11 +242,12 @@ void OSTreeObject::Upload(TreehubServer &push_target, CURLM *curl_multi_handle, 
   http_response_.str("");  // Empty the response buffer
 
   struct stat file_info {};
-  fd_ = fopen(file_path_.c_str(), "rb");
+  auto file_path = PathOnDisk();
+  fd_ = fopen(file_path.c_str(), "rb");
   if (fd_ == nullptr) {
     throw std::runtime_error("could not open file to be uploaded");
   } else {
-    if (stat(file_path_.c_str(), &file_info) < 0) {
+    if (stat(file_path.c_str(), &file_info) < 0) {
       throw std::runtime_error("Could not get file information");
     }
   }
@@ -297,7 +312,7 @@ void OSTreeObject::CurlDone(CURLM *curl_multi_handle, RequestPool &pool) {
     // Sanity-check the handle's URL to make sure it contains the expected
     // object hash.
     // NOLINTNEXTLINE(bugprone-branch-clone)
-    if (url == nullptr || strstr(url, object_name_.c_str()) == nullptr) {
+    if (url == nullptr || strstr(url, OSTreeRepo::GetPathForHash(hash_, type_).c_str()) == nullptr) {
       PresenceError(pool, rescode);
     } else if (rescode == 200) {
       LOG_INFO << "Already present: " << *this;
@@ -320,7 +335,7 @@ void OSTreeObject::CurlDone(CURLM *curl_multi_handle, RequestPool &pool) {
     // Sanity-check the handle's URL to make sure it contains the expected
     // object hash.
     // NOLINTNEXTLINE(bugprone-branch-clone)
-    if (url == nullptr || strstr(url, object_name_.c_str()) == nullptr) {
+    if (url == nullptr || strstr(url, Url().c_str()) == nullptr) {
       UploadError(pool, rescode);
     } else if (rescode == 204) {
       LOG_TRACE << "OSTree upload successful";
@@ -359,6 +374,41 @@ OSTreeObject::ptr ostree_object_from_curl(CURL *curlhandle) {
   return boost::intrusive_ptr<OSTreeObject>(h);
 }
 
+bool OSTreeObject::Fsck() const {
+  GFile *repo_path_file = g_file_new_for_path(repo_.root().c_str());  // Never fails
+  OstreeRepo *repo = ostree_repo_new(repo_path_file);
+  GError *err = nullptr;
+  auto ok = ostree_repo_open(repo, nullptr, &err);
+
+  if (ok == FALSE) {
+    LOG_ERROR << "ostree_repo_open failed";
+    if (err != nullptr) {
+      LOG_ERROR << "err:" << err->message;
+      g_error_free(err);
+    }
+    g_object_unref(repo_path_file);
+    g_object_unref(repo);
+    return false;
+  }
+
+  ok = ostree_repo_fsck_object(repo, type_, hash_.string().c_str(), nullptr, &err);
+
+  g_object_unref(repo_path_file);
+  g_object_unref(repo);
+
+  if (ok == FALSE) {
+    LOG_WARNING << "Object " << *this << " is corrupt";
+    if (err != nullptr) {
+      LOG_WARNING << "err:" << err->message;
+      g_error_free(err);
+    }
+    return false;
+  }
+
+  LOG_DEBUG << "Object is OK";
+  return true;
+}
+
 void intrusive_ptr_add_ref(OSTreeObject *h) { h->refcount_++; }
 
 void intrusive_ptr_release(OSTreeObject *h) {
@@ -368,7 +418,7 @@ void intrusive_ptr_release(OSTreeObject *h) {
 }
 
 std::ostream &operator<<(std::ostream &stream, const OSTreeObject &o) {
-  stream << o.object_name_;
+  stream << OSTreeRepo::GetPathForHash(o.hash_, o.type_).native();
   return stream;
 }
 

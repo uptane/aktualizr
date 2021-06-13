@@ -16,16 +16,49 @@ std::string repo_path;
 
 /* Verify that constructor does not accept a nonexistent repo. */
 TEST(OstreeObject, ConstructorBad) {
+  OSTreeDirRepo good_repo(repo_path);
+  OSTreeHash hash = good_repo.GetRef("master").GetHash();
   OSTreeDirRepo bad_repo("nonexistentrepo");
-  EXPECT_THROW(OSTreeObject(bad_repo, "bad"), std::runtime_error);
+  EXPECT_THROW(OSTreeObject(bad_repo, hash, OSTREE_OBJECT_TYPE_COMMIT), std::runtime_error);
 }
 
 /* Verify that constructor accepts a valid repo and commit hash. */
 TEST(OstreeObject, ConstructorGood) {
   OSTreeDirRepo good_repo(repo_path);
   OSTreeHash hash = good_repo.GetRef("master").GetHash();
-  boost::filesystem::path objpath = hash.string().insert(2, 1, '/');
-  OSTreeObject(good_repo, objpath.string() + ".commit");
+  OSTreeObject(good_repo, hash, OSTREE_OBJECT_TYPE_COMMIT);
+}
+
+/** Check the << formatting hasn't changed */
+TEST(OstreeObject, OStreamFormat) {
+  OSTreeDirRepo good_repo(repo_path);
+  auto hash = good_repo.GetRef("master").GetHash();
+  auto obj = good_repo.GetObject(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT);
+  std::stringstream ss;
+  ss << obj;
+  EXPECT_EQ(ss.str(), "b9/ac1e45f9227df8ee191b6e51e09417bd36c6ebbeff999431e3073ac50f0563.commit");
+}
+
+/** Check the OstreeObject::GetSize() is sane */
+TEST(OstreeObject, GetSize) {
+  OSTreeDirRepo good_repo(repo_path);
+  auto hash = good_repo.GetRef("master").GetHash();
+  auto obj = good_repo.GetObject(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT);
+  EXPECT_EQ(obj->GetSize(), 118);
+}
+
+TEST(OstreeObject, Fsck) {
+  OSTreeDirRepo repo("tests/sota_tools/corrupt-repo");
+  auto good_object =
+      repo.GetObject(OSTreeHash::Parse("2ee758031340b51db1c0229bddd8f64bca4b131728d2bfb20c0c8671b1259a38"),
+                     OstreeObjectType::OSTREE_OBJECT_TYPE_FILE);
+
+  EXPECT_TRUE(good_object->Fsck());
+  auto corrupt_object =
+      repo.GetObject(OSTreeHash::Parse("4145b1a9bade30efb28ff921f7a555ff82ba7d3b7b83b968084436167912fa83"),
+                     OstreeObjectType::OSTREE_OBJECT_TYPE_FILE);
+
+  EXPECT_FALSE(corrupt_object->Fsck());
 }
 
 // This is a class solely for the purpose of being a FRIEND_TEST to
