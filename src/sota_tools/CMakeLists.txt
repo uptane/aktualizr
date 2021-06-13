@@ -268,6 +268,11 @@ if (BUILD_SOTA_TOOLS)
         COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-auth-plus-failure $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
 
+    # Abort if a local object is corrupt
+    add_test(NAME garage-push-upload-corrupt-object
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-upload-corrupt-object $<TARGET_FILE:garage-push>
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/sota_tools)
+
     if(SOTA_PACKED_CREDENTIALS)
         # Support dry run with auth plus using a real server.
         add_test(NAME garage-push-dry-run

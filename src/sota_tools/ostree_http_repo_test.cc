@@ -95,7 +95,7 @@ TEST(http_repo, bad_connection) {
   auto hash = OSTreeHash::Parse("b9ac1e45f9227df8ee191b6e51e09417bd36c6ebbeff999431e3073ac50f0563");
   TreehubServer push_server;
   EXPECT_EQ(authenticate(cert_path.string(), ServerCredentials(filepath), push_server), EXIT_SUCCESS);
-  UploadToTreehub(src_repo, push_server, hash, RunMode::kDefault, 1);
+  UploadToTreehub(src_repo, push_server, hash, RunMode::kDefault, 1, false);
 
   std::string diff("diff -r ");
   std::string src_path((src_dir.Path() / "objects").string() + " ");

@@ -7,8 +7,13 @@
 
 #include "logging/logging.h"
 
-RequestPool::RequestPool(TreehubServer& server, const int max_curl_requests, const RunMode mode)
-    : rate_controller_(max_curl_requests), running_requests_(0), server_(server), mode_(mode), stopped_(false) {
+RequestPool::RequestPool(TreehubServer& server, const int max_curl_requests, const RunMode mode, bool fsck_on_upload)
+    : rate_controller_(max_curl_requests),
+      running_requests_(0),
+      server_(server),
+      mode_(mode),
+      fsck_on_upload_(fsck_on_upload),
+      stopped_(false) {
   curl_global_init(CURL_GLOBAL_DEFAULT);
   multi_ = curl_multi_init();
   curl_multi_setopt(multi_, CURLMOPT_PIPELINING, CURLPIPE_HTTP1 | CURLPIPE_MULTIPLEX);
@@ -53,8 +58,18 @@ void RequestPool::LoopLaunch() {
 
     // Queries first, uploads second
     if (query_queue_.empty()) {
+      // Uploads
       cur = upload_queue_.front();
       upload_queue_.pop_front();
+      // Check object's integrity before uploading them, but after we know they
+      // are not present on the server
+      if (fsck_on_upload_) {
+        if (!cur->Fsck()) {
+          LOG_ERROR << "Local object " << cur << " is corrupt. Aborting upload.";
+          Abort();
+          continue;
+        }
+      }
       cur->Upload(server_, multi_, mode_);
       put_requests_made_++;
       total_object_size_ += cur->GetSize();
@@ -64,6 +79,7 @@ void RequestPool::LoopLaunch() {
         cur->NotifyParents(*this);
       }
     } else {
+      // Queries
       cur = query_queue_.front();
       query_queue_.pop_front();
       cur->MakeTestRequest(server_, multi_);
@@ -144,6 +160,7 @@ void RequestPool::LoopListen() {
       auto end_time = RateController::clock::now();
       bool server_responded_ok = completed_object->LastOperationResult() == ServerResponse::kOk;
       rate_controller_.RequestCompleted(start_time, end_time, server_responded_ok);
+
       if (rate_controller_.ServerHasFailed()) {
         Abort();
       } else {

@@ -11,7 +11,7 @@
 
 class RequestPool {
  public:
-  RequestPool(TreehubServer& server, int max_curl_requests, RunMode mode);
+  RequestPool(TreehubServer& server, int max_curl_requests, RunMode mode, bool fsck_on_upload);
   ~RequestPool();
   // Non-Copyable, Non-Movable
   RequestPool(const RequestPool&) = delete;
@@ -57,6 +57,7 @@ class RequestPool {
   std::list<OSTreeObject::ptr> query_queue_;
   std::list<OSTreeObject::ptr> upload_queue_;
   RunMode mode_;
+  bool fsck_on_upload_;
   bool stopped_;
 };
 // vim: set tabstop=2 shiftwidth=2 expandtab:

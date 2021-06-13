@@ -42,7 +42,8 @@ int main(int argc, char **argv) {
     ("hardwareids,h", po::value<std::string>(&hardwareids)->required(), "list of hardware ids")
     ("cacert", po::value<std::string>(&cacerts), "override path to CA root certificates, in the same format as curl --cacert")
     ("jobs", po::value<int>(&max_curl_requests)->default_value(30), "maximum number of parallel requests")
-    ("dry-run,n", "check arguments and authenticate but don't upload");
+    ("dry-run,n", "check arguments and authenticate but don't upload")
+    ("disable-integrity-checks", "Don't validate the checksums of objects before uploading them");
   // clang-format on
 
   po::variables_map vm;
@@ -112,10 +113,11 @@ int main(int argc, char **argv) {
   OSTreeRepo::ptr src_repo = std::make_shared<OSTreeHttpRepo>(&fetch_server);
   try {
     OSTreeHash commit(OSTreeHash::Parse(ostree_commit));
+    bool fsck = vm.count("disable-integrity-checks") == 0;
     // Since the fetches happen on a single thread in OSTreeHttpRepo, there
     // isn't much reason to upload in parallel, but why hold the system back if
     // the fetching is faster than the uploading?
-    if (!UploadToTreehub(src_repo, push_server, commit, mode, max_curl_requests)) {
+    if (!UploadToTreehub(src_repo, push_server, commit, mode, max_curl_requests, fsck)) {
       LOG_FATAL << "Upload to treehub failed";
       return EXIT_FAILURE;
     }

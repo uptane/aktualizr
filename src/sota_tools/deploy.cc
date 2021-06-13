@@ -24,7 +24,7 @@ bool CheckPoolState(const OSTreeObject::ptr &root_object, const RequestPool &req
 }
 
 bool UploadToTreehub(const OSTreeRepo::ptr &src_repo, TreehubServer &push_server, const OSTreeHash &ostree_commit,
-                     const RunMode mode, const int max_curl_requests) {
+                     const RunMode mode, const int max_curl_requests, const bool fsck_on_upload) {
   assert(max_curl_requests > 0);
 
   OSTreeObject::ptr root_object;
@@ -35,7 +35,7 @@ bool UploadToTreehub(const OSTreeRepo::ptr &src_repo, TreehubServer &push_server
     return false;
   }
 
-  RequestPool request_pool(push_server, max_curl_requests, mode);
+  RequestPool request_pool(push_server, max_curl_requests, mode, fsck_on_upload);
 
   // Add commit object to the queue.
   request_pool.AddQuery(root_object);

@@ -68,7 +68,7 @@ int CheckRefValid(TreehubServer &treehub, const std::string &ref, RunMode mode, 
     OSTreeHash hash = OSTreeHash::Parse(ref);
     OSTreeObject::ptr input_object = dest_repo.GetObject(hash, type);
 
-    RequestPool request_pool(treehub, max_curl_requests, mode);
+    RequestPool request_pool(treehub, max_curl_requests, mode, false);
 
     // Add input object to the queue.
     request_pool.AddQuery(input_object);

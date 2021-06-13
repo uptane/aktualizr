@@ -29,7 +29,7 @@ TEST(deploy, UploadToTreehub) {
                             0xf9, 0x9d, 0xf2, 0x5c, 0x3c, 0x3f, 0x25, 0x8d, 0xcc, 0xbe};
   TreehubServer push_server;
   EXPECT_EQ(authenticate(cert_path.string(), server_creds, push_server), EXIT_SUCCESS);
-  UploadToTreehub(src_repo, push_server, OSTreeHash(hash), run_mode, 2);
+  UploadToTreehub(src_repo, push_server, OSTreeHash(hash), run_mode, 2, true);
 
   int result = system(
       (std::string("diff -r ") + (temp_dir.Path() / "objects/").string() + " tests/sota_tools/repo/objects/").c_str());

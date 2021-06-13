@@ -25,9 +25,10 @@ bool CheckPoolState(const OSTreeObject::ptr& root_object, const RequestPool& req
  * \param ostree_commit
  * \param mode
  * \param max_curl_requests
+ * \param fsck_on_upload Validate objects on disk before uploading them
  */
 bool UploadToTreehub(const OSTreeRepo::ptr& src_repo, TreehubServer& push_server, const OSTreeHash& ostree_commit,
-                     RunMode mode, int max_curl_requests);
+                     RunMode mode, int max_curl_requests, bool fsck_on_upload);
 
 /**
  * Use the garage-sign tool and the Image repo targets.json keys in credentials.zip
