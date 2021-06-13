@@ -20,17 +20,6 @@ set(GARAGE_PUSH_SRCS
     garage_push.cc)
 
 if (BUILD_SOTA_TOOLS)
-    set(SOTA_TOOLS_EXTERNAL_LIBS
-        ${Boost_SYSTEM_LIBRARIES}
-        ${Boost_LIBRARIES}
-        ${JSONCPP_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${LibArchive_LIBRARIES}
-        ${CURL_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${sodium_LIBRARY_RELEASE}
-        ${GLIB2_LIBRARIES})
-
     set(GARAGE_TOOLS_VERSION "${AKTUALIZR_VERSION}")
     set_property(SOURCE garage_tools_version.cc PROPERTY COMPILE_DEFINITIONS GARAGE_TOOLS_VERSION="${GARAGE_TOOLS_VERSION}")
     add_library(sota_tools_lib SHARED ${SOTA_TOOLS_LIB_SRC})
@@ -38,7 +27,19 @@ if (BUILD_SOTA_TOOLS)
     target_include_directories(sota_tools_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR} ${GLIB2_INCLUDE_DIRS})
 
     # we link with aktualizr static lib here, to bundle everything in sota_tools_lib
-    target_link_libraries(sota_tools_lib aktualizr_static_lib ${SOTA_TOOLS_EXTERNAL_LIBS})
+    target_link_libraries(sota_tools_lib
+            aktualizr_static_lib
+            ${Boost_SYSTEM_LIBRARIES}
+            ${Boost_LIBRARIES}
+            ${JSONCPP_LIBRARIES}
+            Threads::Threads
+            ${LibArchive_LIBRARIES}
+            ${CURL_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${sodium_LIBRARY_RELEASE}
+            ${GLIB2_LIBRARIES}
+            ${LIBOSTREE_LIBRARIES})
+
     install(TARGETS sota_tools_lib LIBRARY DESTINATION lib COMPONENT garage_deploy)
 
     add_executable(garage-push ${GARAGE_PUSH_SRCS})

@@ -136,6 +136,10 @@ endif(BUILD_P11)
 if(BUILD_SOTA_TOOLS)
     find_package(GLIB2 REQUIRED)
     find_program(STRACE NAMES strace)
+
+    if (NOT BUILD_OSTREE)
+        message(SEND_ERROR "BUILD_SOTA_TOOLS requires BUILD_OSTREE to be enabled")
+    endif()
 endif(BUILD_SOTA_TOOLS)
 
 if(FAULT_INJECTION)

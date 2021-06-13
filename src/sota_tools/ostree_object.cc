@@ -76,13 +76,11 @@ void OSTreeObject::PopulateChildren() {
   const GVariantType *content_type;
   bool is_commit;
 
-  // variant types are borrowed from libostree/ostree-core.h,
-  // but we don't want to create dependency on it
   if (ext.compare(".commit") == 0) {
-    content_type = G_VARIANT_TYPE("(a{sv}aya(say)sstayay)");
+    content_type = OSTREE_COMMIT_GVARIANT_FORMAT;
     is_commit = true;
   } else if (ext.compare(".dirtree") == 0) {
-    content_type = G_VARIANT_TYPE("(a(say)a(sayay))");
+    content_type = OSTREE_TREE_GVARIANT_FORMAT;
     is_commit = false;
   } else {
     return;

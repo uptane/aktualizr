@@ -24,7 +24,7 @@ OSTreeObject::ptr OSTreeRepo::GetObject(const OSTreeHash hash, const OstreeObjec
     if (i > 0) {
       LOG_WARNING << "OSTree hash " << hash << " not found. Retrying (attempt " << i << " of 3)";
     }
-    if (type != OstreeObjectType::OSTREE_OBJECT_TYPE_UNKNOWN) {
+    if (type != OSTREE_OBJECT_TYPE_UNKNOWN) {
       if (CheckForObject(hash, objpath + exts.at(type), object)) {
         return object;
       }

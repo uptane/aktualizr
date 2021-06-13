@@ -1,5 +1,8 @@
 #ifndef GARAGE_COMMON_H_
 #define GARAGE_COMMON_H_
+
+#include "ostree-core.h"
+
 /** \file */
 
 /** Execution mode to run garage tools in. */
@@ -16,30 +19,17 @@ enum class RunMode {
   kPushTree,
 };
 
-/** Types of OSTree objects, borrowed from libostree/ostree-core.h.
- *  Copied here to avoid a dependency. We do not currently handle types 5-7, and
- *  UNKNOWN is our own invention for pseudo-backwards compatibility.
+/* sota_tools was originally designed to not depend on OSTree. This was because
+ * libostree wasn't widely available in package managers so we depended on just
+ * glib. This header file used to contain a copy of the definition of
+ * OstreeObjectType from libostree/ostree-core.h, with an added entry for
+ * OSTREE_OBJECT_TYPE_UNKNOWN at position 0 (which wasn't defined at all in
+ * ostree-core.h).
  *
- * OSTREE_OBJECT_TYPE_FILE: Content; regular file, symbolic link
- * OSTREE_OBJECT_TYPE_DIR_TREE: List of children (trees or files), and metadata
- * OSTREE_OBJECT_TYPE_DIR_META: Directory metadata
- * OSTREE_OBJECT_TYPE_COMMIT: Toplevel object, refers to tree and dirmeta for root
- * OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: Toplevel object, refers to a deleted commit
- * OSTREE_OBJECT_TYPE_COMMIT_META: Detached metadata for a commit
- * OSTREE_OBJECT_TYPE_PAYLOAD_LINK: Symlink to a .file given its checksum on the payload only.
- *
- * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
- * content, the other types are metadata.
+ * We now have a dependency on libostree, so this duplication both isn't needed
+ * any more, and breaks compilation (because of duplicate definitions). We
+ * still need OSTREE_OBJECT_TYPE_UNKNOWN in a few places, so define it here.
  */
-enum class OstreeObjectType {
-  OSTREE_OBJECT_TYPE_UNKNOWN = 0,
-  OSTREE_OBJECT_TYPE_FILE = 1,             /* .file */
-  OSTREE_OBJECT_TYPE_DIR_TREE = 2,         /* .dirtree */
-  OSTREE_OBJECT_TYPE_DIR_META = 3,         /* .dirmeta */
-  OSTREE_OBJECT_TYPE_COMMIT = 4,           /* .commit */
-  OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT = 5, /* .commit-tombstone */
-  OSTREE_OBJECT_TYPE_COMMIT_META = 6,      /* .commitmeta */
-  OSTREE_OBJECT_TYPE_PAYLOAD_LINK = 7,     /* .payload-link */
-};
+const OstreeObjectType OSTREE_OBJECT_TYPE_UNKNOWN = static_cast<OstreeObjectType>(0);
 
 #endif  // GARAGE_COMMON_H_
