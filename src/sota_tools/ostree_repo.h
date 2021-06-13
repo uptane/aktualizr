@@ -38,11 +38,21 @@ class OSTreeRepo {
   static boost::filesystem::path GetPathForHash(OSTreeHash hash, OstreeObjectType type);
 
  protected:
+  /**
+   * Look for an object with a given path, downloading it if necessary and
+   * possible.
+   * For OSTreeDirRepo, this is a simple check to see if the file exists on
+   * disk. OSTreeHttpRepo will attempt to fetch the file from the remote
+   * server to a temporary directory (if it hasn't already been fetched).
+   * In either case, the following post-conditions hold
+   * FetchObject() returns false => The object is not available at all
+   * FetchObject() returns true => The object is on the local file system.
+   * */
   virtual bool FetchObject(const boost::filesystem::path& path) const = 0;
 
   bool CheckForObject(const OSTreeHash& hash, const std::string& path, OSTreeObject::ptr& object) const;
 
-  typedef std::map<OSTreeHash, OSTreeObject::ptr> otable;
+  using otable = std::map<OSTreeHash, OSTreeObject::ptr>;
   mutable otable ObjectTable;  // Makes sure that the same commit object is not added twice
 };
 

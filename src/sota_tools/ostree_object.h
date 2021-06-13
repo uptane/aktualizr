@@ -33,6 +33,8 @@ class OSTreeObject {
   OSTreeObject(const OSTreeRepo& repo, const std::string& object_name);
   OSTreeObject(const OSTreeObject&) = delete;
   OSTreeObject operator=(const OSTreeObject&) = delete;
+  OSTreeObject(const OSTreeObject&&) = delete;
+  OSTreeObject operator=(const OSTreeObject&&) = delete;
 
   ~OSTreeObject();
 
@@ -54,14 +56,14 @@ class OSTreeObject {
 
   PresenceOnServer is_on_server() const { return is_on_server_; }
   CurrentOp operation() const { return current_operation_; }
-  bool children_ready() { return children_.empty(); }
+  bool children_ready() const { return children_.empty(); }
   void LaunchNotify() { is_on_server_ = PresenceOnServer::kObjectInProgress; }
   std::chrono::steady_clock::time_point RequestStartTime() const { return request_start_time_; }
   ServerResponse LastOperationResult() const { return last_operation_result_; }
 
  private:
   using childiter = std::list<OSTreeObject::ptr>::iterator;
-  typedef std::pair<OSTreeObject*, childiter> parentref;
+  using parentref = std::pair<OSTreeObject*, childiter>;
 
   /* Add parent to this object. */
   void AddParent(OSTreeObject* parent, std::list<OSTreeObject::ptr>::iterator parent_it);

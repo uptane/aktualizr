@@ -206,9 +206,9 @@ void OSTreeObject::MakeTestRequest(const TreehubServer &push_target, CURLM *curl
 
 void OSTreeObject::Upload(TreehubServer &push_target, CURLM *curl_multi_handle, const RunMode mode) {
   if (mode == RunMode::kDefault || mode == RunMode::kPushTree) {
-    LOG_INFO << "Uploading " << object_name_;
+    LOG_INFO << "Uploading " << *this;
   } else {
-    LOG_INFO << "Would upload " << object_name_;
+    LOG_INFO << "Would upload " << *this;
     is_on_server_ = PresenceOnServer::kObjectPresent;
     return;
   }
@@ -253,7 +253,7 @@ void OSTreeObject::Upload(TreehubServer &push_target, CURLM *curl_multi_handle, 
 void OSTreeObject::CheckChildren(RequestPool &pool, const long rescode) {  // NOLINT(google-runtime-int)
   try {
     PopulateChildren();
-    LOG_TRACE << "Children of " << object_name_ << ": " << children_.size();
+    LOG_TRACE << "Children of " << *this << ": " << children_.size();
     if (children_ready()) {
       if (rescode != 200) {
         pool.AddUpload(this);
@@ -300,7 +300,7 @@ void OSTreeObject::CurlDone(CURLM *curl_multi_handle, RequestPool &pool) {
     if (url == nullptr || strstr(url, object_name_.c_str()) == nullptr) {
       PresenceError(pool, rescode);
     } else if (rescode == 200) {
-      LOG_INFO << "Already present: " << object_name_;
+      LOG_INFO << "Already present: " << *this;
       is_on_server_ = PresenceOnServer::kObjectPresent;
       last_operation_result_ = ServerResponse::kOk;
       if (pool.run_mode() == RunMode::kWalkTree || pool.run_mode() == RunMode::kPushTree) {
