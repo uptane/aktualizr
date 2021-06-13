@@ -35,6 +35,8 @@ class OSTreeRepo {
   // NOLINTNEXTLINE(modernize-avoid-c-arrays)
   OSTreeObject::ptr GetObject(const uint8_t sha256[32], OstreeObjectType type) const;
 
+  static boost::filesystem::path GetPathForHash(OSTreeHash hash, OstreeObjectType type);
+
  protected:
   virtual bool FetchObject(const boost::filesystem::path& path) const = 0;
 
@@ -59,5 +61,18 @@ class OSTreeObjectMissing : std::exception {
  private:
   OSTreeHash missing_object_;
 };
+
+class OSTreeUnsupportedObjectType : std::exception {
+ public:
+  explicit OSTreeUnsupportedObjectType(OstreeObjectType bad_type) : bad_type_(bad_type) {}
+
+  const char* what() const noexcept override { return "Unknown OstreeObjectType"; }
+
+  OstreeObjectType bad_type() const { return bad_type_; }
+
+ private:
+  OstreeObjectType bad_type_;
+};
+
 // vim: set tabstop=2 shiftwidth=2 expandtab:
 #endif  // SOTA_CLIENT_TOOLS_OSTREE_REPO_H_

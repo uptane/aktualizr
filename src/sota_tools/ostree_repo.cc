@@ -48,3 +48,32 @@ bool OSTreeRepo::CheckForObject(const OSTreeHash &hash, const std::string &path,
   }
   return false;
 }
+
+/**
+ * Get the relative path on disk (or TreeHub) for an object.
+ * When an object has been successfully fetched, it will be on disk at
+ * <code>root() / GetPathForHash()</code>
+ * @param hash
+ * @param type
+ * @return
+ */
+boost::filesystem::path OSTreeRepo::GetPathForHash(OSTreeHash hash, OstreeObjectType type) {
+  std::string objpath = hash.string().insert(2, 1, '/');
+  switch (type) {
+    case OstreeObjectType::OSTREE_OBJECT_TYPE_FILE:
+      objpath += ".filez";
+      break;
+    case OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_TREE:
+      objpath += ".dirtree";
+      break;
+    case OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_META:
+      objpath += ".dirmeta";
+      break;
+    case OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT:
+      objpath += ".commit";
+      break;
+    default:
+      throw OSTreeUnsupportedObjectType(type);
+  }
+  return boost::filesystem::path(objpath);
+}
