@@ -39,9 +39,9 @@ class RequestPool {
    * The number of HEAD + PUT requests that have been sent to curl. This
    * includes requests that eventually returned 500 and get retried.
    */
-  int put_requests_made() { return put_requests_made_; }
-  int head_requests_made() { return head_requests_made_; }
-  uintmax_t total_object_size() { return total_object_size_; }
+  int put_requests_made() const { return put_requests_made_; }
+  int head_requests_made() const { return head_requests_made_; }
+  uintmax_t total_object_size() const { return total_object_size_; }
 
  private:
   void LoopLaunch();  // launches multiple requests from the queues
