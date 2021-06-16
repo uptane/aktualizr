@@ -12,7 +12,7 @@ add_executable(aktualizr-cert-provider ${CERT_PROVIDER_SRC}
     $<TARGET_OBJECTS:utilities>)
 
 target_link_libraries(aktualizr-cert-provider
-    ${CMAKE_THREAD_LIBS_INIT}
+    Threads::Threads
     ${Boost_SYSTEM_LIBRARIES}
     ${Boost_LIBRARIES}
     ${JSONCPP_LIBRARIES}

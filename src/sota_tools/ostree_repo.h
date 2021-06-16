@@ -19,7 +19,12 @@ class OSTreeRef;
 class OSTreeRepo {
  public:
   using ptr = std::shared_ptr<OSTreeRepo>;
+  OSTreeRepo() = default;
+  // Non-copyable, Non-movable
+  OSTreeRepo(const OSTreeRepo&) = delete;
+  OSTreeRepo(OSTreeRepo&&) = delete;
   OSTreeRepo& operator=(const OSTreeRepo&) = delete;
+  OSTreeRepo& operator=(OSTreeRepo&&) = delete;
 
   virtual ~OSTreeRepo() = default;
   virtual bool LooksValid() const = 0;
@@ -30,12 +35,24 @@ class OSTreeRepo {
   // NOLINTNEXTLINE(modernize-avoid-c-arrays)
   OSTreeObject::ptr GetObject(const uint8_t sha256[32], OstreeObjectType type) const;
 
+  static boost::filesystem::path GetPathForHash(OSTreeHash hash, OstreeObjectType type);
+
  protected:
+  /**
+   * Look for an object with a given path, downloading it if necessary and
+   * possible.
+   * For OSTreeDirRepo, this is a simple check to see if the file exists on
+   * disk. OSTreeHttpRepo will attempt to fetch the file from the remote
+   * server to a temporary directory (if it hasn't already been fetched).
+   * In either case, the following post-conditions hold
+   * FetchObject() returns false => The object is not available at all
+   * FetchObject() returns true => The object is on the local file system.
+   * */
   virtual bool FetchObject(const boost::filesystem::path& path) const = 0;
 
-  bool CheckForObject(const OSTreeHash& hash, const std::string& path, OSTreeObject::ptr& object) const;
+  bool CheckForObject(const OSTreeHash& hash, OstreeObjectType type, OSTreeObject::ptr* object) const;
 
-  typedef std::map<OSTreeHash, OSTreeObject::ptr> otable;
+  using otable = std::map<OSTreeHash, OSTreeObject::ptr>;
   mutable otable ObjectTable;  // Makes sure that the same commit object is not added twice
 };
 
@@ -54,5 +71,18 @@ class OSTreeObjectMissing : std::exception {
  private:
   OSTreeHash missing_object_;
 };
+
+class OSTreeUnsupportedObjectType : std::exception {
+ public:
+  explicit OSTreeUnsupportedObjectType(OstreeObjectType bad_type) : bad_type_(bad_type) {}
+
+  const char* what() const noexcept override { return "Unknown OstreeObjectType"; }
+
+  OstreeObjectType bad_type() const { return bad_type_; }
+
+ private:
+  OstreeObjectType bad_type_;
+};
+
 // vim: set tabstop=2 shiftwidth=2 expandtab:
 #endif  // SOTA_CLIENT_TOOLS_OSTREE_REPO_H_

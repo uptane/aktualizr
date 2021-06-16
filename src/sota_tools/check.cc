@@ -52,7 +52,7 @@ int CheckRefValid(TreehubServer &treehub, const std::string &ref, RunMode mode, 
       LOG_FATAL << "OSTree commit " << ref << " is missing in treehub";
       return EXIT_FAILURE;
     } else {
-      type = OstreeObjectType::OSTREE_OBJECT_TYPE_UNKNOWN;
+      type = OSTREE_OBJECT_TYPE_UNKNOWN;
     }
   } else if (http_code != 200) {
     LOG_FATAL << "Error " << http_code << " getting OSTree ref " << ref << " from treehub";
@@ -68,7 +68,7 @@ int CheckRefValid(TreehubServer &treehub, const std::string &ref, RunMode mode, 
     OSTreeHash hash = OSTreeHash::Parse(ref);
     OSTreeObject::ptr input_object = dest_repo.GetObject(hash, type);
 
-    RequestPool request_pool(treehub, max_curl_requests, mode);
+    RequestPool request_pool(treehub, max_curl_requests, mode, false);
 
     // Add input object to the queue.
     request_pool.AddQuery(input_object);

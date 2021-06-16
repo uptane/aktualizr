@@ -73,6 +73,27 @@ TEST(dir_repo, GetObject_Missing) {
   EXPECT_THROW(src_repo->GetObject(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_META), OSTreeObjectMissing);
 }
 
+TEST(dir_repo, GetPathForHash) {
+  auto p = OSTreeDirRepo::GetPathForHash(
+      OSTreeHash::Parse("1f3378927c2d062e40a372414c920219e506afeb8ef25f9ff72a27b792cd093a"),
+      OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT);
+  boost::filesystem::path golden{"1f/3378927c2d062e40a372414c920219e506afeb8ef25f9ff72a27b792cd093a.commit"};
+  EXPECT_EQ(p, golden);
+}
+
+TEST(dir_repo, GetPathForHashExtensions) {
+  auto hash = OSTreeHash::Parse("1f3378927c2d062e40a372414c920219e506afeb8ef25f9ff72a27b792cd093a");
+  auto p = OSTreeDirRepo::GetPathForHash(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_FILE);
+  EXPECT_EQ(p.extension(), ".filez");
+  p = OSTreeDirRepo::GetPathForHash(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_TREE);
+  EXPECT_EQ(p.extension(), ".dirtree");
+  p = OSTreeDirRepo::GetPathForHash(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_DIR_META);
+  EXPECT_EQ(p.extension(), ".dirmeta");
+  p = OSTreeDirRepo::GetPathForHash(hash, OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT);
+  EXPECT_EQ(p.extension(), ".commit");
+  EXPECT_ANY_THROW(OSTreeDirRepo::GetPathForHash(hash, OSTREE_OBJECT_TYPE_UNKNOWN));
+}
+
 #ifndef __NO_MAIN__
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

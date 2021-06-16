@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
     ("repo-manifest", po::value<boost::filesystem::path>(&manifest_path), "manifest describing repository branches used in the image, to be sent as attached metadata")
     ("jobs", po::value<int>(&max_curl_requests)->default_value(30), "maximum number of parallel requests")
     ("dry-run,n", "check arguments and authenticate but don't upload")
-    ("walk-tree,w", "walk entire tree and upload all missing objects");
+    ("walk-tree,w", "walk entire tree and upload all missing objects")
+    ("disable-integrity-checks", "Don't validate the checksums of objects before uploading them");
   // clang-format on
 
   po::variables_map vm;
@@ -135,7 +136,8 @@ int main(int argc, char **argv) {
       LOG_FATAL << "Authentication with push server failed";
       return EXIT_FAILURE;
     }
-    if (!UploadToTreehub(src_repo, push_server, *commit, mode, max_curl_requests)) {
+    bool fsck = vm.count("disable-integrity-checks") == 0;
+    if (!UploadToTreehub(src_repo, push_server, *commit, mode, max_curl_requests, fsck)) {
       LOG_FATAL << "Upload to treehub failed";
       return EXIT_FAILURE;
     }

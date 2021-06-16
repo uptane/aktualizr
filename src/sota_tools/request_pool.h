@@ -11,8 +11,14 @@
 
 class RequestPool {
  public:
-  RequestPool(TreehubServer& server, int max_curl_requests, RunMode mode);
+  RequestPool(TreehubServer& server, int max_curl_requests, RunMode mode, bool fsck_on_upload);
   ~RequestPool();
+  // Non-Copyable, Non-Movable
+  RequestPool(const RequestPool&) = delete;
+  RequestPool(RequestPool&&) = delete;
+  RequestPool& operator=(const RequestPool&) = delete;
+  RequestPool& operator=(RequestPool&&) = delete;
+
   void AddQuery(const OSTreeObject::ptr& request);
   void AddUpload(const OSTreeObject::ptr& request);
   void Abort() {
@@ -33,9 +39,9 @@ class RequestPool {
    * The number of HEAD + PUT requests that have been sent to curl. This
    * includes requests that eventually returned 500 and get retried.
    */
-  int put_requests_made() { return put_requests_made_; }
-  int head_requests_made() { return head_requests_made_; }
-  uintmax_t total_object_size() { return total_object_size_; }
+  int put_requests_made() const { return put_requests_made_; }
+  int head_requests_made() const { return head_requests_made_; }
+  uintmax_t total_object_size() const { return total_object_size_; }
 
  private:
   void LoopLaunch();  // launches multiple requests from the queues
@@ -51,6 +57,7 @@ class RequestPool {
   std::list<OSTreeObject::ptr> query_queue_;
   std::list<OSTreeObject::ptr> upload_queue_;
   RunMode mode_;
+  bool fsck_on_upload_;
   bool stopped_;
 };
 // vim: set tabstop=2 shiftwidth=2 expandtab:
