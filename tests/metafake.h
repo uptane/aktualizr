@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/filesystem.hpp>
@@ -13,8 +14,10 @@
 
 class MetaFake {
  public:
-  MetaFake(const boost::filesystem::path &meta_dir_in)
-      : meta_dir(meta_dir_in), work_dir(meta_dir / "fake_meta"), repo(work_dir, "2021-07-04T16:33:27Z", "id0") {
+  explicit MetaFake(boost::filesystem::path meta_dir_in)
+      : meta_dir(std::move(meta_dir_in)),
+        work_dir(meta_dir / "fake_meta"),
+        repo(work_dir, "2025-07-04T16:33:27Z", "id0") {
     repo.generateRepo(KeyType::kED25519);
     backup();
     create_image();
