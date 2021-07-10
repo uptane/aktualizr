@@ -48,6 +48,8 @@ bool RateController::ServerHasFailed() const {
   return sleep_time_ > kMaxSleepTime;
 }
 
+// These assert()'s are compiled out in Release builds, which triggers a clang-tidy warning
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void RateController::CheckInvariants() const {
   assert((sleep_time_ == clock::duration(0)) || (max_concurrency_ == 1));
   assert(0 < max_concurrency_);
