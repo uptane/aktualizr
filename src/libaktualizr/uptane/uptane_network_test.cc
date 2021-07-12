@@ -146,7 +146,7 @@ TEST(UptaneNetwork, DownloadFailure) {
  */
 class HttpUnstable : public HttpFake {
  public:
-  HttpUnstable(const boost::filesystem::path &test_dir_in) : HttpFake(test_dir_in, "hasupdates") {}
+  explicit HttpUnstable(const boost::filesystem::path &test_dir_in) : HttpFake(test_dir_in, "hasupdates") {}
   HttpResponse get(const std::string &url, int64_t maxsize) override {
     if (!connectSwitch) {
       return HttpResponse({}, 503, CURLE_OK, "");
