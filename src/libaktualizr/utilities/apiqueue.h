@@ -56,7 +56,13 @@ class FlowControlToken {
 
 class CommandQueue {
  public:
+  CommandQueue() = default;
   ~CommandQueue();
+  // Non-copyable Non-movable
+  CommandQueue(const CommandQueue&) = delete;
+  CommandQueue(CommandQueue&&) = delete;
+  CommandQueue& operator=(const CommandQueue&) = delete;
+  CommandQueue& operator=(CommandQueue&&) = delete;
   void run();
   bool pause(bool do_pause);  // returns true iff pause→resume or resume→pause
   void abort(bool restart_thread = true);
