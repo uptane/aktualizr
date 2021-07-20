@@ -28,11 +28,10 @@
 Config conf("tests/config/basic.toml");
 std::string port;
 
-bool doTestInit(StorageType storage_type, const std::string &device_register_state,
-                const std::string &ecu_register_state) {
+bool doTestInit(const std::string &device_register_state, const std::string &ecu_register_state) {
   LOG_INFO << "First attempt to initialize.";
   TemporaryDirectory temp_dir;
-  conf.storage.type = storage_type;
+  conf.storage.type = StorageType::kSqlite;
   conf.storage.path = temp_dir.Path();
   conf.provision.expiry_days = device_register_state;
   conf.provision.primary_ecu_serial = ecu_register_state;
@@ -43,6 +42,7 @@ bool doTestInit(StorageType storage_type, const std::string &device_register_sta
 
   bool result;
   auto http = std::make_shared<HttpClient>();
+  http->timeout(1000);
   auto store = INvStorage::newStorage(conf.storage);
   {
     KeyManager keys(store, conf.keymanagerConfig());
@@ -72,49 +72,50 @@ bool doTestInit(StorageType storage_type, const std::string &device_register_sta
   return result;
 }
 
-TEST(UptaneNetwork, device_drop_request_sqlite) {
+TEST(UptaneNetwork, DeviceDropRequest) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "drop_request", "noerrors"));
+  EXPECT_TRUE(doTestInit("drop_request", "noerrors"));
 }
 
-TEST(UptaneNetwork, device_drop_body_sqlite) {
+TEST(UptaneNetwork, DeviceDropBody) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "drop_body", "noerrors"));
+  EXPECT_TRUE(doTestInit("drop_body", "noerrors"));
 }
 
-TEST(UptaneNetwork, device_503_sqlite) {
+TEST(UptaneNetwork, Device503) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "status_503", "noerrors"));
+  EXPECT_TRUE(doTestInit("status_503", "noerrors"));
 }
 
-TEST(UptaneNetwork, device_408_sqlite) {
+TEST(UptaneNetwork, Device408) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "status_408", "noerrors"));
+  EXPECT_TRUE(doTestInit("status_408", "noerrors"));
 }
 
-TEST(UptaneNetwork, ecu_drop_request_sqlite) {
+TEST(UptaneNetwork, EcuDropRequest) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "noerrors", "drop_request"));
+  EXPECT_TRUE(doTestInit("noerrors", "drop_request"));
 }
 
-TEST(UptaneNetwork, ecu_503_sqlite) {
+TEST(UptaneNetwork, Ecu503) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "noerrors", "status_503"));
+  EXPECT_TRUE(doTestInit("noerrors", "status_503"));
 }
 
-TEST(UptaneNetwork, ecu_408_sqlite) {
+TEST(UptaneNetwork, Ecu408) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "noerrors", "status_408"));
+  EXPECT_TRUE(doTestInit("noerrors", "status_408"));
 }
 
-TEST(UptaneNetwork, no_connection_sqlite) {
+TEST(UptaneNetwork, NoConnection) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "noconnection", "noerrors"));
+
+  EXPECT_TRUE(doTestInit("noconnection", "noerrors"));
 }
 
-TEST(UptaneNetwork, no_errors_sqlite) {
+TEST(UptaneNetwork, NoErrors) {
   RecordProperty("zephyr_key", "OTA-991,TST-158");
-  EXPECT_TRUE(doTestInit(StorageType::kSqlite, "noerrors", "noerrors"));
+  EXPECT_TRUE(doTestInit("noerrors", "noerrors"));
 }
 
 TEST(UptaneNetwork, DownloadFailure) {
