@@ -27,7 +27,7 @@ class CurlGlobalInitWrapper {
 
 class HttpClient : public HttpInterface {
  public:
-  HttpClient(const std::vector<std::string> *extra_headers = nullptr);
+  explicit HttpClient(const std::vector<std::string> *extra_headers = nullptr);
   HttpClient(const HttpClient & /*curl_in*/);
   ~HttpClient() override;
   HttpResponse get(const std::string &url, int64_t maxsize) override;
@@ -44,6 +44,7 @@ class HttpClient : public HttpInterface {
   void setCerts(const std::string &ca, CryptoSource ca_source, const std::string &cert, CryptoSource cert_source,
                 const std::string &pkey, CryptoSource pkey_source) override;
   bool updateHeader(const std::string &name, const std::string &value);
+  void timeout(int64_t ms);
 
  private:
   FRIEND_TEST(GetTest, download_speed_limit);
