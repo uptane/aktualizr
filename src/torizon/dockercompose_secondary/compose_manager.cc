@@ -1,5 +1,9 @@
 #include "compose_manager.h"
 #include "logging/logging.h"
+#include "libaktualizr/config.h"
+#include "storage/invstorage.h"
+
+namespace bpo = boost::program_options;
 
 ComposeManager::ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new) {
   compose_file_current_ = compose_file_current;
@@ -27,17 +31,7 @@ bool ComposeManager::cleanup() {
   return cmd.run("docker system prune -a --force");
 }
 
-bool ComposeManager::update() {
-
-  LOG_INFO << "Updating containers via docker-compose";
-
-  containers_stopped = false;
-
-  if (pull(compose_file_new_) == false) {
-    LOG_ERROR << "Error running docker-compose pull";
-    return false;
-  }
-
+bool ComposeManager::completeUpdate() {
   if (!access(compose_file_current_.c_str(), F_OK)) {
     if (down(compose_file_current_) == false) {
       LOG_ERROR << "Error running docker-compose down";
@@ -49,11 +43,85 @@ bool ComposeManager::update() {
   if (up(compose_file_new_) == false) {
     LOG_ERROR << "Error running docker-compose up";
     return false;
- }
+  }
 
   rename(compose_file_new_.c_str(), compose_file_current_.c_str());
 
   cleanup();
+
+  return true;
+}
+
+bool ComposeManager::checkRollback() {
+  LOG_INFO << "Checking rollback status";
+  std::vector<std::string> output = cmd.runResult(printenv_program_);
+
+  if (std::find_if(output.begin(), output.end(), [](const std::string& str) { return str.find("rollback=1") != std::string::npos; }) != output.end()) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
+bool ComposeManager::update() {
+
+  LOG_INFO << "Updating containers via docker-compose";
+
+  sync_update = false;
+  reboot = false;
+
+  bpo::variables_map vm;
+  Config config(vm);
+  std::shared_ptr<INvStorage> storage;
+  storage = INvStorage::newStorage(config.storage);
+  boost::optional<Uptane::Target> pending;
+  storage->loadPrimaryInstalledVersions(nullptr, &pending); 
+  if (!!pending) {
+    sync_update = true;
+    LOG_INFO << "OSTree update pending. This is a synchronous update transaction.";
+  }
+
+  containers_stopped = false;
+
+  if (pull(compose_file_new_) == false) {
+    LOG_ERROR << "Error running docker-compose pull";
+    return false;
+  }
+
+  if (!sync_update) {
+    if(completeUpdate() == false) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool ComposeManager::pendingUpdate() {
+  if (!access(compose_file_new_.c_str(), F_OK)) {
+    LOG_INFO << "Finishing pending container updates via docker-compose";
+  }
+  else {
+    return true;
+  }
+
+
+  if (checkRollback()) {
+    sync_update = false;
+    reboot = false;
+    return false;
+  }
+  else {
+    sync_update = true;
+    reboot = true;
+  }
+
+  containers_stopped = false;
+
+  if(completeUpdate() == false) {
+    return false;
+  }
 
   return true;
 }
@@ -70,6 +138,14 @@ bool ComposeManager::roolback() {
   remove(compose_file_new_.c_str());
 
   cleanup();
+
+  if (sync_update) {
+    cmd.run("fw_setenv rollback 1");
+  }
+
+  if (reboot) {
+    cmd.run("reboot");
+  }
 
   return true;
 }

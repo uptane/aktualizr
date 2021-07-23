@@ -5,10 +5,13 @@
 #include "utilities/fault_injection.h"
 #include "utilities/utils.h"
 #include "compose_manager.h"
+#include "storage/invstorage.h"
 
 #include <sstream>
 
 using std::stringstream;
+
+namespace bpo = boost::program_options;
 
 namespace Primary {
 
@@ -69,7 +72,9 @@ void DockerComposeSecondaryConfig::dump(const boost::filesystem::path& file_full
 }
 
 DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryConfig sconfig_in)
-    : ManagedSecondary(std::move(sconfig_in)) {}
+    : ManagedSecondary(std::move(sconfig_in)) {
+  validateInstall();
+}
 
 data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target) {
   auto str = secondary_provider_->getTargetFileHandle(target);
@@ -93,7 +98,12 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
 
   if (compose.update() == true) {
     Utils::writeFile(sconfig.target_name_path, target.filename());
-    return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
+    if (compose.sync_update) {
+      return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
+    }
+    else {
+      return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
+    }
   }
   else {
     compose.roolback();
@@ -115,6 +125,29 @@ bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmwar
   firmware_info.len = content.size();
 
   return true;
+}
+
+void DockerComposeSecondary::validateInstall() {
+  std::string compose_file = sconfig.firmware_path.string();
+  std::string compose_file_new = compose_file + ".tmp";
+  ComposeManager pending_check(compose_file, compose_file_new);
+  if (!pending_check.pendingUpdate()) {
+    LOG_ERROR << "Unable to complete pending container update";
+
+    // Pending compose update failed, unset pending flag so that the rest of the Uptane process can go forward again
+    Uptane::EcuSerial serial = getSerial();
+    std::shared_ptr<INvStorage> storage;
+    bpo::variables_map vm;
+    Config config(vm);
+    storage = INvStorage::newStorage(config.storage);
+    boost::optional<Uptane::Target> pending_target;
+    storage->loadInstalledVersions(serial.ToString(), nullptr, &pending_target);
+    storage->saveEcuInstallationResult(serial, data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, ""));
+    storage->saveInstalledVersion(serial.ToString(), *pending_target, InstalledVersionUpdateMode::kNone);
+
+    pending_check.roolback();
+   }
+
 }
 
 }  // namespace Primary

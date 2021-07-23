@@ -7,10 +7,12 @@
 class ComposeManager {
 
   const std::string compose_program_ = "/usr/bin/docker-compose";
+  const std::string printenv_program_ = "/usr/bin/fw_printenv rollback";
   std::string compose_file_current_;
   std::string compose_file_new_;
   std::string compose_cmd_;
   bool containers_stopped;
+  bool reboot;
 
   CommandRunner cmd;
 
@@ -20,11 +22,17 @@ class ComposeManager {
 
   bool cleanup();
 
+  bool completeUpdate();
+  bool checkRollback();
+
  public:
   ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new);
 
   bool update();
+  bool pendingUpdate();
   bool roolback();
+
+  bool sync_update;
 };
 
 #endif  // COMPOSE_MANAGER_H_
