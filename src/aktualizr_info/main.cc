@@ -151,7 +151,9 @@ int main(int argc, char **argv) {
     }
 
     registered = registered || storage->loadEcuRegistered();
-    has_metadata = has_metadata || storage->loadLatestRoot(&director_root, Uptane::RepositoryType::Director());
+    std::string temp;
+    has_metadata = has_metadata || storage->loadLatestRoot(&director_root, Uptane::RepositoryType::Director()) ||
+                   storage->loadLatestRoot(&temp, Uptane::RepositoryType::Image());
 
     bool tlscred_loaded = false;
     {
