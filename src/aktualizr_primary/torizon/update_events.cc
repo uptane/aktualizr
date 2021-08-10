@@ -13,14 +13,14 @@
 // Map event into lambda returning extra information to log as part of processEvent():
 static const std::map<std::string, std::function<std::string(const event::BaseEvent *)> > extra_logs_map = {
   {
-    event::PutManifestComplete::TypeName,
+    "PutManifestComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::PutManifestComplete *>(base);
       return event_ptr->success ? "Result - Success" : "Result - Error";
     }
   },
   {
-    event::UpdateCheckComplete::TypeName,
+    "UpdateCheckComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::UpdateCheckComplete *>(base);
       if (event_ptr->result.status == result::UpdateStatus::kNoUpdatesAvailable)
@@ -33,7 +33,7 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     }
   },
   {
-    event::DownloadProgressReport::TypeName,
+    "DownloadProgressReport",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::DownloadProgressReport *>(base);
       return (std::string{"Progress at "} +
@@ -41,14 +41,14 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     }
   },
   {
-    event::DownloadTargetComplete::TypeName,
+    "DownloadTargetComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::DownloadTargetComplete *>(base);
       return event_ptr->success ? "Result - Success" : "Result - Error";
     }
   },
   {
-    event::AllDownloadsComplete::TypeName,
+    "AllDownloadsComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::AllDownloadsComplete *>(base);
       if (event_ptr->result.status == result::DownloadStatus::kSuccess)
@@ -63,14 +63,14 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     }
   },
   {
-    event::InstallTargetComplete::TypeName,
+    "InstallTargetComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::InstallTargetComplete *>(base);
       return event_ptr->success ? "Result - Success" : "Result - Error";
     }
   },
   {
-    event::AllInstallsComplete::TypeName,
+    "AllInstallsComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::AllInstallsComplete *>(base);
       return std::string{"Result - "} + event_ptr->result.dev_report.result_code.toString();
