@@ -48,12 +48,14 @@ SQLStorageBase::SQLStorageBase(boost::filesystem::path sqldb_path, bool readonly
       throw StorageException(std::string("Could not check storage directory permissions: ") + std::strerror(errno));
     }
     if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
-      throw StorageException("Storage directory has unsafe permissions");
+      throw StorageException(
+          "Storage directory has unsafe permissions (it should not be readable or writeable by group nor others)");
     }
     if ((st.st_mode & (S_IRGRP | S_IROTH)) != 0) {
       // Remove read permissions for group and others
       if (chmod(db_parent_path.c_str(), S_IRWXU) < 0) {
-        throw StorageException("Storage directory has unsafe permissions");
+        throw StorageException(
+            "Storage directory has unsafe permissions (it should not be readable or writeable by group nor others)");
       }
     }
   }

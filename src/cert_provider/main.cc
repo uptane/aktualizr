@@ -214,7 +214,8 @@ int main(int argc, char* argv[]) {
     if ((fleet_ca_path.empty() || provide_ca || provide_url) && credentials_path.empty()) {
       std::cerr
           << "Error: missing -c/--credentials parameters which is mandatory if the fleet CA is not specified or an "
-             "output of the root CA or a gateway URL is requested";
+             "output of the root CA or a gateway URL is requested"
+          << std::endl;
       return EXIT_FAILURE;
     } else {
       serverUrl = Bootstrap::readServerUrl(credentials_path);
