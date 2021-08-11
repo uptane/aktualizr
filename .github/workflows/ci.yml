@@ -11,7 +11,7 @@ jobs:
     name: Coverage on Ubuntu Bionic
     runs-on: ubuntu-latest
     env:
-      DOCKER_TAG: docker.pkg.github.com/advancedtelematic/aktualizr/aktualizr-ci:bionic-master
+      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bionic-master
       DOCKERFILE: docker/Dockerfile.ubuntu.bionic
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       DARGS: >-
@@ -30,7 +30,7 @@ jobs:
       - run: git fetch --prune --unshallow
       - name: Docker login
         if: github.token
-        run: echo ${{ github.token }} | docker login docker.pkg.github.com -u advancedtelematic --password-stdin
+        run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
       - name: Docker build
         run: |
           docker pull "$DOCKER_TAG" || true
@@ -49,7 +49,7 @@ jobs:
     name: Static checks on Ubuntu Focal
     runs-on: ubuntu-latest
     env:
-      DOCKER_TAG: docker.pkg.github.com/advancedtelematic/aktualizr/aktualizr-ci:ubuntu-focal-master
+      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:ubuntu-focal-master
       DOCKERFILE: docker/Dockerfile.ubuntu.focal
       DARGS: >-
         -eCCACHE_DIR
@@ -64,7 +64,7 @@ jobs:
       - run: git fetch --prune --unshallow
       - name: Docker login
         if: github.token
-        run: echo ${{ github.token }} | docker login docker.pkg.github.com -u advancedtelematic --password-stdin
+        run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
       - name: Docker build
         run: |
           docker pull "$DOCKER_TAG" || true
