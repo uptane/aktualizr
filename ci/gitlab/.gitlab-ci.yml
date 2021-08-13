@@ -415,7 +415,7 @@ build-osx-release:
     VERSION: "$CI_COMMIT_TAG"
     REVISION: "$CI_COMMIT_SHA"
     RELEASE_BASE_URL: "https://github.com/advancedtelematic/aktualizr/releases/download"
-    GITHUB_REPOSITORY: "advancedtelematic/aktualizr"
+    GITHUB_REPOSITORY: "uptane/aktualizr"
     GITHUB_TOKEN: "$GITHUB_API_TOKEN"
     HOMEBREW_GITHUB_API_TOKEN: "$GITHUB_API_TOKEN"
     FORMULA_DIR: "/usr/local/Homebrew/Library/Taps/advancedtelematic/homebrew-otaconnect"

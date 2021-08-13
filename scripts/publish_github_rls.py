@@ -36,7 +36,7 @@ def main():
     files = sys.argv[2:]
 
     req = urllib.request.Request(
-        "https://api.github.com/repos/advancedtelematic/aktualizr/releases/tags/{}".format(
+        "https://api.github.com/repos/uptane/aktualizr/releases/tags/{}".format(
             rls_tag
         ),
         headers={
@@ -59,7 +59,7 @@ def main():
     # create release
     c = {"tag_name": rls_tag, "name": rls_tag, "body": "", "draft": False}
     req = urllib.request.Request(
-        "https://api.github.com/repos/advancedtelematic/aktualizr/releases",
+        "https://api.github.com/repos/uptane/aktualizr/releases",
         data=json.dumps(c).encode(),
         headers={
             "Accept": "application/vnd.github.v3+json",

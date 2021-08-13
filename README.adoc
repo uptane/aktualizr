@@ -10,7 +10,7 @@ https://opensource.org/licenses/MPL-2.0[image:https://img.shields.io/badge/Licen
 C++ implementation of https://uptane.github.io[Uptane] OTA update client.
 ====
 
-The client is intended to be installed on devices that wish to receive OTA updates from an Uptane-compatible OTA server such as https://connect.ota.here.com/[HERE OTA Connect]. It is most commonly built by using the https://github.com/advancedtelematic/meta-updater[meta-updater] layer in a Yocto environment. You can use aktualizr as a stand-alone system tool or you can integrate libaktualizr into a larger project.
+The client is intended to be installed on devices that wish to receive OTA updates from an Uptane-compatible OTA server such as https://connect.ota.here.com/[HERE OTA Connect]. It is most commonly built by using the https://github.com/uptane/meta-updater[meta-updater] layer in a Yocto environment. You can use aktualizr as a stand-alone system tool or you can integrate libaktualizr into a larger project.
 
 The client is responsible for:
 
@@ -121,7 +121,7 @@ and run cmake with `-DBUILD_SOTA_TOOLS=ON`.
 This project uses *git submodules*. To checkout the code:
 
 ----
-git clone --recursive https://github.com/advancedtelematic/aktualizr
+git clone --recursive https://github.com/uptane/aktualizr
 cd aktualizr
 ----
 

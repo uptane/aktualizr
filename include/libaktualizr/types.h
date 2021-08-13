@@ -314,7 +314,7 @@ struct InstalledImageInfo {
 
 class HardwareIdentifier {
  public:
-  // https://github.com/advancedtelematic/ota-tuf/blob/master/libtuf/src/main/scala/com/advancedtelematic/libtuf/data/TufDataType.scala
+  // https://github.com/uptane/ota-tuf/blob/master/libtuf/src/main/scala/com/advancedtelematic/libtuf/data/TufDataType.scala#L23
   static const int kMinLength = 0;
   static const int kMaxLength = 200;
 
