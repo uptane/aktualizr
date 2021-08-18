@@ -65,7 +65,7 @@ class OstreeManager : public PackageManagerInterface {
   static data::InstallationResult pull(
       const boost::filesystem::path &sysroot_path, const std::string &ostree_server, const KeyManager &keys,
       const Uptane::Target &target, const api::FlowControlToken *token = nullptr,
-      OstreeProgressCb progress_cb = nullptr,
+      OstreeProgressCb progress_cb = nullptr, const char *alt_remote = nullptr,
       boost::optional<std::unordered_map<std::string, std::string>> headers = boost::none);
 
  private:

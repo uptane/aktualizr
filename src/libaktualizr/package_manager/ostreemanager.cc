@@ -70,7 +70,7 @@ static void aktualizr_progress_cb(OstreeAsyncProgress *progress, gpointer data) 
 data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysroot_path,
                                              const std::string &ostree_server, const KeyManager &keys,
                                              const Uptane::Target &target, const api::FlowControlToken *token,
-                                             OstreeProgressCb progress_cb,
+                                             OstreeProgressCb progress_cb, const char *alt_remote,
                                              boost::optional<std::unordered_map<std::string, std::string>> headers) {
   const std::string refhash = target.sha256Hash();
   // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
@@ -103,8 +103,9 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
     error = nullptr;
   }
 
-  if (!OstreeManager::addRemote(repo.get(), ostree_server, keys)) {
-    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Error adding OSTree remote");
+  if (alt_remote == nullptr && !OstreeManager::addRemote(repo.get(), ostree_server, keys)) {
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
+                                    std::string("Error adding a default OSTree remote: ") + remote);
   }
 
   g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
@@ -127,7 +128,8 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
 
   PullMetaStruct mt(target, token, g_cancellable_new(), std::move(progress_cb));
   progress.reset(ostree_async_progress_new_and_connect(aktualizr_progress_cb, &mt));
-  if (ostree_repo_pull_with_options(repo.get(), remote, options, progress.get(), mt.cancellable.get(), &error) == 0) {
+  if (ostree_repo_pull_with_options(repo.get(), alt_remote == nullptr ? remote : alt_remote, options, progress.get(),
+                                    mt.cancellable.get(), &error) == 0) {
     LOG_ERROR << "Error while pulling image: " << error->code << " " << error->message;
     data::InstallationResult install_res(data::ResultCode::Numeric::kInstallFailed, error->message);
     g_error_free(error);
