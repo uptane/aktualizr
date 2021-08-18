@@ -70,7 +70,8 @@ static void aktualizr_progress_cb(OstreeAsyncProgress *progress, gpointer data) 
 data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysroot_path,
                                              const std::string &ostree_server, const KeyManager &keys,
                                              const Uptane::Target &target, const api::FlowControlToken *token,
-                                             OstreeProgressCb progress_cb) {
+                                             OstreeProgressCb progress_cb,
+                                             boost::optional<std::unordered_map<std::string, std::string>> headers) {
   const std::string refhash = target.sha256Hash();
   // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
   const char *const commit_ids[] = {refhash.c_str()};
@@ -110,6 +111,17 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
   g_variant_builder_add(&builder, "{s@v}", "flags", g_variant_new_variant(g_variant_new_int32(0)));
 
   g_variant_builder_add(&builder, "{s@v}", "refs", g_variant_new_variant(g_variant_new_strv(commit_ids, 1)));
+
+  if (!!headers && (*headers).size() > 0) {
+    GVariantBuilder hdr_builder;
+    g_variant_builder_init(&hdr_builder, G_VARIANT_TYPE("a(ss)"));
+
+    for (const auto &kv : *headers) {
+      g_variant_builder_add(&hdr_builder, "(ss)", kv.first.c_str(), kv.second.c_str());
+    }
+    g_variant_builder_add(&builder, "{s@v}", "http-headers",
+                          g_variant_new_variant(g_variant_builder_end(&hdr_builder)));
+  }
 
   options = g_variant_builder_end(&builder);
 
