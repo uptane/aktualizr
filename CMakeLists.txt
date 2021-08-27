@@ -318,7 +318,7 @@ include_directories(SYSTEM ${LibArchive_INCLUDE_DIR})
 
 # General packaging configuration
 set(CPACK_GENERATOR "DEB")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Patrick Vacek <patrick.vacek@here.com>")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Patti Vacek <pattivacek@gmail.com>")
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
 set(CPACK_DEBIAN_PACKAGE_VERSION ${AKTUALIZR_VERSION})

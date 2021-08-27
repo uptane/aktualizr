@@ -41,7 +41,7 @@ AuthenticationResult OAuth2::Authenticate() {
   // client_id that will have been removed from user-profile, and a server URL to Auth+, which
   // will be in computer heaven.
   // check similar implementation in Scala for garage-sign here:
-  // https://main.gitlab.in.here.com/olp/edge/ota/connect/back-end/ota-tuf/-/blob/master/cli/src/main/scala/com/advancedtelematic/tuf/cli/http/OAuth2Client.scala
+  // https://github.com/uptane/ota-tuf/blob/master/cli/src/main/scala/com/advancedtelematic/tuf/cli/http/OAuth2Client.scala
   if (use_cognito) {
     curlEasySetoptWrapper(curl_handle.get(), CURLOPT_URL, (server_).c_str());
   } else {
