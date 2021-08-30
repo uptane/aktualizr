@@ -72,6 +72,10 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
                                              const Uptane::Target &target, const api::FlowControlToken *token,
                                              OstreeProgressCb progress_cb, const char *alt_remote,
                                              boost::optional<std::unordered_map<std::string, std::string>> headers) {
+  if (!target.IsOstree()) {
+    throw std::logic_error("Invalid type of Target, got " + target.type() + ", expected OSTREE");
+  }
+
   const std::string refhash = target.sha256Hash();
   // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
   const char *const commit_ids[] = {refhash.c_str()};
