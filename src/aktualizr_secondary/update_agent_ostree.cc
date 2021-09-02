@@ -56,7 +56,23 @@ data::InstallationResult OstreeUpdateAgent::downloadTargetRev(const Uptane::Targ
                                     std::string("Error loading Treehub credentials: ") + exc.what());
   }
 
-  auto result = OstreeManager::pull(sysrootPath_, treehub_server, *keyMngr_, target);
+  data::InstallationResult result;
+  const int max_tries = 3;
+  int tries = 0;
+  std::chrono::milliseconds wait(500);
+
+  for (; tries < max_tries; tries++) {
+    result = OstreeManager::pull(sysrootPath_, treehub_server, *keyMngr_, target);
+    if (result.success) {
+      break;
+    } else if (tries < max_tries - 1) {
+      std::this_thread::sleep_for(wait);
+      wait *= 2;
+    }
+  }
+  if (!result.success) {
+    LOG_ERROR << "Download unsuccessful after " << tries << " attempts.";
+  }
 
   switch (result.result_code.num_code) {
     case data::ResultCode::Numeric::kOk: {
