@@ -5,7 +5,7 @@ add_executable(aktualizr ${SOURCES})
 target_link_libraries(aktualizr aktualizr_lib virtual_secondary aktualizr-posix)
 target_include_directories(aktualizr PUBLIC ${PROJECT_SOURCE_DIR}/third_party)
 
-install(TARGETS aktualizr RUNTIME DESTINATION bin COMPONENT aktualizr)
+install(TARGETS aktualizr RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT aktualizr)
 
 add_aktualizr_test(NAME primary_secondary_registration
                    SOURCES primary_secondary_registration_test.cc secondary.cc secondary_config.cc

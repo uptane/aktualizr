@@ -2,7 +2,7 @@
 add_executable(aktualizr-get main.cc get.cc)
 target_link_libraries(aktualizr-get aktualizr_lib)
 
-install(TARGETS aktualizr-get RUNTIME DESTINATION bin COMPONENT aktualizr-get)
+install(TARGETS aktualizr-get RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT aktualizr-get)
 
 add_aktualizr_test(NAME aktualizr_get
                    SOURCES get.cc get_test.cc

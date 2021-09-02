@@ -7,7 +7,7 @@ target_link_libraries(aktualizr-info aktualizr_lib)
 
 install(TARGETS aktualizr-info
         COMPONENT aktualizr
-        RUNTIME DESTINATION bin)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 add_aktualizr_test(NAME aktualizr_info_config
                    SOURCES aktualizr_info_config.cc aktualizr_info_config_test.cc PROJECT_WORKING_DIRECTORY)

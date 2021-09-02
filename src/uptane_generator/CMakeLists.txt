@@ -10,7 +10,7 @@ target_link_libraries(uptane-generator ${UPTANE_GENERATOR_LIBS})
 
 install(TARGETS uptane-generator
         COMPONENT aktualizr
-        RUNTIME DESTINATION bin)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 aktualizr_source_file_checks(${UPTANE_GENERATOR_SRC} ${UPTANE_GENERATOR_HDR})
 add_aktualizr_test(NAME uptane_generator
