@@ -737,7 +737,7 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
         throw Uptane::TargetHashMismatch(target.filename());
       }
     } else {
-      // we emulate successfull download in case of the Secondary OSTree update
+      // we emulate successful download in case of the Secondary OSTree update
       success = true;
     }
   } catch (const std::exception &e) {
