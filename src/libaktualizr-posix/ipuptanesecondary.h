@@ -1,9 +1,10 @@
 #ifndef UPTANE_IPUPTANESECONDARY_H_
 #define UPTANE_IPUPTANESECONDARY_H_
 
-#include "asn1/asn1_message.h"
-#include "der_encoder.h"
 #include "libaktualizr/secondaryinterface.h"
+
+struct AKMetaCollection;
+typedef struct AKMetaCollection AKMetaCollection_t;
 
 namespace Uptane {
 
