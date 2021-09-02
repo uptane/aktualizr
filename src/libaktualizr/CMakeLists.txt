@@ -75,3 +75,6 @@ set_target_properties(aktualizr_lib PROPERTIES LIBRARY_OUTPUT_NAME aktualizr)
 install(TARGETS aktualizr_lib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT aktualizr)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/libaktualizr DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/../../jsoncpp/json/json.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libaktualizr/json)
+
+configure_file(aktualizr.pc.in aktualizr.pc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aktualizr.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)

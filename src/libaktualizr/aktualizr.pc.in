@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+includedir=${prefix}/include/libaktualizr
+libdir=${exec_prefix}/lib
+
+Name: libaktualizr
+Description: The libaktualizr library
+Version: @AKTUALIZR_VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -laktualizr
