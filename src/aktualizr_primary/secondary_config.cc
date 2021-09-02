@@ -70,7 +70,7 @@ SecondaryConfigParser::Configs JsonConfigParser::parse() {
     std::string secondary_type = it.key().asString();
 
     if (sec_cfg_factory_registry_.find(secondary_type) == sec_cfg_factory_registry_.end()) {
-      LOG_ERROR << "Unsupported type of sescondary config was found: `" << secondary_type
+      LOG_ERROR << "Unsupported type of secondary config was found: `" << secondary_type
                 << "`. Ignoring it and continuing with parsing of other secondary configs";
     } else {
       (sec_cfg_factory_registry_.at(secondary_type))(res_sec_cfg, *it);

@@ -162,7 +162,6 @@ class SecondaryWaiter {
 // 4. Secondary is stored but not configured: it must have been removed. Skip it. This will cause re-registration.
 static Secondaries createIPSecondaries(const IPSecondariesConfig& config, Aktualizr& aktualizr) {
   Secondaries result;
-  Secondaries new_secondaries;
   SecondaryWaiter sec_waiter{aktualizr, config.secondaries_wait_port, config.secondaries_timeout_s, result};
   auto secondaries_info = aktualizr.GetSecondaries();
 
