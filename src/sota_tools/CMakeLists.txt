@@ -40,12 +40,12 @@ if (BUILD_SOTA_TOOLS)
             ${GLIB2_LIBRARIES}
             ${LIBOSTREE_LIBRARIES})
 
-    install(TARGETS sota_tools_lib LIBRARY DESTINATION lib COMPONENT garage_deploy)
+    install(TARGETS sota_tools_lib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT garage_deploy)
 
     add_executable(garage-push ${GARAGE_PUSH_SRCS})
     target_link_libraries(garage-push sota_tools_lib)
 
-    install(TARGETS garage-push RUNTIME DESTINATION bin COMPONENT garage_deploy)
+    install(TARGETS garage-push RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT garage_deploy)
 endif (BUILD_SOTA_TOOLS)
 
 
@@ -58,7 +58,7 @@ if (BUILD_SOTA_TOOLS)
 
     target_link_libraries(garage-check sota_tools_lib)
 
-    install(TARGETS garage-check RUNTIME DESTINATION bin COMPONENT garage_deploy)
+    install(TARGETS garage-check RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT garage_deploy)
 endif (BUILD_SOTA_TOOLS)
 
 
@@ -72,7 +72,7 @@ if (BUILD_SOTA_TOOLS)
 
     add_dependencies(build_tests garage-deploy)
 
-    install(TARGETS garage-deploy RUNTIME DESTINATION bin COMPONENT garage_deploy)
+    install(TARGETS garage-deploy RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT garage_deploy)
 
 
     ### garage-sign targets
@@ -94,8 +94,8 @@ if (BUILD_SOTA_TOOLS)
                     ${GARAGE_SIGN_ARGS})
     add_dependencies(garage-deploy garage-sign)
 
-    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/garage-sign/bin/garage-sign DESTINATION bin COMPONENT garage_deploy)
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/garage-sign/lib DESTINATION . COMPONENT garage_deploy)
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/garage-sign/bin/garage-sign DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT garage_deploy)
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/garage-sign/lib DESTINATION ${CMAKE_INSTALL_PREFIX} COMPONENT garage_deploy)
 endif (BUILD_SOTA_TOOLS)
 
 

@@ -26,9 +26,11 @@ option(BUILD_DEB "Set to ON to compile with debian packages support" OFF)
 option(BUILD_P11 "Support for key storage in a HSM via PKCS#11" OFF)
 option(BUILD_SOTA_TOOLS "Set to ON to build SOTA tools" OFF)
 option(FAULT_INJECTION "Set to ON to enable fault injection" OFF)
-option(INSTALL_LIB "Set to ON to install library and headers" OFF)
 option(TESTSUITE_VALGRIND "Set to ON to make tests to run under valgrind (default when CMAKE_BUILD_TYPE=Valgrind)" ${TESTSUITE_VALGRIND_DEFAULT})
 option(CCACHE "Set to ON to use ccache if available" ON)
+
+# Adhere to GNU filesystem layout conventions; provides CMAKE_INSTALL_* macros
+include(GNUInstallDirs)
 
 set(SOTA_PACKED_CREDENTIALS "" CACHE STRING "Credentials.zip for tests involving the server")
 
@@ -146,7 +148,7 @@ if(FAULT_INJECTION)
     find_package(Libfiu REQUIRED)
     add_definitions(-DFIU_ENABLE)
     link_libraries(fiu dl)
-    install(PROGRAMS scripts/fiu DESTINATION bin COMPONENT aktualizr)
+    install(PROGRAMS scripts/fiu DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT aktualizr)
 endif(FAULT_INJECTION)
 
 # flags for different build types

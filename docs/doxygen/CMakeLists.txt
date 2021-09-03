@@ -10,7 +10,7 @@ if (DOXYGEN_FOUND AND DOXYGEN_DOT_FOUND)
         COMMENT "Generating Doxygen Documentation"
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     add_dependencies(docs doxygen)
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html/ DESTINATION share/doc/aktualizr OPTIONAL)
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html/ DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doc/aktualizr OPTIONAL)
 else(DOXYGEN_FOUND AND DOXYGEN_DOT_FOUND)
     message(WARNING "doxygen + dot not found, skipping")
 endif(DOXYGEN_FOUND AND DOXYGEN_DOT_FOUND)

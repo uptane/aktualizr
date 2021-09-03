@@ -1,20 +1,20 @@
 if(BUILD_DEB)
     install(FILES systemd/aktualizr-ubuntu.service
-        DESTINATION /lib/systemd/system
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/systemd/system
         RENAME aktualizr.service
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
         COMPONENT aktualizr)
 
     install(FILES sota-local.toml
-        DESTINATION lib/sota/conf.d
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/sota/conf.d
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
         COMPONENT aktualizr)
 
     install(FILES secondary/virtualsec.json
-        DESTINATION lib/sota/secondaries
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/sota/secondaries
         RENAME demo_secondary.json
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
         COMPONENT aktualizr)
 endif(BUILD_DEB)
 
-install(DIRECTORY DESTINATION lib/sota/conf.d COMPONENT aktualizr)
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LIBDIR}/sota/conf.d COMPONENT aktualizr)

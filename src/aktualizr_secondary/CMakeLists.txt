@@ -31,11 +31,11 @@ target_link_libraries(aktualizr_secondary_lib aktualizr-posix ${AKTUALIZR_EXTERN
 
 add_executable(aktualizr-secondary ${AKTUALIZR_SECONDARY_SRC})
 target_link_libraries(aktualizr-secondary aktualizr_secondary_lib)
-install(TARGETS aktualizr_secondary_lib LIBRARY DESTINATION lib COMPONENT aktualizr)
+install(TARGETS aktualizr_secondary_lib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT aktualizr)
 
 install(TARGETS aktualizr-secondary
         COMPONENT aktualizr
-        RUNTIME DESTINATION bin)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 set(ALL_AKTUALIZR_SECONDARY_HEADERS
     aktualizr_secondary.h

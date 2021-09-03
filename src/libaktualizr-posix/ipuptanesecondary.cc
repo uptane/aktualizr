@@ -4,6 +4,8 @@
 #include <array>
 #include <memory>
 
+#include "asn1/asn1_message.h"
+#include "der_encoder.h"
 #include "ipuptanesecondary.h"
 #include "logging/logging.h"
 #include "storage/invstorage.h"

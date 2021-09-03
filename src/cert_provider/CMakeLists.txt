@@ -25,7 +25,7 @@ target_link_libraries(aktualizr-cert-provider
 
 add_dependencies(build_tests aktualizr-cert-provider)
 
-install(TARGETS aktualizr-cert-provider RUNTIME DESTINATION bin COMPONENT garage_deploy)
+install(TARGETS aktualizr-cert-provider RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT garage_deploy)
 
 add_aktualizr_test(NAME aktualizr_cert_provider SOURCES cert_provider_test.cc PROJECT_WORKING_DIRECTORY ARGS $<TARGET_FILE:aktualizr-cert-provider>)
 
