@@ -1,5 +1,7 @@
 #include "iterator.h"
 
+#include "storage/invstorage.h"
+
 namespace Uptane {
 
 Targets getTrustedDelegation(const Role &delegate_role, const Targets &parent_targets,
