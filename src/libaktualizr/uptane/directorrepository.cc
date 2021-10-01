@@ -1,5 +1,7 @@
 #include "directorrepository.h"
 
+#include "storage/invstorage.h"
+
 namespace Uptane {
 
 void DirectorRepository::resetMeta() {

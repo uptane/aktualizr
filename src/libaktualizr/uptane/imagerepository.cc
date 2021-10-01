@@ -1,5 +1,7 @@
 #include "imagerepository.h"
 
+#include "storage/invstorage.h"
+
 namespace Uptane {
 
 void ImageRepository::resetMeta() {

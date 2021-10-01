@@ -4,7 +4,7 @@
 #include "aktualizr_secondary_config.h"
 #include "aktualizr_secondary_metadata.h"
 #include "msg_handler.h"
-
+#include "storage/invstorage.h"
 #include "uptane/directorrepository.h"
 #include "uptane/imagerepository.h"
 #include "uptane/manifest.h"

@@ -3,7 +3,7 @@
 
 #include "http/httpinterface.h"
 #include "libaktualizr/config.h"
-#include "storage/invstorage.h"
+#include "tuf.h"
 
 namespace Uptane {
 

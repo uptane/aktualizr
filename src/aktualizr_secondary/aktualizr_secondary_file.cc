@@ -1,4 +1,6 @@
 #include "aktualizr_secondary_file.h"
+
+#include "storage/invstorage.h"
 #include "update_agent_file.h"
 
 const std::string AktualizrSecondaryFile::FileUpdateDefaultFile{"firmware.txt"};
