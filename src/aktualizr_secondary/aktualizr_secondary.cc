@@ -72,6 +72,7 @@ data::InstallationResult AktualizrSecondary::doFullVerification(const Metadata& 
   //    We trust the time that the given system/ECU provides.
   TimeStamp now(TimeStamp::Now());
 
+  /*
   // 2. Download and check the Root metadata file from the Director repository.
   // 3. NOT SUPPORTED: Download and check the Timestamp metadata file from the Director repository.
   // 4. NOT SUPPORTED: Download and check the Snapshot metadata file from the Director repository.
@@ -83,6 +84,7 @@ data::InstallationResult AktualizrSecondary::doFullVerification(const Metadata& 
     return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                     std::string("Failed to update Director metadata: ") + e.what());
   }
+  */
 
   // 6. Download and check the Root metadata file from the Image repository.
   // 7. Download and check the Timestamp metadata file from the Image repository.
@@ -96,14 +98,17 @@ data::InstallationResult AktualizrSecondary::doFullVerification(const Metadata& 
                                     std::string("Failed to update Image repo metadata: ") + e.what());
   }
 
+  /*
   // 10. Verify that Targets metadata from the Director and Image repositories match.
   if (!director_repo_.matchTargetsWithImageTargets(*(image_repo_.getTargets()))) {
     LOG_ERROR << "Targets metadata from the Director and Image repositories do not match";
     return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                     "Targets metadata from the Director and Image repositories do not match");
   }
+  */
 
-  auto targetsForThisEcu = director_repo_.getTargets(serial(), hwID());
+  // auto targetsForThisEcu = director_repo_.getTargets(serial(), hwID());
+  auto targetsForThisEcu = image_repo_.getTargets()->getTargets(serial(), hwID());
 
   if (targetsForThisEcu.size() != 1) {
     LOG_ERROR << "Invalid number of targets (should be 1): " << targetsForThisEcu.size();
@@ -169,13 +174,15 @@ void AktualizrSecondary::uptaneInitialize() {
 
 void AktualizrSecondary::initPendingTargetIfAny() {
   try {
-    director_repo_.checkMetaOffline(*storage_);
+    // director_repo_.checkMetaOffline(*storage_);
+    image_repo_.checkMetaOffline(*storage_);
   } catch (const std::exception& e) {
     LOG_INFO << "No valid metadata found in storage.";
     return;
   }
 
-  auto targetsForThisEcu = director_repo_.getTargets(ecu_serial_, hardware_id_);
+  // auto targetsForThisEcu = director_repo_.getTargets(ecu_serial_, hardware_id_);
+  auto targetsForThisEcu = image_repo_.getTargets()->getTargets(serial(), hwID());
 
   if (targetsForThisEcu.size() != 1) {
     LOG_ERROR << "Invalid number of targets (should be 1): " << targetsForThisEcu.size();
