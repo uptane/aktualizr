@@ -50,7 +50,8 @@ class AktualizrSecondary : public MsgDispatcher {
  private:
   static void copyMetadata(Uptane::MetaBundle& meta_bundle, Uptane::RepositoryType repo, const Uptane::Role& role,
                            std::string& json);
-  data::InstallationResult doFullVerification(const Metadata& metadata);
+  data::InstallationResult verifyMetadata(const Metadata& metadata);
+  data::InstallationResult findTargets();
   void uptaneInitialize();
   void registerHandlers();
 

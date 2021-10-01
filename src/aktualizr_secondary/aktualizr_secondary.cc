@@ -1,14 +1,17 @@
 #include "aktualizr_secondary.h"
 
+#include <sys/types.h>
+#include <memory>
+
+#include <boost/lexical_cast.hpp>
+#include <boost/optional.hpp>
+
 #include "crypto/keymanager.h"
 #include "logging/logging.h"
 #include "storage/invstorage.h"
 #include "update_agent.h"
 #include "uptane/manifest.h"
 #include "utilities/utils.h"
-
-#include <sys/types.h>
-#include <memory>
 
 AktualizrSecondary::AktualizrSecondary(AktualizrSecondaryConfig config, std::shared_ptr<INvStorage> storage)
     : config_(std::move(config)),
@@ -32,9 +35,7 @@ Uptane::Manifest AktualizrSecondary::getManifest() const {
   return manifest;
 }
 
-data::InstallationResult AktualizrSecondary::putMetadata(const Metadata& metadata) {
-  return doFullVerification(metadata);
-}
+data::InstallationResult AktualizrSecondary::putMetadata(const Metadata& metadata) { return verifyMetadata(metadata); }
 
 data::InstallationResult AktualizrSecondary::install() {
   if (!pending_target_.IsValid()) {
@@ -66,23 +67,25 @@ data::InstallationResult AktualizrSecondary::install() {
   return result;
 }
 
-data::InstallationResult AktualizrSecondary::doFullVerification(const Metadata& metadata) {
+data::InstallationResult AktualizrSecondary::verifyMetadata(const Metadata& metadata) {
   // 5.4.4.2. Full verification  https://uptane.github.io/uptane-standard/uptane-standard.html#metadata_verification
 
   // 1. Load and verify the current time or the most recent securely attested time.
   //    We trust the time that the given system/ECU provides.
   TimeStamp now(TimeStamp::Now());
 
-  // 2. Download and check the Root metadata file from the Director repository.
-  // 3. NOT SUPPORTED: Download and check the Timestamp metadata file from the Director repository.
-  // 4. NOT SUPPORTED: Download and check the Snapshot metadata file from the Director repository.
-  // 5. Download and check the Targets metadata file from the Director repository.
-  try {
-    director_repo_.updateMeta(*storage_, metadata);
-  } catch (const std::exception& e) {
-    LOG_ERROR << "Failed to update Director metadata: " << e.what();
-    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
-                                    std::string("Failed to update Director metadata: ") + e.what());
+  if (config_.uptane.verification_type == VerificationType::kFull) {
+    // 2. Download and check the Root metadata file from the Director repository.
+    // 3. NOT SUPPORTED: Download and check the Timestamp metadata file from the Director repository.
+    // 4. NOT SUPPORTED: Download and check the Snapshot metadata file from the Director repository.
+    // 5. Download and check the Targets metadata file from the Director repository.
+    try {
+      director_repo_.updateMeta(*storage_, metadata);
+    } catch (const std::exception& e) {
+      LOG_ERROR << "Failed to update Director metadata: " << e.what();
+      return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
+                                      std::string("Failed to update Director metadata: ") + e.what());
+    }
   }
 
   // 6. Download and check the Root metadata file from the Image repository.
@@ -97,14 +100,83 @@ data::InstallationResult AktualizrSecondary::doFullVerification(const Metadata& 
                                     std::string("Failed to update Image repo metadata: ") + e.what());
   }
 
-  // 10. Verify that Targets metadata from the Director and Image repositories match.
-  if (!director_repo_.matchTargetsWithImageTargets(*(image_repo_.getTargets()))) {
-    LOG_ERROR << "Targets metadata from the Director and Image repositories do not match";
-    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
-                                    "Targets metadata from the Director and Image repositories do not match");
+  data::InstallationResult result = findTargets();
+  if (result.isSuccess()) {
+    LOG_INFO << "Metadata verified, new update found.";
+  }
+  return result;
+}
+
+void AktualizrSecondary::initPendingTargetIfAny() {
+  try {
+    if (config_.uptane.verification_type == VerificationType::kFull) {
+      director_repo_.checkMetaOffline(*storage_);
+    } else {
+      image_repo_.checkMetaOffline(*storage_);
+    }
+  } catch (const std::exception& e) {
+    LOG_INFO << "No valid metadata found in storage.";
+    return;
   }
 
-  auto targetsForThisEcu = director_repo_.getTargets(serial(), hwID());
+  findTargets();
+}
+
+data::InstallationResult AktualizrSecondary::findTargets() {
+  std::vector<Uptane::Target> targetsForThisEcu;
+  if (config_.uptane.verification_type == VerificationType::kFull) {
+    // 10. Verify that Targets metadata from the Director and Image repositories match.
+    if (!director_repo_.matchTargetsWithImageTargets(*(image_repo_.getTargets()))) {
+      LOG_ERROR << "Targets metadata from the Director and Image repositories do not match";
+      return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
+                                      "Targets metadata from the Director and Image repositories do not match");
+    }
+
+    targetsForThisEcu = director_repo_.getTargets(serial(), hwID());
+  } else {
+    const auto& targets = image_repo_.getTargets()->targets;
+    for (auto it = targets.begin(); it != targets.end(); ++it) {
+      auto hwids = it->hardwareIds();
+      auto found_loc = std::find(hwids.cbegin(), hwids.cend(), hwID());
+      if (found_loc != hwids.end()) {
+        if (!targetsForThisEcu.empty()) {
+          auto previous = boost::make_optional<int>(false, 0);
+          auto current = boost::make_optional<int>(false, 0);
+          try {
+            previous = boost::lexical_cast<int>(targetsForThisEcu[0].custom_version());
+          } catch (const boost::bad_lexical_cast&) {
+            LOG_TRACE << "Unable to parse Target custom version: " << targetsForThisEcu[0].custom_version();
+          }
+          try {
+            current = boost::lexical_cast<int>(it->custom_version());
+          } catch (const boost::bad_lexical_cast&) {
+            LOG_TRACE << "Unable to parse Target custom version: " << it->custom_version();
+          }
+          if (!previous && !current) {  // NOLINT(bugprone-branch-clone)
+            // No versions: add this to the vector.
+          } else if (!previous) {  // NOLINT(bugprone-branch-clone)
+            // Previous Target didn't have a version but this does; replace existing Targets with this.
+            targetsForThisEcu.clear();
+          } else if (!current) {  // NOLINT(bugprone-branch-clone)
+            // Current Target doesn't have a version but previous does; ignore this.
+            continue;
+          } else if (previous < current) {
+            // Current Target is newer; replace existing Targets with this.
+            targetsForThisEcu.clear();
+          } else if (previous > current) {
+            // Current Target is older; ignore it.
+            continue;
+          } else {
+            // Same version: add it to the vector.
+          }
+        } else {
+          // First matching Target found; add it to the vector.
+        }
+
+        targetsForThisEcu.push_back(*it);
+      }
+    }
+  }
 
   if (targetsForThisEcu.size() != 1) {
     LOG_ERROR << "Invalid number of targets (should be 1): " << targetsForThisEcu.size();
@@ -120,8 +192,6 @@ data::InstallationResult AktualizrSecondary::doFullVerification(const Metadata& 
   }
 
   pending_target_ = targetsForThisEcu[0];
-
-  LOG_INFO << "Metadata verified, new update found.";
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
@@ -166,29 +236,6 @@ void AktualizrSecondary::uptaneInitialize() {
   // therefore, by default GARAGE_TARGET_NAME == OSTREE_BRANCHNAME == SOTA_HARDWARE_ID
   // If there is no match then the backend/UI will not render/highlight currently installed version at all/correctly
   storage_->importInstalledVersions(config_.import.base_path);
-}
-
-void AktualizrSecondary::initPendingTargetIfAny() {
-  try {
-    director_repo_.checkMetaOffline(*storage_);
-  } catch (const std::exception& e) {
-    LOG_INFO << "No valid metadata found in storage.";
-    return;
-  }
-
-  auto targetsForThisEcu = director_repo_.getTargets(ecu_serial_, hardware_id_);
-
-  if (targetsForThisEcu.size() != 1) {
-    LOG_ERROR << "Invalid number of targets (should be 1): " << targetsForThisEcu.size();
-    return;
-  }
-
-  if (!isTargetSupported(targetsForThisEcu[0])) {
-    LOG_ERROR << "The given target type is not supported: " << targetsForThisEcu[0].type();
-    return;
-  }
-
-  pending_target_ = targetsForThisEcu[0];
 }
 
 void AktualizrSecondary::registerHandlers() {

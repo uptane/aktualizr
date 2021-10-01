@@ -25,8 +25,6 @@ namespace utils {
  *
  * The intent is to avoid unintentional use of the "naked" relative path by
  * mandating a base directory for each instantiation.
- *
- * TODO has to be moved into Utils namespace
  */
 class BasedPath {
  public:

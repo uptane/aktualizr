@@ -8,6 +8,12 @@
 #include "libaktualizr/config.h"
 #include "utilities/config_utils.h"
 
+enum class VerificationType {
+  kFull = 0,
+  kTuf
+  // TODO: kPartial
+};
+
 // Try to keep the order of config options the same as in
 // AktualizrSecondaryConfig::writeToStream() and
 // AktualizrSecondaryConfig::updateFromPropertyTree().
@@ -27,6 +33,7 @@ struct AktualizrSecondaryUptaneConfig {
   CryptoSource key_source{CryptoSource::kFile};
   KeyType key_type{KeyType::kRSA2048};
   bool force_install_completion{false};
+  VerificationType verification_type{VerificationType::kFull};
 
   void updateFromPropertyTree(const boost::property_tree::ptree& pt);
   void writeToStream(std::ostream& out_stream) const;

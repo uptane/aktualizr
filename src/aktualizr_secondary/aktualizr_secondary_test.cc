@@ -32,10 +32,10 @@ class UpdateAgentMock : public FileUpdateAgent {
 
 class AktualizrSecondaryWrapper {
  public:
-  AktualizrSecondaryWrapper() {
+  AktualizrSecondaryWrapper(VerificationType verification_type) {
     AktualizrSecondaryConfig config;
     config.pacman.type = PACKAGE_MANAGER_NONE;
-
+    config.uptane.verification_type = verification_type;
     config.storage.path = storage_dir_.Path();
     config.storage.type = StorageType::kSqlite;
 
@@ -170,8 +170,9 @@ class UptaneRepoWrapper {
 };
 
 class SecondaryTest : public ::testing::Test {
- protected:
-  SecondaryTest() : update_agent_(*(secondary_.update_agent_)) {
+ public:
+  SecondaryTest(VerificationType verification_type = VerificationType::kFull)
+      : secondary_(verification_type), update_agent_(*(secondary_.update_agent_)) {
     uptane_repo_.addImageFile(default_target_, secondary_->hwID().ToString(), secondary_->serial().ToString(),
                               target_size, true, true, inavlid_target_size_delta);
   }
@@ -224,7 +225,6 @@ class SecondaryTest : public ::testing::Test {
     return result;
   }
 
- protected:
   static constexpr const char* const default_target_{"default-target"};
   static constexpr const char* const bigger_target_{"default-target.bigger"};
   static constexpr const char* const smaller_target_{"default-target.smaller"};
@@ -240,10 +240,15 @@ class SecondaryTest : public ::testing::Test {
   TemporaryDirectory image_dir_;
 };
 
+class SecondaryTestVerification : public SecondaryTest, public ::testing::WithParamInterface<VerificationType> {
+ public:
+  SecondaryTestVerification() : SecondaryTest(GetParam()){};
+};
+
 class SecondaryTestNegative : public ::testing::Test,
                               public ::testing::WithParamInterface<std::pair<Uptane::RepositoryType, Uptane::Role>> {
  public:
-  SecondaryTestNegative() : update_agent_(*(secondary_.update_agent_)) {}
+  SecondaryTestNegative() : secondary_(VerificationType::kFull), update_agent_(*(secondary_.update_agent_)) {}
 
  protected:
   class MetadataInvalidator : public Metadata {
@@ -276,10 +281,9 @@ class SecondaryTestNegative : public ::testing::Test,
 };
 
 /**
- * Parameterized test,
- * The parameter is std::pair<Uptane::RepositoryType, Uptane::Role> to indicate which metadata to malform
- *
- * see INSTANTIATE_TEST_SUITE_P for the test instantiations with concrete parameter values
+ * This test is parameterized with std::pair<Uptane::RepositoryType, Uptane::Role>
+ * to indicate which metadata to malform. See INSTANTIATE_TEST_SUITE_P for the
+ * list of test instantiations with concrete parameter values.
  */
 TEST_P(SecondaryTestNegative, MalformedMetadaJson) {
   EXPECT_FALSE(secondary_->putMetadata(currentMetadata()).isSuccess());
@@ -292,7 +296,7 @@ TEST_P(SecondaryTestNegative, MalformedMetadaJson) {
 
 /**
  * Instantiates the parameterized test for each specified value of std::pair<Uptane::RepositoryType, Uptane::Role>
- * the parameter value indicates which metadata to malform
+ * The parameter value indicates which metadata to malform.
  */
 INSTANTIATE_TEST_SUITE_P(SecondaryTestMalformedMetadata, SecondaryTestNegative,
                          ::testing::Values(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()),
@@ -302,7 +306,12 @@ INSTANTIATE_TEST_SUITE_P(SecondaryTestMalformedMetadata, SecondaryTestNegative,
                                            std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()),
                                            std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Targets())));
 
-TEST_F(SecondaryTest, fullUptaneVerificationPositive) {
+/**
+ * This test is parameterized with VerificationType to indicate what level of
+ * metadata verification to perform. See INSTANTIATE_TEST_SUITE_P for the list
+ * of test instantiations with concrete parameter values.
+ */
+TEST_P(SecondaryTestVerification, VerificationPositive) {
   EXPECT_CALL(update_agent_, receiveData)
       .Times(target_size / send_buffer_size + (target_size % send_buffer_size ? 1 : 0));
   EXPECT_CALL(update_agent_, install).Times(1);
@@ -325,6 +334,12 @@ TEST_F(SecondaryTest, fullUptaneVerificationPositive) {
   EXPECT_EQ(manifest.installedImageHash(), target_file_hash);
   EXPECT_EQ(manifest.filepath(), target.filename());
 }
+
+/**
+ * Instantiates the parameterized test for each specified value of VerificationType.
+ */
+INSTANTIATE_TEST_SUITE_P(SecondaryTestVerificationType, SecondaryTestVerification,
+                         ::testing::Values(VerificationType::kFull, VerificationType::kTuf));
 
 TEST_F(SecondaryTest, TwoImagesAndOneTarget) {
   // two images for the same ECU, just one of them is added as a target and signed

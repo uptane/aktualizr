@@ -2,6 +2,35 @@
 
 #include <sstream>
 
+std::ostream& operator<<(std::ostream& os, VerificationType type) {
+  std::string type_s;
+  switch (type) {
+    case VerificationType::kFull:
+    default:
+      type_s = "Full";
+      break;
+    case VerificationType::kTuf:
+      type_s = "Tuf";
+      break;
+  }
+  os << '"' << type_s << '"';
+  return os;
+}
+
+template <>
+inline void CopyFromConfig(VerificationType& dest, const std::string& option_name,
+                           const boost::property_tree::ptree& pt) {
+  boost::optional<std::string> value = pt.get_optional<std::string>(option_name);
+  if (value.is_initialized()) {
+    std::string verification_type{StripQuotesFromStrings(value.get())};
+    if (verification_type == "Tuf") {
+      dest = VerificationType::kTuf;
+    } else {
+      dest = VerificationType::kFull;
+    }
+  }
+}
+
 void AktualizrSecondaryNetConfig::updateFromPropertyTree(const boost::property_tree::ptree& pt) {
   CopyFromConfig(port, "port", pt);
   CopyFromConfig(primary_ip, "primary_ip", pt);
@@ -20,6 +49,7 @@ void AktualizrSecondaryUptaneConfig::updateFromPropertyTree(const boost::propert
   CopyFromConfig(key_source, "key_source", pt);
   CopyFromConfig(key_type, "key_type", pt);
   CopyFromConfig(force_install_completion, "force_install_completion", pt);
+  CopyFromConfig(verification_type, "verification_type", pt);
 }
 
 void AktualizrSecondaryUptaneConfig::writeToStream(std::ostream& out_stream) const {
@@ -28,6 +58,7 @@ void AktualizrSecondaryUptaneConfig::writeToStream(std::ostream& out_stream) con
   writeOption(out_stream, key_source, "key_source");
   writeOption(out_stream, key_type, "key_type");
   writeOption(out_stream, force_install_completion, "force_install_completion");
+  writeOption(out_stream, verification_type, "verification_type");
 }
 
 AktualizrSecondaryConfig::AktualizrSecondaryConfig(const boost::program_options::variables_map& cmd) {

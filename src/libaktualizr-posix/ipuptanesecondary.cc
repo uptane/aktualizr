@@ -213,15 +213,16 @@ void IpUptaneSecondary::addMetadata(const Uptane::MetaBundle& meta_bundle, const
 data::InstallationResult IpUptaneSecondary::putMetadata_v2(const Uptane::MetaBundle& meta_bundle) {
   Asn1Message::Ptr req(Asn1Message::Empty());
   req->present(AKIpUptaneMes_PR_putMetaReq2);
-
   auto m = req->putMetaReq2();
-  m->directorRepo.present = directorRepo_PR_collection;
-  m->imageRepo.present = imageRepo_PR_collection;
 
+  // TODO: Consider only sending for full verification Secondaries.
+  m->directorRepo.present = directorRepo_PR_collection;
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
   addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root(), m->directorRepo.choice.collection);
   addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets(),
               m->directorRepo.choice.collection);  // NOLINT(cppcoreguidelines-pro-type-union-access)
+
+  m->imageRepo.present = imageRepo_PR_collection;
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
   addMetadata(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Root(), m->imageRepo.choice.collection);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
