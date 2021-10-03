@@ -17,16 +17,32 @@ class HttpFakeRegistration : public HttpFake {
       : HttpFake(test_dir_in, "noupdates", meta_dir_in) {}
 
   HttpResponse post(const std::string& url, const Json::Value& data) override {
+    if (url.find("/devices") != std::string::npos) {
+      auto this_device_id = data["deviceId"].asString();
+      if (registration_count <= 1) {
+        device_id = this_device_id;
+      } else {
+        EXPECT_EQ(device_id, this_device_id) << "deviceId should change during provisioning";
+      }
+    }
     if (url.find("/director/ecus") != std::string::npos) {
       registration_count += 1;
       EXPECT_EQ(data["primary_ecu_serial"].asString(), "CA:FE:A6:D2:84:9D");
       EXPECT_EQ(data["ecus"][0]["ecu_serial"].asString(), "CA:FE:A6:D2:84:9D");
       EXPECT_EQ(data["ecus"][0]["hardware_identifier"].asString(), "primary_hw");
+      if (registration_count == 1) {
+        primary_ecu_info = data["ecus"][0];
+      } else {
+        EXPECT_EQ(primary_ecu_info, data["ecus"][0]) << "Information about primary ECU shouldn't change";
+      }
     }
+
     return HttpFake::post(url, data);
   }
 
   unsigned int registration_count{0};
+  Json::Value primary_ecu_info;
+  std::string device_id;
 };
 
 /*
