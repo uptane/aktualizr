@@ -63,6 +63,7 @@ TEST(Aktualizr, AddSecondary) {
 
   std::vector<std::string> expected_ecus = {"CA:FE:A6:D2:84:9D", "ecuserial3", "secondary_ecu_serial"};
   UptaneTestCommon::verifyEcus(temp_dir, expected_ecus);
+  EXPECT_EQ(http->device_registration_count, 1);
   EXPECT_EQ(http->ecu_registration_count, 1);
 
   ecu_config.ecu_serial = "ecuserial4";
@@ -70,6 +71,7 @@ TEST(Aktualizr, AddSecondary) {
   aktualizr.Initialize();
   expected_ecus.push_back(ecu_config.ecu_serial);
   UptaneTestCommon::verifyEcus(temp_dir, expected_ecus);
+  EXPECT_EQ(http->device_registration_count, 1);
   EXPECT_EQ(http->ecu_registration_count, 2);
 }
 
@@ -90,6 +92,7 @@ TEST(Aktualizr, RemoveSecondary) {
 
     std::vector<std::string> expected_ecus = {"CA:FE:A6:D2:84:9D", "ecuserial3", "secondary_ecu_serial"};
     UptaneTestCommon::verifyEcus(temp_dir, expected_ecus);
+    EXPECT_EQ(http->device_registration_count, 1);
     EXPECT_EQ(http->ecu_registration_count, 1);
   }
 
@@ -99,6 +102,7 @@ TEST(Aktualizr, RemoveSecondary) {
 
     std::vector<std::string> expected_ecus = {"CA:FE:A6:D2:84:9D", "secondary_ecu_serial"};
     UptaneTestCommon::verifyEcus(temp_dir, expected_ecus);
+    EXPECT_EQ(http->device_registration_count, 1);
     EXPECT_EQ(http->ecu_registration_count, 2);
   }
 }
@@ -120,6 +124,7 @@ TEST(Aktualizr, ReplaceSecondary) {
 
     std::vector<std::string> expected_ecus = {"CA:FE:A6:D2:84:9D", "ecuserial3", "secondary_ecu_serial"};
     UptaneTestCommon::verifyEcus(temp_dir, expected_ecus);
+    EXPECT_EQ(http->device_registration_count, 1);
     EXPECT_EQ(http->ecu_registration_count, 1);
   }
 
@@ -132,6 +137,7 @@ TEST(Aktualizr, ReplaceSecondary) {
 
     std::vector<std::string> expected_ecus = {"CA:FE:A6:D2:84:9D", "ecuserial4", "secondary_ecu_serial"};
     UptaneTestCommon::verifyEcus(temp_dir, expected_ecus);
+    EXPECT_EQ(http->device_registration_count, 1);
     EXPECT_EQ(http->ecu_registration_count, 2);
   }
 }
@@ -150,8 +156,8 @@ TEST(Aktualizr, RestartNoRegisterSecondaries) {
     Primary::VirtualSecondaryConfig ecu_config = UptaneTestCommon::altVirtualConfiguration(temp_dir.Path());
     aktualizr.AddSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config));
     aktualizr.Initialize();
-    EXPECT_EQ(http->ecu_registration_count, 1);
     EXPECT_EQ(http->device_registration_count, 1);
+    EXPECT_EQ(http->ecu_registration_count, 1);
   }
 
   {
@@ -159,8 +165,8 @@ TEST(Aktualizr, RestartNoRegisterSecondaries) {
     Primary::VirtualSecondaryConfig ecu_config = UptaneTestCommon::altVirtualConfiguration(temp_dir.Path());
     aktualizr.AddSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config));
     aktualizr.Initialize();
-    EXPECT_EQ(http->ecu_registration_count, 1);
     EXPECT_EQ(http->device_registration_count, 1);
+    EXPECT_EQ(http->ecu_registration_count, 1);
   }
 }
 
@@ -177,16 +183,16 @@ TEST(Aktualizr, RestartNoRegisterPrimaryOnly) {
     auto storage = INvStorage::newStorage(conf.storage);
     UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
     aktualizr.Initialize();
-    EXPECT_EQ(http->ecu_registration_count, 1);
     EXPECT_EQ(http->device_registration_count, 1);
+    EXPECT_EQ(http->ecu_registration_count, 1);
   }
 
   {
     auto storage = INvStorage::newStorage(conf.storage);
     UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
     aktualizr.Initialize();
-    EXPECT_EQ(http->ecu_registration_count, 1);
     EXPECT_EQ(http->device_registration_count, 1);
+    EXPECT_EQ(http->ecu_registration_count, 1);
   }
 }
 
