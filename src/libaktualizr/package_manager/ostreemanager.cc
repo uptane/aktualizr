@@ -117,7 +117,7 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
 
   g_variant_builder_add(&builder, "{s@v}", "refs", g_variant_new_variant(g_variant_new_strv(commit_ids, 1)));
 
-  if (!!headers && (*headers).size() > 0) {
+  if (!!headers && !(*headers).empty()) {
     GVariantBuilder hdr_builder;
     g_variant_builder_init(&hdr_builder, G_VARIANT_TYPE("a(ss)"));
 
