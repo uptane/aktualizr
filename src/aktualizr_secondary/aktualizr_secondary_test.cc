@@ -177,6 +177,7 @@ class SecondaryTest : public ::testing::Test {
                               target_size, true, true, inavlid_target_size_delta);
   }
 
+ private:
   std::vector<Uptane::Target> getCurrentTargets() {
     auto targets = Uptane::Targets(Utils::parseJSON(getMetaFromBundle(
         uptane_repo_.getCurrentMetadata(), Uptane::RepositoryType::Director(), Uptane::Role::Targets())));
@@ -191,6 +192,7 @@ class SecondaryTest : public ::testing::Test {
 
   Hash getDefaultTargetHash() { return Hash(Hash::Type::kSha256, getDefaultTarget().sha256Hash()); }
 
+ protected:
   data::ResultCode::Numeric sendImageFile(std::string target_name = default_target_) {
     auto image_path = uptane_repo_.getTargetImagePath(target_name);
     size_t total_size = boost::filesystem::file_size(image_path);
@@ -225,6 +227,22 @@ class SecondaryTest : public ::testing::Test {
     return result;
   }
 
+  void verifyTargetAndManifest() {
+    // check if a file was actually updated
+    ASSERT_TRUE(boost::filesystem::exists(secondary_.targetFilepath()));
+    auto target = getDefaultTarget();
+
+    // check the updated file hash
+    auto target_hash = Hash(Hash::Type::kSha256, target.sha256Hash());
+    auto target_file_hash = Hash::generate(Hash::Type::kSha256, Utils::readFile(secondary_.targetFilepath()));
+    EXPECT_EQ(target_hash, target_file_hash);
+
+    // check the secondary manifest
+    auto manifest = secondary_->getManifest();
+    EXPECT_EQ(manifest.installedImageHash(), target_file_hash);
+    EXPECT_EQ(manifest.filepath(), target.filename());
+  }
+
   static constexpr const char* const default_target_{"default-target"};
   static constexpr const char* const bigger_target_{"default-target.bigger"};
   static constexpr const char* const smaller_target_{"default-target.smaller"};
@@ -240,15 +258,11 @@ class SecondaryTest : public ::testing::Test {
   TemporaryDirectory image_dir_;
 };
 
-class SecondaryTestVerification : public SecondaryTest, public ::testing::WithParamInterface<VerificationType> {
+class SecondaryTestNegative
+    : public SecondaryTest,
+      public ::testing::WithParamInterface<std::tuple<Uptane::RepositoryType, Uptane::Role, VerificationType, bool>> {
  public:
-  SecondaryTestVerification() : SecondaryTest(GetParam()){};
-};
-
-class SecondaryTestNegative : public ::testing::Test,
-                              public ::testing::WithParamInterface<std::pair<Uptane::RepositoryType, Uptane::Role>> {
- public:
-  SecondaryTestNegative() : secondary_(VerificationType::kFull), update_agent_(*(secondary_.update_agent_)) {}
+  SecondaryTestNegative() : SecondaryTest(std::get<2>(GetParam())), success_expected_(std::get<3>(GetParam())) {}
 
  protected:
   class MetadataInvalidator : public Metadata {
@@ -272,39 +286,65 @@ class SecondaryTestNegative : public ::testing::Test,
   };
 
   MetadataInvalidator currentMetadata() const {
-    return MetadataInvalidator(uptane_repo_.getCurrentMetadata(), GetParam().first, GetParam().second);
+    return MetadataInvalidator(uptane_repo_.getCurrentMetadata(), std::get<0>(GetParam()), std::get<1>(GetParam()));
   }
 
-  AktualizrSecondaryWrapper secondary_;
-  UptaneRepoWrapper uptane_repo_;
-  NiceMock<UpdateAgentMock>& update_agent_;
+  bool success_expected_;
 };
 
 /**
- * This test is parameterized with std::pair<Uptane::RepositoryType, Uptane::Role>
- * to indicate which metadata to malform. See INSTANTIATE_TEST_SUITE_P for the
- * list of test instantiations with concrete parameter values.
+ * This test is parameterized to control which metadata to malform. See
+ * INSTANTIATE_TEST_SUITE_P for the list of test instantiations with concrete
+ * parameter values.
  */
 TEST_P(SecondaryTestNegative, MalformedMetadaJson) {
-  EXPECT_FALSE(secondary_->putMetadata(currentMetadata()).isSuccess());
+  data::ResultCode::Numeric result{data::ResultCode::Numeric::kGeneralError};
+  if (!success_expected_) {
+    EXPECT_CALL(update_agent_, receiveData).Times(0);
+    EXPECT_CALL(update_agent_, install).Times(0);
+  } else {
+    EXPECT_CALL(update_agent_, receiveData)
+        .Times(target_size / send_buffer_size + (target_size % send_buffer_size ? 1 : 0));
+    EXPECT_CALL(update_agent_, install).Times(1);
+    result = data::ResultCode::Numeric::kOk;
+  }
 
-  EXPECT_CALL(update_agent_, receiveData).Times(0);
-  EXPECT_CALL(update_agent_, install).Times(0);
+  EXPECT_EQ(secondary_->putMetadata(currentMetadata()).isSuccess(), success_expected_);
+  ASSERT_EQ(sendImageFile(), result);
+  EXPECT_EQ(secondary_->install().isSuccess(), success_expected_);
 
-  EXPECT_FALSE(secondary_->install().isSuccess());
+  if (success_expected_) {
+    verifyTargetAndManifest();
+  }
 }
 
 /**
- * Instantiates the parameterized test for each specified value of std::pair<Uptane::RepositoryType, Uptane::Role>
- * The parameter value indicates which metadata to malform.
+ * Instantiates the parameterized test for each specified value of
+ * std::tuple<Uptane::RepositoryType, Uptane::Role, VerificationType, success_expected>.
+ * The parameter value indicates which metadata to malform. Anything that
+ * expects success (true) can be considered something like a failure to detect
+ * an attack.
  */
-INSTANTIATE_TEST_SUITE_P(SecondaryTestMalformedMetadata, SecondaryTestNegative,
-                         ::testing::Values(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()),
-                                           std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Root()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Targets())));
+INSTANTIATE_TEST_SUITE_P(
+    SecondaryTestMalformedMetadata, SecondaryTestNegative,
+    ::testing::Values(
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Root(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Targets(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Root(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Targets(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Root(), VerificationType::kTuf, true),
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Targets(), VerificationType::kTuf, true),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Root(), VerificationType::kTuf, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp(), VerificationType::kTuf, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot(), VerificationType::kTuf, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Targets(), VerificationType::kTuf, false)));
+
+class SecondaryTestVerification : public SecondaryTest, public ::testing::WithParamInterface<VerificationType> {
+ public:
+  SecondaryTestVerification() : SecondaryTest(GetParam()){};
+};
 
 /**
  * This test is parameterized with VerificationType to indicate what level of
@@ -320,19 +360,7 @@ TEST_P(SecondaryTestVerification, VerificationPositive) {
   ASSERT_EQ(sendImageFile(), data::ResultCode::Numeric::kOk);
   ASSERT_TRUE(secondary_->install().isSuccess());
 
-  // check if a file was actually updated
-  ASSERT_TRUE(boost::filesystem::exists(secondary_.targetFilepath()));
-  auto target = getDefaultTarget();
-
-  // check the updated file hash
-  auto target_hash = Hash(Hash::Type::kSha256, target.sha256Hash());
-  auto target_file_hash = Hash::generate(Hash::Type::kSha256, Utils::readFile(secondary_.targetFilepath()));
-  EXPECT_EQ(target_hash, target_file_hash);
-
-  // check the secondary manifest
-  auto manifest = secondary_->getManifest();
-  EXPECT_EQ(manifest.installedImageHash(), target_file_hash);
-  EXPECT_EQ(manifest.filepath(), target.filename());
+  verifyTargetAndManifest();
 }
 
 /**
