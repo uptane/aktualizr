@@ -15,7 +15,8 @@ class KeyManager {
   // std::string RSAPSSSign(const std::string &message);
   // Contains the logic from HttpClient::setCerts()
   void copyCertsToCurl(HttpInterface &http) const;
-  KeyManager(std::shared_ptr<INvStorage> backend, KeyManagerConfig config);
+  KeyManager(std::shared_ptr<INvStorage> backend, KeyManagerConfig config,
+             const std::shared_ptr<P11EngineGuard> &p11 = nullptr);
   void loadKeys(const std::string *pkey_content = nullptr, const std::string *cert_content = nullptr,
                 const std::string *ca_content = nullptr);
   std::string getPkeyFile() const;
@@ -36,7 +37,7 @@ class KeyManager {
  private:
   std::shared_ptr<INvStorage> backend_;
   const KeyManagerConfig config_;
-  std::unique_ptr<P11EngineGuard> p11_;
+  std::shared_ptr<P11EngineGuard> p11_;
   std::unique_ptr<TemporaryFile> tmp_pkey_file;
   std::unique_ptr<TemporaryFile> tmp_cert_file;
   std::unique_ptr<TemporaryFile> tmp_ca_file;

@@ -18,10 +18,15 @@ static constexpr bool built_with_p11 = true;
 static constexpr bool built_with_p11 = false;
 #endif
 
-KeyManager::KeyManager(std::shared_ptr<INvStorage> backend, KeyManagerConfig config)
+KeyManager::KeyManager(std::shared_ptr<INvStorage> backend, KeyManagerConfig config,
+                       const std::shared_ptr<P11EngineGuard> &p11)
     : backend_(std::move(backend)), config_(std::move(config)) {
   if (built_with_p11) {
-    p11_ = std_::make_unique<P11EngineGuard>(config_.p11);
+    if (!p11_) {
+      p11_ = std::make_shared<P11EngineGuard>(config_.p11);
+    } else {
+      p11_ = p11;
+    }
   }
 }
 

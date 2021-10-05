@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <glib/gi18n.h>
 #include <ostree.h>
@@ -41,7 +42,8 @@ struct PullMetaStruct {
 class OstreeManager : public PackageManagerInterface {
  public:
   OstreeManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
-                const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http);
+                const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
+                Bootloader *bootloader = nullptr);
   ~OstreeManager() override;
   std::string name() const override { return "ostree"; }
   Json::Value getInstalledPackages() const override;
@@ -60,10 +62,11 @@ class OstreeManager : public PackageManagerInterface {
   static GObjectUniquePtr<OstreeSysroot> LoadSysroot(const boost::filesystem::path &path);
   static GObjectUniquePtr<OstreeRepo> LoadRepo(OstreeSysroot *sysroot, GError **error);
   static bool addRemote(OstreeRepo *repo, const std::string &url, const KeyManager &keys);
-  static data::InstallationResult pull(const boost::filesystem::path &sysroot_path, const std::string &ostree_server,
-                                       const KeyManager &keys, const Uptane::Target &target,
-                                       const api::FlowControlToken *token = nullptr,
-                                       OstreeProgressCb progress_cb = nullptr);
+  static data::InstallationResult pull(
+      const boost::filesystem::path &sysroot_path, const std::string &ostree_server, const KeyManager &keys,
+      const Uptane::Target &target, const api::FlowControlToken *token = nullptr,
+      OstreeProgressCb progress_cb = nullptr, const char *alt_remote = nullptr,
+      boost::optional<std::unordered_map<std::string, std::string>> headers = boost::none);
 
  private:
   TargetStatus verifyTargetInternal(const Uptane::Target &target) const;
