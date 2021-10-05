@@ -4,7 +4,6 @@
 #include "aktualizr_secondary_config.h"
 #include "aktualizr_secondary_metadata.h"
 #include "msg_handler.h"
-#include "storage/invstorage.h"
 #include "uptane/directorrepository.h"
 #include "uptane/imagerepository.h"
 #include "uptane/manifest.h"
@@ -42,8 +41,7 @@ class AktualizrSecondary : public MsgDispatcher {
 
   // protected interface to be used by child classes
   Uptane::Target& pendingTarget() { return pending_target_; }
-  INvStorage& storage() { return *storage_; }
-  std::shared_ptr<INvStorage>& storagePtr() { return storage_; }
+  std::shared_ptr<INvStorage>& storage() { return storage_; }
   Uptane::DirectorRepository& directorRepo() { return director_repo_; }
   std::shared_ptr<KeyManager>& keyMngr() { return keys_; }
 

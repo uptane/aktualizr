@@ -2,6 +2,7 @@
 
 #include "crypto/keymanager.h"
 #include "logging/logging.h"
+#include "storage/invstorage.h"
 #include "update_agent.h"
 #include "uptane/manifest.h"
 #include "utilities/utils.h"
