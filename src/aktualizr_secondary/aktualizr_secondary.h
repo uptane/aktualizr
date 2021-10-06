@@ -21,6 +21,7 @@ class AktualizrSecondary : public MsgDispatcher {
   const Uptane::HardwareIdentifier& hwID() const { return hardware_id_; }
   PublicKey publicKey() const;
   Uptane::Manifest getManifest() const;
+  const Uptane::Target& getPendingTarget() const { return pending_target_; }
 
   virtual data::InstallationResult putMetadata(const Metadata& metadata);
   virtual data::InstallationResult putMetadata(const Uptane::MetaBundle& meta_bundle) {
@@ -40,7 +41,6 @@ class AktualizrSecondary : public MsgDispatcher {
   virtual data::InstallationResult applyPendingInstall(const Uptane::Target& target) = 0;
 
   // protected interface to be used by child classes
-  Uptane::Target& pendingTarget() { return pending_target_; }
   std::shared_ptr<INvStorage>& storage() { return storage_; }
   Uptane::DirectorRepository& directorRepo() { return director_repo_; }
   std::shared_ptr<KeyManager>& keyMngr() { return keys_; }

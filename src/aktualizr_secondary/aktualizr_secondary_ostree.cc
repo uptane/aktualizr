@@ -69,17 +69,13 @@ MsgHandler::ReturnCode AktualizrSecondaryOstree::downloadOstreeRev(Asn1Message& 
 }
 
 data::InstallationResult AktualizrSecondaryOstree::downloadOstreeUpdate(const std::string& packed_tls_creds) {
-  if (!pendingTarget().IsValid()) {
+  if (!getPendingTarget().IsValid()) {
     LOG_ERROR << "Aborting image download; no valid target found.";
     return data::InstallationResult(data::ResultCode::Numeric::kGeneralError,
                                     "Aborting image download; no valid target found.");
   }
 
-  auto result = update_agent_->downloadTargetRev(pendingTarget(), packed_tls_creds);
-  if (!result.isSuccess()) {
-    pendingTarget() = Uptane::Target::Unknown();
-  }
-  return result;
+  return update_agent_->downloadTargetRev(getPendingTarget(), packed_tls_creds);
 }
 
 bool AktualizrSecondaryOstree::isTargetSupported(const Uptane::Target& target) const {

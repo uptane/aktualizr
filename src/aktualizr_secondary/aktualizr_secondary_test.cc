@@ -115,6 +115,15 @@ class UptaneRepoWrapper {
     return getCurrentMetadata();
   }
 
+  void addCustomImageMetadata(const std::string& targetname, const std::string& hardware_id,
+                              const std::string& custom_version) {
+    auto custom = Json::Value();
+    custom["targetFormat"] = "BINARY";
+    custom["version"] = custom_version;
+    uptane_repo_.addCustomImage(targetname, Hash(Hash::Type::kSha256, targetname), 1, hardware_id, "", Delegation(),
+                                custom);
+  }
+
   Uptane::MetaBundle getCurrentMetadata() const {
     Uptane::MetaBundle meta_bundle;
     std::string metadata;
@@ -171,10 +180,12 @@ class UptaneRepoWrapper {
 
 class SecondaryTest : public ::testing::Test {
  public:
-  SecondaryTest(VerificationType verification_type = VerificationType::kFull)
+  SecondaryTest(VerificationType verification_type = VerificationType::kFull, bool default_target = true)
       : secondary_(verification_type), update_agent_(*(secondary_.update_agent_)) {
-    uptane_repo_.addImageFile(default_target_, secondary_->hwID().ToString(), secondary_->serial().ToString(),
-                              target_size, true, true, inavlid_target_size_delta);
+    if (default_target) {
+      uptane_repo_.addImageFile(default_target_, secondary_->hwID().ToString(), secondary_->serial().ToString(),
+                                target_size, true, true, inavlid_target_size_delta);
+    }
   }
 
  private:
@@ -372,30 +383,29 @@ INSTANTIATE_TEST_SUITE_P(SecondaryTestVerificationType, SecondaryTestVerificatio
 TEST_F(SecondaryTest, TwoImagesAndOneTarget) {
   // two images for the same ECU, just one of them is added as a target and signed
   // default image and corresponding target has been already added, just add another image
-  uptane_repo_.addImageFile("second_image_00", secondary_->hwID().ToString(), secondary_->serial().ToString(),
-                            target_size, false, false);
-  EXPECT_TRUE(secondary_->putMetadata(uptane_repo_.getCurrentMetadata()).isSuccess());
+  auto metadata = uptane_repo_.addImageFile("second_image_00", secondary_->hwID().ToString(),
+                                            secondary_->serial().ToString(), target_size, false, false);
+  EXPECT_TRUE(secondary_->putMetadata(metadata).isSuccess());
 }
 
 TEST_F(SecondaryTest, IncorrectTargetQuantity) {
+  const std::string hwid{secondary_->hwID().ToString()};
+  const std::string serial{secondary_->serial().ToString()};
   {
     // two targets for the same ECU
-    uptane_repo_.addImageFile("second_target", secondary_->hwID().ToString(), secondary_->serial().ToString());
-
-    EXPECT_FALSE(secondary_->putMetadata(uptane_repo_.getCurrentMetadata()).isSuccess());
-  }
-
-  {
-    // zero targets for the ECU being tested
-    auto metadata = UptaneRepoWrapper().addImageFile("mytarget", secondary_->hwID().ToString(), "non-existing-serial");
-
+    auto metadata = uptane_repo_.addImageFile("second_target", hwid, serial);
     EXPECT_FALSE(secondary_->putMetadata(metadata).isSuccess());
   }
 
   {
     // zero targets for the ECU being tested
-    auto metadata = UptaneRepoWrapper().addImageFile("mytarget", "non-existig-hwid", secondary_->serial().ToString());
+    auto metadata = uptane_repo_.addImageFile("mytarget", hwid, "non-existing-serial");
+    EXPECT_FALSE(secondary_->putMetadata(metadata).isSuccess());
+  }
 
+  {
+    // zero targets for the ECU being tested
+    auto metadata = uptane_repo_.addImageFile("mytarget", "non-existig-hwid", serial);
     EXPECT_FALSE(secondary_->putMetadata(metadata).isSuccess());
   }
 }
@@ -443,6 +453,71 @@ TEST_F(SecondaryTest, InvalidImageData) {
   EXPECT_EQ(sendImageFile(broken_target_), data::ResultCode::Numeric::kOk);
   EXPECT_FALSE(secondary_->install().isSuccess());
 }
+
+class SecondaryTestTuf
+    : public SecondaryTest,
+      public ::testing::WithParamInterface<std::pair<std::vector<std::string>, boost::optional<std::string>>> {
+ public:
+  // No default Targets so as to be able to more thoroughly test the Target
+  // comparison.
+  SecondaryTestTuf() : SecondaryTest(VerificationType::kTuf, false){};
+};
+
+/**
+ * This test is parameterized with a series of Targets with custom versions and
+ * which one should be considered the latest, if any. See
+ * INSTANTIATE_TEST_SUITE_P for the list of test instantiations with concrete
+ * parameter values.
+ */
+TEST_P(SecondaryTestTuf, TufVersions) {
+  const std::string hwid{secondary_->hwID().ToString()};
+  {
+    int counter = 0;
+    for (const auto& version : GetParam().first) {
+      // Add counter so we can add multiple Targets with the same version.
+      uptane_repo_.addCustomImageMetadata("v" + version + "-" + std::to_string(++counter), hwid, version);
+    }
+    auto metadata = uptane_repo_.getCurrentMetadata();
+    auto expected = GetParam().second;
+    EXPECT_EQ(secondary_->putMetadata(metadata).isSuccess(), !!expected);
+    if (!!expected) {
+      EXPECT_EQ(secondary_->getPendingTarget().custom_version(), expected);
+      // Ignore the initial "v" and the counter suffix.
+      EXPECT_EQ(secondary_->getPendingTarget().filename().compare(1, expected->size(), expected.get()), 0);
+    }
+  }
+}
+
+/**
+ * Instantiates the parameterized test for each specified value of
+ * std::pair<std::vector<std::string>, boost::optional<std::string>>>.
+ * The first parameter value is a list of Targets with custom versions and the
+ * second paramter is which one should be considered the latest, if any.
+ */
+INSTANTIATE_TEST_SUITE_P(SecondaryTestTufVersions, SecondaryTestTuf,
+                         ::testing::Values(std::make_pair(std::vector<std::string>{"1"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"1", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "3"}, "3"),
+                                           std::make_pair(std::vector<std::string>{"3", "2", "1"}, "3"),
+                                           std::make_pair(std::vector<std::string>{"2", "3", "1"}, "3"),
+                                           std::make_pair(std::vector<std::string>{"invalid", "1"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"1", "invalid"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"invalid", "1", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "invalid"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "invalid", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "invalid1", "invalid2"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"invalid1", "1", "invalid2"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"invalid1", "invalid2", "1"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"1", "1", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"2", "1", "1"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "1"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "2"}, boost::none),
+                                           std::make_pair(std::vector<std::string>{"2", "2", "1"}, boost::none),
+                                           std::make_pair(std::vector<std::string>{"2", "1", "2"}, boost::none),
+                                           std::make_pair(std::vector<std::string>{""}, ""),
+                                           std::make_pair(std::vector<std::string>{"text"}, "text"),
+                                           std::make_pair(std::vector<std::string>{"invalid1", "invalid2"},
+                                                          boost::none)));
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
