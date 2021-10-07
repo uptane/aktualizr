@@ -111,9 +111,8 @@ void AktualizrSecondary::initPendingTargetIfAny() {
   try {
     if (config_.uptane.verification_type == VerificationType::kFull) {
       director_repo_.checkMetaOffline(*storage_);
-    } else {
-      image_repo_.checkMetaOffline(*storage_);
     }
+    image_repo_.checkMetaOffline(*storage_);
   } catch (const std::exception& e) {
     LOG_INFO << "No valid metadata found in storage.";
     return;
@@ -126,7 +125,7 @@ data::InstallationResult AktualizrSecondary::findTargets() {
   std::vector<Uptane::Target> targetsForThisEcu;
   if (config_.uptane.verification_type == VerificationType::kFull) {
     // 10. Verify that Targets metadata from the Director and Image repositories match.
-    if (!director_repo_.matchTargetsWithImageTargets(*(image_repo_.getTargets()))) {
+    if (!director_repo_.matchTargetsWithImageTargets(image_repo_.getTargets())) {
       LOG_ERROR << "Targets metadata from the Director and Image repositories do not match";
       return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                       "Targets metadata from the Director and Image repositories do not match");
@@ -363,8 +362,15 @@ AktualizrSecondary::ReturnCode AktualizrSecondary::putMetaHdlr(Asn1Message& in_m
     }
   }
 
-  if (meta_bundle.size() != 6) {
-    LOG_WARNING << "Metadata received from Primary is incomplete: " << md->imageRepo.present;
+  size_t expected_items;
+  if (config_.uptane.verification_type == VerificationType::kTuf) {
+    expected_items = 4;
+  } else {
+    expected_items = 6;
+  }
+  if (meta_bundle.size() != expected_items) {
+    LOG_WARNING << "Metadata received from Primary is incomplete. Expected size: " << expected_items
+                << " Received: " << meta_bundle.size();
   }
 
   data::InstallationResult result = putMetadata(meta_bundle);
