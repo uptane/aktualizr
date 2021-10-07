@@ -18,6 +18,13 @@ std::ostream &operator<<(std::ostream &os, ProvisionMode mode);
 enum class StorageType { kFileSystem = 0, kSqlite };
 std::ostream &operator<<(std::ostream &os, StorageType stype);
 
+enum class VerificationType {
+  kFull = 0,
+  kTuf
+  // TODO: kPartial
+};
+std::ostream &operator<<(std::ostream &os, VerificationType vtype);
+
 namespace utils {
 /**
  * @brief The BasedPath class
@@ -454,6 +461,28 @@ class Manifest : public Json::Value {
   std::string signedBody() const;
   bool verifySignature(const PublicKey &pub_key) const;
 };
+
+static inline VerificationType VerificationTypeFromString(const std::string &vt_str) {
+  if (vt_str == "Tuf") {
+    return VerificationType::kTuf;
+  } else {
+    return VerificationType::kFull;
+  }
+}
+
+static inline std::string VerificationTypeToString(const VerificationType vtype) {
+  std::string type_s;
+  switch (vtype) {
+    case VerificationType::kFull:
+    default:
+      type_s = "Full";
+      break;
+    case VerificationType::kTuf:
+      type_s = "Tuf";
+      break;
+  }
+  return type_s;
+}
 
 }  // namespace Uptane
 

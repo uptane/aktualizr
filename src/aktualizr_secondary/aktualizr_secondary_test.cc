@@ -5,6 +5,7 @@
 
 #include "aktualizr_secondary_file.h"
 #include "crypto/keymanager.h"
+#include "libaktualizr/types.h"
 #include "storage/invstorage.h"
 #include "test_utils.h"
 #include "update_agent.h"

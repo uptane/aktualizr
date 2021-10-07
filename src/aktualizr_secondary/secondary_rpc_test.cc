@@ -457,7 +457,8 @@ class SecondaryRpcCommon : public ::testing::Test {
         secondary_server_thread_{std::bind(&SecondaryRpcCommon::runSecondaryServer, this)},
         image_file_{"mytarget_image.img", image_size} {
     secondary_server_.wait_until_running();
-    ip_secondary_ = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_server_.port());
+    ip_secondary_ =
+        Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_server_.port(), VerificationType::kFull);
 
     config_.pacman.ostree_server = server_;
     config_.pacman.type = PACKAGE_MANAGER_NONE;
@@ -661,13 +662,13 @@ TEST(SecondaryTcpServer, TestIpSecondaryIfSecondaryIsNotRunning) {
   SecondaryInterface::Ptr ip_secondary;
 
   // Try to connect to a non-running Secondary and create a corresponding instance on Primary.
-  ip_secondary = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_port);
+  ip_secondary = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_port, VerificationType::kFull);
   EXPECT_EQ(ip_secondary, nullptr);
 
   // Create Secondary on Primary without actually connecting to Secondary.
-  ip_secondary = std::make_shared<Uptane::IpUptaneSecondary>("localhost", secondary_port, Uptane::EcuSerial("serial"),
-                                                             Uptane::HardwareIdentifier("hwid"),
-                                                             PublicKey("key", KeyType::kED25519));
+  ip_secondary = std::make_shared<Uptane::IpUptaneSecondary>(
+      "localhost", secondary_port, VerificationType::kFull, Uptane::EcuSerial("serial"),
+      Uptane::HardwareIdentifier("hwid"), PublicKey("key", KeyType::kED25519));
 
   TemporaryDirectory temp_dir;
   Config config;

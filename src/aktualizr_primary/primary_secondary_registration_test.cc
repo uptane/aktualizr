@@ -42,6 +42,8 @@ TEST(PrimarySecondaryReg, SecondariesMigration) {
   storage->storeEcuSerials({{primary_serial, primary_hwid}, {secondary_serial, secondary_hwid}});
   storage->storeEcuRegistered();
 
+  // Also test backwards compatibility with verification_type here. Don't set
+  // it but expect it to be set to Full.
   sec_conf["IP"]["secondary_wait_port"] = 9030;
   sec_conf["IP"]["secondary_wait_timeout"] = 1;
   sec_conf["IP"]["secondaries"] = Json::arrayValue;
@@ -71,7 +73,7 @@ TEST(PrimarySecondaryReg, SecondariesMigration) {
     EXPECT_EQ(secs_info.size(), 1);
     EXPECT_EQ(secs_info[0].serial.ToString(), secondary_serial.ToString());
     EXPECT_EQ(secs_info[0].type, "IP");
-    EXPECT_EQ(secs_info[0].extra, R"({"ip":"127.0.0.1","port":9061})");
+    EXPECT_EQ(secs_info[0].extra, R"({"ip":"127.0.0.1","port":9061,"verification_type":"Full"})");
   }
 
   {
@@ -87,7 +89,7 @@ TEST(PrimarySecondaryReg, SecondariesMigration) {
     EXPECT_EQ(secs_info.size(), 1);
     EXPECT_EQ(secs_info[0].serial.ToString(), secondary_serial.ToString());
     EXPECT_EQ(secs_info[0].type, "IP");
-    EXPECT_EQ(secs_info[0].extra, R"({"ip":"127.0.0.1","port":9061})");
+    EXPECT_EQ(secs_info[0].extra, R"({"ip":"127.0.0.1","port":9061,"verification_type":"Full"})");
   }
 }
 

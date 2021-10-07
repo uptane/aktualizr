@@ -6,13 +6,8 @@
 #include <boost/property_tree/ini_parser.hpp>
 
 #include "libaktualizr/config.h"
+#include "libaktualizr/types.h"
 #include "utilities/config_utils.h"
-
-enum class VerificationType {
-  kFull = 0,
-  kTuf
-  // TODO: kPartial
-};
 
 // Try to keep the order of config options the same as in
 // AktualizrSecondaryConfig::writeToStream() and

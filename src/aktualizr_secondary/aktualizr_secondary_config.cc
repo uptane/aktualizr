@@ -2,32 +2,12 @@
 
 #include <sstream>
 
-std::ostream& operator<<(std::ostream& os, VerificationType type) {
-  std::string type_s;
-  switch (type) {
-    case VerificationType::kFull:
-    default:
-      type_s = "Full";
-      break;
-    case VerificationType::kTuf:
-      type_s = "Tuf";
-      break;
-  }
-  os << '"' << type_s << '"';
-  return os;
-}
-
 template <>
 inline void CopyFromConfig(VerificationType& dest, const std::string& option_name,
                            const boost::property_tree::ptree& pt) {
   boost::optional<std::string> value = pt.get_optional<std::string>(option_name);
   if (value.is_initialized()) {
-    std::string verification_type{StripQuotesFromStrings(value.get())};
-    if (verification_type == "Tuf") {
-      dest = VerificationType::kTuf;
-    } else {
-      dest = VerificationType::kFull;
-    }
+    dest = Uptane::VerificationTypeFromString(StripQuotesFromStrings(value.get()));
   }
 }
 

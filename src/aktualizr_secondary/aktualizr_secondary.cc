@@ -7,6 +7,7 @@
 #include <boost/optional.hpp>
 
 #include "crypto/keymanager.h"
+#include "libaktualizr/types.h"
 #include "logging/logging.h"
 #include "storage/invstorage.h"
 #include "update_agent.h"
@@ -320,7 +321,8 @@ AktualizrSecondary::ReturnCode AktualizrSecondary::putMetaHdlr(Asn1Message& in_m
   auto md = in_msg.putMetaReq2();
   Uptane::MetaBundle meta_bundle;
 
-  if (md->directorRepo.present == directorRepo_PR_collection) {
+  if (config_.uptane.verification_type == VerificationType::kFull &&
+      md->directorRepo.present == directorRepo_PR_collection) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
     const int director_meta_count = md->directorRepo.choice.collection.list.count;
     for (int i = 0; i < director_meta_count; i++) {

@@ -1,10 +1,12 @@
 #ifndef SECONDARY_CONFIG_H_
 #define SECONDARY_CONFIG_H_
 
-#include <json/json.h>
-#include <boost/filesystem.hpp>
 #include <unordered_map>
 
+#include <json/json.h>
+#include <boost/filesystem.hpp>
+
+#include "libaktualizr/types.h"
 #include "primary/secondary_config.h"
 #include "virtualsecondary.h"
 
@@ -13,17 +15,20 @@ namespace Primary {
 class IPSecondaryConfig {
  public:
   static constexpr const char* const AddrField{"addr"};
+  static constexpr const char* const VerificationField{"verification_type"};
 
-  IPSecondaryConfig(std::string addr_ip, uint16_t addr_port) : ip(std::move(addr_ip)), port(addr_port) {}
+  IPSecondaryConfig(std::string addr_ip, uint16_t addr_port, VerificationType verification_type_in)
+      : ip(std::move(addr_ip)), port(addr_port), verification_type(verification_type_in) {}
 
   friend std::ostream& operator<<(std::ostream& os, const IPSecondaryConfig& cfg) {
-    os << "(addr: " << cfg.ip << ":" << cfg.port << ")";
+    os << "(addr: " << cfg.ip << ":" << cfg.port << " verification_type: " << cfg.verification_type << ")";
     return os;
   }
 
  public:
   const std::string ip;
   const uint16_t port;
+  const VerificationType verification_type;
 };
 
 class IPSecondariesConfig : public SecondaryConfig {
