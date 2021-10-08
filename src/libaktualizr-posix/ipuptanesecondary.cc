@@ -176,8 +176,10 @@ data::InstallationResult IpUptaneSecondary::putMetadata_v1(const Uptane::MetaBun
   req->present(AKIpUptaneMes_PR_putMetaReq);
   auto m = req->putMetaReq();
 
+  m->director.present = director_PR_json;
+  // Technically no Secondary supported TUF verification with the v1 protocol,
+  // so this probably wouldn't work.
   if (verification_type_ != VerificationType::kTuf) {
-    m->director.present = director_PR_json;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
     SetString(&m->director.choice.json.root,
               getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root()));
@@ -231,8 +233,8 @@ data::InstallationResult IpUptaneSecondary::putMetadata_v2(const Uptane::MetaBun
   req->present(AKIpUptaneMes_PR_putMetaReq2);
   auto m = req->putMetaReq2();
 
+  m->directorRepo.present = directorRepo_PR_collection;
   if (verification_type_ != VerificationType::kTuf) {
-    m->directorRepo.present = directorRepo_PR_collection;
     addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root(),
                 m->directorRepo.choice.collection);  // NOLINT(cppcoreguidelines-pro-type-union-access)
     addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets(),
