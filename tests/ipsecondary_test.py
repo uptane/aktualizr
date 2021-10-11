@@ -97,6 +97,38 @@ def test_secondary_update(uptane_repo, secondary, aktualizr, director, **kwargs)
 
 
 @with_uptane_backend()
+@with_director()
+@with_secondary(start=False, output_logs=True, verification_type="Tuf")
+@with_aktualizr(start=False, output_logs=True)
+def test_secondary_tuf_update(uptane_repo, secondary, aktualizr, director, **kwargs):
+    '''Test Secondary update with TUF verification'''
+
+    # add a new image to the repo in order to update the Secondary with it
+    secondary_image_filename = "secondary_image_filename.img"
+    secondary_image_hash = uptane_repo.add_image(id=secondary.id, image_filename=secondary_image_filename)
+
+    logger.debug("Trying to update ECU {} with the image {}".
+                format(secondary.id, (secondary_image_hash, secondary_image_filename)))
+
+    # start Secondary and aktualizr processes, aktualizr is started in 'once' mode
+    with secondary, aktualizr:
+        aktualizr.wait_for_completion()
+
+    # check currently installed hash
+    if secondary_image_hash != aktualizr.get_current_image_info(secondary.id):
+        logger.error("Target image hash doesn't match the currently installed hash")
+        return False
+
+    # check updated file
+    update_file = path.join(secondary.storage_dir.name, "firmware.txt")
+    if not path.exists(update_file):
+        logger.error("Expected updated file does not exist: {}".format(update_file))
+        return False
+
+    return True
+
+
+@with_uptane_backend()
 @with_secondary(start=True, id=('hwid1', 'serial1'), output_logs=False)
 @with_aktualizr(start=False, output_logs=True)
 def test_add_secondary(uptane_repo, secondary, aktualizr, **kwargs):
@@ -192,6 +224,43 @@ def test_replace_secondary_same_port(uptane_repo, secondary, aktualizr, **kwargs
 
     port = IPSecondary.get_free_port()
     with IPSecondary(output_logs=False, id=('hwid1', 'serial2'), port=port) as secondary2:
+        # Why is this necessary? The Primary waiting works outside of this test.
+        time.sleep(5)
+        aktualizr.add_secondary(secondary2)
+        with aktualizr:
+            aktualizr.wait_for_completion()
+
+    if not aktualizr.is_ecu_registered(secondary.id) or not aktualizr.is_ecu_registered(secondary2.id):
+        logger.error("Secondary ECU is not registered.")
+        return False
+
+    aktualizr.remove_secondary(secondary2)
+
+    with IPSecondary(output_logs=False, id=('hwid1', 'serial3'), port=port) as secondary3:
+        # Why is this necessary? The Primary waiting works outside of this test.
+        time.sleep(5)
+        aktualizr.add_secondary(secondary3)
+        with aktualizr:
+            aktualizr.wait_for_completion()
+
+    if not aktualizr.is_ecu_registered(secondary.id) or not aktualizr.is_ecu_registered(secondary3.id):
+        logger.error("Secondary ECU is not registered.")
+        return False
+    if aktualizr.is_ecu_registered(secondary2.id):
+        logger.error("Secondary ECU is unexpectedly still registered.")
+        return False
+
+    return True
+
+
+@with_uptane_backend()
+@with_secondary(start=True, id=('hwid1', 'serial1'), output_logs=False)
+@with_aktualizr(start=False, output_logs=True)
+def test_replace_secondary_same_port_tuf(uptane_repo, secondary, aktualizr, **kwargs):
+    '''Test replacing a Secondary that reuses the same port but uses TUF verification'''
+
+    port = IPSecondary.get_free_port()
+    with IPSecondary(output_logs=False, id=('hwid1', 'serial2'), port=port, verification_type="Tuf") as secondary2:
         # Why is this necessary? The Primary waiting works outside of this test.
         time.sleep(5)
         aktualizr.add_secondary(secondary2)
@@ -501,6 +570,67 @@ def test_primary_multiple_secondaries(uptane_repo, secondary, secondary2, aktual
     return True
 
 
+@with_uptane_backend()
+@with_secondary(start=False, verification_type="Tuf")
+@with_secondary(start=False, verification_type="Tuf", arg_name='secondary2')
+@with_aktualizr(start=False, output_logs=True)
+def test_primary_multiple_secondaries_tuf(uptane_repo, secondary, secondary2, aktualizr, **kwargs):
+    '''Test Aktualizr with multiple IP secondaries using TUF verification'''
+
+    with aktualizr, secondary, secondary2:
+        aktualizr.wait_for_completion()
+
+    if not aktualizr.is_ecu_registered(secondary.id) or not aktualizr.is_ecu_registered(secondary2.id):
+        return False
+
+    return True
+    secondary_image_filename = "secondary_image_filename.img"
+    uptane_repo.add_image(id=secondary.id, image_filename=secondary_image_filename)
+    uptane_repo.add_image(id=secondary2.id, image_filename=secondary_image_filename)
+
+    with aktualizr:
+        time.sleep(10)
+        with secondary:
+            aktualizr.wait_for_completion()
+
+    if not director.get_install_result():
+        logger.error("Installation result is not successful")
+        return False
+
+    return True
+
+
+@with_uptane_backend()
+@with_secondary(start=False, verification_type="Tuf")
+@with_secondary(start=False, arg_name='secondary2')
+@with_aktualizr(start=False, output_logs=True)
+def test_primary_multiple_secondaries_mixed(uptane_repo, secondary, secondary2, aktualizr, **kwargs):
+    '''Test Aktualizr with multiple IP secondaries, one of which uses TUF verification'''
+
+    with aktualizr, secondary, secondary2:
+        aktualizr.wait_for_completion()
+
+    if not aktualizr.is_ecu_registered(secondary.id) or not aktualizr.is_ecu_registered(secondary2.id):
+        return False
+
+    return True
+    secondary_image_filename = "secondary_image_filename.img"
+    uptane_repo.add_image(id=secondary.id, image_filename=secondary_image_filename)
+    uptane_repo.add_image(id=secondary2.id, image_filename=secondary_image_filename)
+
+    with aktualizr:
+        time.sleep(10)
+        with secondary:
+            aktualizr.wait_for_completion()
+
+    if not director.get_install_result():
+        logger.error("Installation result is not successful")
+        return False
+
+    return True
+
+
+
 # test suit runner
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -520,16 +650,20 @@ if __name__ == '__main__':
                     test_secondary_update_if_secondary_starts_first,
                     test_secondary_update_if_primary_starts_first,
                     test_secondary_update,
+                    test_secondary_tuf_update,
                     test_add_secondary,
                     test_remove_secondary,
                     test_replace_secondary,
                     test_replace_secondary_same_port,
+                    test_replace_secondary_same_port_tuf,
                     test_change_secondary_port,
                     test_secondary_install_timeout,
                     test_primary_timeout_during_first_run,
                     test_primary_wait_secondary_install,
                     test_primary_timeout_after_device_is_registered,
                     test_primary_multiple_secondaries,
+                    test_primary_multiple_secondaries_tuf,
+                    test_primary_multiple_secondaries_mixed,
     ]
 
     if input_params.ostree:
