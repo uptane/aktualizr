@@ -158,7 +158,7 @@ class Aktualizr:
                        check=True, env=self._run_env)
 
     # another ugly stuff that could be replaced with something more reliable if Aktualizr had exposed API
-    # to check status or aktializr-info had output status/info in a structured way (e.g. json)
+    # to check status or aktualizr-info had output status/info in a structured way (e.g. json)
     def get_info(self, retry=30):
         info_exe_res = None
         for ii in range(0, retry):
@@ -172,7 +172,7 @@ class Aktualizr:
         if info_exe_res and info_exe_res.returncode == 0:
             return str(info_exe_res.stdout)
         else:
-            logger.error('Failed to get an aktualizr\'s status info, stdout: {}, stderr: {}'.
+            logger.error('Failed to get aktualizr status info, stdout: {}, stderr: {}'.
                          format(str(info_exe_res.stdout), str(info_exe_res.stderr)))
             return None
 
@@ -198,7 +198,7 @@ class Aktualizr:
     # applicable only to Secondary ECUs due to inconsistency in presenting information
     # about Primary and Secondary ECUs
     # ugly stuff that could be removed if aktualizr had exposed API to check status
-    # or aktializr-info had output status/info in a structured way (e.g. json)
+    # or aktualizr-info had output status/info in a structured way (e.g. json)
     def _get_current_image_info(self, ecu_id, secondary_image_hash_field='installed image hash: '):
         #secondary_image_filename_field = 'installed image filename: '
         aktualizr_status = self.get_info()
@@ -218,7 +218,7 @@ class Aktualizr:
         return hash_val
 
     # ugly stuff that could be removed if Aktualizr had exposed API to check status
-    # or aktializr-info had output status/info in a structured way (e.g. json)
+    # or aktualizr-info had output status/info in a structured way (e.g. json)
     def get_current_primary_image_info(self):
         primary_hash_field = 'Current Primary ECU running version: '
         aktualizr_status = self.get_info()
@@ -231,7 +231,7 @@ class Aktualizr:
             return ""
 
     # ugly stuff that could be removed if Aktualizr had exposed API to check status
-    # or aktializr-info had output status/info in a structured way (e.g. json)
+    # or aktualizr-info had output status/info in a structured way (e.g. json)
     def get_primary_pending_version(self):
         primary_hash_field = 'Pending Primary ECU version: '
         aktualizr_status = self.get_info()

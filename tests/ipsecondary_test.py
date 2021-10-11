@@ -61,7 +61,7 @@ def test_secondary_update_if_primary_starts_first(uptane_repo, secondary, aktual
 @with_secondary(start=False, output_logs=True)
 @with_aktualizr(start=False, output_logs=True)
 def test_secondary_update(uptane_repo, secondary, aktualizr, director, **kwargs):
-    '''Test Secondary update if a boot order of Secondary and Primary is undefined'''
+    '''Test Secondary update if the boot order of Secondary and Primary is undefined'''
 
     # add a new image to the repo in order to update the Secondary with it
     secondary_image_filename = "secondary_image_filename.img"
@@ -314,6 +314,7 @@ def test_secondary_ostree_update(uptane_repo, secondary, aktualizr, treehub, sys
 @with_secondary(start=False, output_logs=False, force_reboot=True)
 @with_aktualizr(start=False, run_mode='once', output_logs=True)
 def test_secondary_ostree_reboot(uptane_repo, secondary, aktualizr, treehub, sysroot, director, **kwargs):
+    """Test Secondary OSTree update with automatic (forced) reboot"""
     target_rev = treehub.revision
     uptane_repo.add_ostree_target(secondary.id, target_rev, "GARAGE_TARGET_NAME")
 
@@ -353,7 +354,7 @@ def test_secondary_ostree_reboot(uptane_repo, secondary, aktualizr, treehub, sys
 @with_secondary(start=False)
 @with_aktualizr(start=False, secondary_wait_sec=1, output_logs=False)
 def test_secondary_install_timeout(uptane_repo, secondary, aktualizr, director, **kwargs):
-    '''Test that secondary install fails after a timeout if the secondary never connects'''
+    '''Test that Secondary install fails after a timeout if the Secondary never connects'''
 
     # run aktualizr and secondary and wait until the device/aktualizr is registered
     with aktualizr, secondary:
@@ -438,7 +439,7 @@ def test_primary_wait_secondary_install(uptane_repo, secondary, aktualizr, direc
 @with_secondary(start=False, output_logs=False)
 @with_aktualizr(start=False, output_logs=False)
 def test_primary_timeout_after_device_is_registered(uptane_repo, secondary, aktualizr, **kwargs):
-    '''Test Aktualizr's timeout of waiting for Secondaries after the device/aktualizr was registered at the backend'''
+    '''Test Aktualizr's timeout of waiting for Secondaries after the device was registered with the backend'''
 
     # run aktualizr and Secondary and wait until the device/aktualizr is registered
     with aktualizr, secondary:
@@ -516,9 +517,9 @@ if __name__ == '__main__':
     chdir(input_params.build_dir)
 
     test_suite = [
-                    test_secondary_update,
                     test_secondary_update_if_secondary_starts_first,
                     test_secondary_update_if_primary_starts_first,
+                    test_secondary_update,
                     test_add_secondary,
                     test_remove_secondary,
                     test_replace_secondary,
@@ -526,6 +527,7 @@ if __name__ == '__main__':
                     test_change_secondary_port,
                     test_secondary_install_timeout,
                     test_primary_timeout_during_first_run,
+                    test_primary_wait_secondary_install,
                     test_primary_timeout_after_device_is_registered,
                     test_primary_multiple_secondaries,
     ]
