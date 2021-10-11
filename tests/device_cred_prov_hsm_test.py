@@ -47,7 +47,6 @@ tls_pkey_id = "02"
 key_source = "pkcs11"
 
 [storage]
-type = "sqlite"
 path = "{tmp_dir}"
 
 [import]

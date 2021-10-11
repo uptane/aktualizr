@@ -1,9 +1,6 @@
 [tls]
 server_url_path = "/var/sota/import/gateway.url"
 
-[storage]
-type = "sqlite"
-
 [import]
 base_path = "/var/sota/import"
 tls_cacert_path = "root.crt"

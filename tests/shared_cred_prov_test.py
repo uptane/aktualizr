@@ -32,7 +32,6 @@ mode = "SharedCredReuse"
 
 [storage]
 path = "{tmp_dir}"
-type = "sqlite"
 sqldb_path = "{db}"
 '''
 

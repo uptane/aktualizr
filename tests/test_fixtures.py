@@ -92,7 +92,6 @@ class Aktualizr:
 
     [storage]
     path = "{storage_dir}"
-    type = "sqlite"
     sqldb_path = "{db_path}"
 
     [pacman]
@@ -352,7 +351,6 @@ class IPSecondary:
     primary_port = {primary_port}
 
     [storage]
-    type = "sqlite"
     path = "{storage_dir}"
     sqldb_path = "{db_path}"
 

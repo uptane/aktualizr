@@ -1,9 +1,6 @@
 [network]
 port = 9031
 
-[storage]
-type = "sqlite"
-
 [pacman]
 os = "testos"
 sysroot = "testsysroot"
