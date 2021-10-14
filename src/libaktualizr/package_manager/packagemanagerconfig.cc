@@ -22,6 +22,8 @@ void PackageConfig::updateFromPropertyTree(const boost::property_tree::ptree& pt
       CopyFromConfig(packages_file, cp.first, pt);
     } else if (cp.first == "fake_need_reboot") {
       CopyFromConfig(fake_need_reboot, cp.first, pt);
+    } else if (cp.first == "booted") {
+      CopyFromConfig(booted, cp.first, pt);
     } else {
       extra[cp.first] = Utils::stripQuotes(cp.second.get_value<std::string>());
     }
@@ -36,6 +38,7 @@ void PackageConfig::writeToStream(std::ostream& out_stream) const {
   writeOption(out_stream, images_path, "images_path");
   writeOption(out_stream, packages_file, "packages_file");
   writeOption(out_stream, fake_need_reboot, "fake_need_reboot");
+  writeOption(out_stream, booted, "booted");
 
   // note that this is imperfect as it will not print default values deduced
   // from users of `extra`
