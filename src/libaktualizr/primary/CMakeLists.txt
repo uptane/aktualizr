@@ -1,18 +1,22 @@
 set(SOURCES aktualizr.cc
             aktualizr_helpers.cc
-            initializer.cc
+            provisioner.cc
             reportqueue.cc
             secondary_provider.cc
             sotauptaneclient.cc)
 
 set(HEADERS aktualizr_helpers.h
-            initializer.h
+            provisioner.h
             reportqueue.h
             secondary_config.h
             secondary_provider_builder.h
             sotauptaneclient.h)
 
 add_library(primary OBJECT ${SOURCES})
+
+add_library(provisioner_test_utils STATIC provisioner_test_utils.cc)
+aktualizr_source_file_checks(provisioner_test_utils.cc provisioner_test_utils.h)
+
 
 add_aktualizr_test(NAME aktualizr
                    SOURCES aktualizr_test.cc
@@ -55,10 +59,10 @@ else (BUILD_OSTREE)
     aktualizr_source_file_checks(aktualizr_fullostree_test.cc download_nonostree_test.cc aktualizr_lite_test.cc)
 endif (BUILD_OSTREE)
 
-add_aktualizr_test(NAME initializer
-                   SOURCES initializer_test.cc
+add_aktualizr_test(NAME provisioner
+                   SOURCES provisioner_test.cc
                    PROJECT_WORKING_DIRECTORY
-                   LIBRARIES PUBLIC uptane_generator_lib)
+                   LIBRARIES PUBLIC uptane_generator_lib provisioner_test_utils)
 
 add_aktualizr_test(NAME reportqueue
                    SOURCES reportqueue_test.cc
@@ -97,7 +101,7 @@ add_aktualizr_test(NAME metadata_expiration
 add_aktualizr_test(NAME device_cred_prov
                    SOURCES device_cred_prov_test.cc
                    PROJECT_WORKING_DIRECTORY
-                   LIBRARIES uptane_generator_lib)
+                   LIBRARIES uptane_generator_lib provisioner_test_utils)
 set_tests_properties(test_device_cred_prov PROPERTIES LABELS "crypto")
 
 

@@ -22,6 +22,7 @@
 #include "bootloader/bootloader.h"
 #include "http/httpclient.h"
 #include "primary/secondary_provider_builder.h"
+#include "provisioner.h"
 #include "reportqueue.h"
 #include "uptane/directorrepository.h"
 #include "uptane/exceptions.h"
@@ -36,19 +37,8 @@ class SotaUptaneClient {
  public:
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
                    std::shared_ptr<event::Channel> events_channel_in,
-                   const Uptane::EcuSerial &primary_serial = Uptane::EcuSerial::Unknown(),
-                   const Uptane::HardwareIdentifier &hwid = Uptane::HardwareIdentifier::Unknown())
-      : config(config_in),
-        storage(std::move(storage_in)),
-        http(std::move(http_in)),
-        package_manager_(PackageManagerFactory::makePackageManager(config.pacman, config.bootloader, storage, http)),
-        uptane_fetcher(new Uptane::Fetcher(config, http)),
-        events_channel(std::move(events_channel_in)),
-        primary_ecu_serial_(primary_serial),
-        primary_ecu_hw_id_(hwid) {
-    report_queue = std_::make_unique<ReportQueue>(config, http, storage);
-    secondary_provider_ = SecondaryProviderBuilder::Build(config, storage, package_manager_);
-  }
+                   Uptane::EcuSerial primary_serial = Uptane::EcuSerial::Unknown(),
+                   Uptane::HardwareIdentifier hwid = Uptane::HardwareIdentifier::Unknown());
 
   SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in,
                    std::shared_ptr<HttpInterface> http_in)
@@ -178,6 +168,7 @@ class SotaUptaneClient {
   std::shared_ptr<INvStorage> storage;
   std::shared_ptr<HttpInterface> http;
   std::shared_ptr<PackageManagerInterface> package_manager_;
+  std::shared_ptr<KeyManager> key_manager_;
   std::shared_ptr<Uptane::Fetcher> uptane_fetcher;
   std::unique_ptr<ReportQueue> report_queue;
   std::shared_ptr<SecondaryProvider> secondary_provider_;
@@ -189,6 +180,7 @@ class SotaUptaneClient {
   std::mutex download_mutex;
   Uptane::EcuSerial primary_ecu_serial_;
   Uptane::HardwareIdentifier primary_ecu_hw_id_;
+  Provisioner provisioner_;
 };
 
 class TargetCompare {

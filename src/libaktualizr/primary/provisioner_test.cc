@@ -5,7 +5,8 @@
 #include <boost/filesystem.hpp>
 
 #include "httpfake.h"
-#include "primary/initializer.h"
+#include "primary/provisioner.h"
+#include "primary/provisioner_test_utils.h"
 #include "primary/sotauptaneclient.h"
 #include "storage/invstorage.h"
 #include "utilities/utils.h"
@@ -13,7 +14,7 @@
 /*
  * Check that aktualizr creates provisioning data if they don't exist already.
  */
-TEST(Initializer, Success) {
+TEST(Provisioner, Success) {
   RecordProperty("zephyr_key", "OTA-983,TST-153");
   TemporaryDirectory temp_dir;
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
@@ -35,8 +36,8 @@ TEST(Initializer, Success) {
   EXPECT_FALSE(storage->loadPrimaryKeys(&public_key, &private_key));
 
   // Initialize.
-  KeyManager keys(storage, conf.keymanagerConfig());
-  EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+  auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+  ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
   // Then verify that the storage contains what we expect.
   EXPECT_TRUE(storage->loadTlsCreds(&ca, &cert, &pkey));
@@ -59,7 +60,7 @@ TEST(Initializer, Success) {
  * Check that aktualizr does NOT change provisioning data if they DO exist
  * already.
  */
-TEST(Initializer, InitializeTwice) {
+TEST(Provisioner, InitializeTwice) {
   RecordProperty("zephyr_key", "OTA-983,TST-154");
   TemporaryDirectory temp_dir;
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
@@ -79,8 +80,9 @@ TEST(Initializer, InitializeTwice) {
 
   // Intialize and verify that the storage contains what we expect.
   {
-    KeyManager keys(storage, conf.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     EXPECT_TRUE(storage->loadTlsCreds(&ca1, &cert1, &pkey1));
     EXPECT_NE(ca1, "");
@@ -93,8 +95,8 @@ TEST(Initializer, InitializeTwice) {
 
   // Intialize again and verify that nothing has changed.
   {
-    KeyManager keys(storage, conf.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     std::string pkey2;
     std::string cert2;
@@ -116,7 +118,7 @@ TEST(Initializer, InitializeTwice) {
  * Check that aktualizr does not generate a pet name when device ID is
  * specified.
  */
-TEST(Initializer, PetNameConfiguration) {
+TEST(Provisioner, PetNameConfiguration) {
   RecordProperty("zephyr_key", "OTA-985,TST-146");
   TemporaryDirectory temp_dir;
   const std::string test_name = "test-name-123";
@@ -128,8 +130,8 @@ TEST(Initializer, PetNameConfiguration) {
 
   auto storage = INvStorage::newStorage(conf.storage);
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
-  KeyManager keys(storage, conf.keymanagerConfig());
-  EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+  auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+  ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
   {
     EXPECT_EQ(conf.provision.device_id, test_name);
@@ -153,7 +155,7 @@ TEST(Initializer, PetNameConfiguration) {
  * already present in the device certificate's common name. This is the expected
  * behavior required to support replacing a Primary ECU.
  */
-TEST(Initializer, PetNameDeviceCert) {
+TEST(Provisioner, PetNameDeviceCert) {
   std::string test_name;
   Config conf("tests/config/basic.toml");
 
@@ -162,10 +164,10 @@ TEST(Initializer, PetNameDeviceCert) {
     auto http = std::make_shared<HttpFake>(temp_dir.Path());
     conf.storage.path = temp_dir.Path();
     auto storage = INvStorage::newStorage(conf.storage);
-    KeyManager keys(storage, conf.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
     storage->storeTlsCert(Utils::readFile("tests/test_data/prov/client.pem"));
-    test_name = keys.getCN();
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    test_name = keys->getCN();
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
     std::string devid;
     EXPECT_TRUE(storage->loadDeviceId(&devid));
     EXPECT_EQ(devid, test_name);
@@ -178,9 +180,9 @@ TEST(Initializer, PetNameDeviceCert) {
     auto http = std::make_shared<HttpFake>(temp_dir.Path());
     conf.storage.path = temp_dir.Path();
     auto storage = INvStorage::newStorage(conf.storage);
-    KeyManager keys(storage, conf.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
     storage->storeTlsCert(Utils::readFile("tests/test_data/prov/client.pem"));
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
     std::string devid;
     EXPECT_TRUE(storage->loadDeviceId(&devid));
     EXPECT_EQ(devid, test_name);
@@ -190,7 +192,7 @@ TEST(Initializer, PetNameDeviceCert) {
 /**
  * Check that aktualizr generates a pet name if no device ID is specified.
  */
-TEST(Initializer, PetNameCreation) {
+TEST(Provisioner, PetNameCreation) {
   RecordProperty("zephyr_key", "OTA-985,TST-145");
   TemporaryDirectory temp_dir;
 
@@ -205,8 +207,8 @@ TEST(Initializer, PetNameCreation) {
   {
     auto storage = INvStorage::newStorage(conf.storage);
     auto http = std::make_shared<HttpFake>(temp_dir.Path());
-    KeyManager keys(storage, conf.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     EXPECT_TRUE(storage->loadDeviceId(&test_name1));
     EXPECT_NE(test_name1, "");
@@ -222,8 +224,8 @@ TEST(Initializer, PetNameCreation) {
 
     auto storage = INvStorage::newStorage(conf.storage);
     auto http = std::make_shared<HttpFake>(temp_dir2.Path());
-    KeyManager keys(storage, conf.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     EXPECT_TRUE(storage->loadDeviceId(&test_name2));
     EXPECT_NE(test_name2, test_name1);
@@ -235,8 +237,8 @@ TEST(Initializer, PetNameCreation) {
     conf.provision.device_id = "";
     auto storage = INvStorage::newStorage(conf.storage);
     auto http = std::make_shared<HttpFake>(temp_dir2.Path());
-    KeyManager keys(storage, conf.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     std::string devid;
     EXPECT_TRUE(storage->loadDeviceId(&devid));
@@ -254,8 +256,8 @@ TEST(Initializer, PetNameCreation) {
 
     auto storage = INvStorage::newStorage(conf.storage);
     auto http = std::make_shared<HttpFake>(temp_dir3.Path());
-    KeyManager keys(storage, conf.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     std::string devid;
     EXPECT_TRUE(storage->loadDeviceId(&devid));
@@ -288,7 +290,7 @@ class HttpFakeDeviceRegistration : public HttpFake {
 };
 
 /* Detect and recover from failed device provisioning. */
-TEST(Initializer, DeviceRegistration) {
+TEST(Provisioner, DeviceRegistration) {
   TemporaryDirectory temp_dir;
   auto http = std::make_shared<HttpFakeDeviceRegistration>(temp_dir.Path());
   Config conf("tests/config/basic.toml");
@@ -299,30 +301,30 @@ TEST(Initializer, DeviceRegistration) {
   conf.provision.primary_ecu_serial = "testecuserial";
 
   auto storage = INvStorage::newStorage(conf.storage);
-  KeyManager keys(storage, conf.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
 
   // Force a failure from the fake server due to device already registered.
   {
     http->retcode = InitRetCode::kOccupied;
-    EXPECT_THROW(Initializer(conf.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(conf.provision, storage, http, keys, {}), "already registered");
   }
 
   // Force an arbitrary failure from the fake server.
   {
     http->retcode = InitRetCode::kServerFailure;
-    EXPECT_THROW(Initializer(conf.provision, storage, http, keys, {}), Initializer::ServerError);
+    ExpectProvisionError(Provisioner(conf.provision, storage, http, keys, {}), "Server error");
   }
 
   // Don't force a failure and make sure it actually works this time.
   {
     http->retcode = InitRetCode::kOk;
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
   }
 }
 
 class HttpFakeEcuRegistration : public HttpFake {
  public:
-  HttpFakeEcuRegistration(const boost::filesystem::path& test_dir_in) : HttpFake(test_dir_in) {}
+  explicit HttpFakeEcuRegistration(const boost::filesystem::path& test_dir_in) : HttpFake(test_dir_in) {}
 
   HttpResponse post(const std::string& url, const Json::Value& data) override {
     if (url.find("/director/ecus") != std::string::npos) {
@@ -343,7 +345,7 @@ class HttpFakeEcuRegistration : public HttpFake {
 };
 
 /* Detect and recover from failed ECU registration. */
-TEST(Initializer, EcuRegisteration) {
+TEST(Provisioner, EcuRegisteration) {
   TemporaryDirectory temp_dir;
   auto http = std::make_shared<HttpFakeEcuRegistration>(temp_dir.Path());
   Config conf("tests/config/basic.toml");
@@ -354,29 +356,30 @@ TEST(Initializer, EcuRegisteration) {
   conf.provision.primary_ecu_serial = "testecuserial";
 
   auto storage = INvStorage::newStorage(conf.storage);
-  KeyManager keys(storage, conf.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
 
   // Force a failure from the fake server due to ECUs already registered.
   {
     http->retcode = InitRetCode::kOccupied;
-    EXPECT_THROW(Initializer(conf.provision, storage, http, keys, {}), Initializer::ServerError);
+    ExpectProvisionError(Provisioner(conf.provision, storage, http, keys, {}),
+                         "ECUs are unexpectedly already registered");
   }
 
   // Force an arbitary failure from the fake server.
   {
     http->retcode = InitRetCode::kServerFailure;
-    EXPECT_THROW(Initializer(conf.provision, storage, http, keys, {}), Initializer::ServerError);
+    ExpectProvisionError(Provisioner(conf.provision, storage, http, keys, {}), "Server error");
   }
 
   // Don't force a failure and make sure it actually works this time.
   {
     http->retcode = InitRetCode::kOk;
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
   }
 }
 
 /* Use the system hostname as hardware ID if one is not provided. */
-TEST(Initializer, HostnameAsHardwareID) {
+TEST(Provisioner, HostnameAsHardwareID) {
   TemporaryDirectory temp_dir;
   Config conf("tests/config/basic.toml");
   conf.storage.path = temp_dir.Path();
@@ -387,10 +390,10 @@ TEST(Initializer, HostnameAsHardwareID) {
   {
     auto storage = INvStorage::newStorage(conf.storage);
     auto http = std::make_shared<HttpFake>(temp_dir.Path());
-    KeyManager keys(storage, conf.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
 
     EXPECT_TRUE(conf.provision.primary_ecu_hardware_id.empty());
-    EXPECT_NO_THROW(Initializer(conf.provision, storage, http, keys, {}));
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
 
     EcuSerials ecu_serials;
     EXPECT_TRUE(storage->loadEcuSerials(&ecu_serials));

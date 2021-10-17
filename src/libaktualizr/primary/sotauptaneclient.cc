@@ -1,18 +1,15 @@
 #include "sotauptaneclient.h"
 
 #include <fnmatch.h>
-#include <unistd.h>
 #include <memory>
 #include <utility>
 
 #include "crypto/crypto.h"
 #include "crypto/keymanager.h"
-#include "initializer.h"
 #include "libaktualizr/campaign.h"
 #include "logging/logging.h"
+#include "provisioner.h"
 #include "uptane/exceptions.h"
-
-#include "utilities/fault_injection.h"
 #include "utilities/utils.h"
 
 static void report_progress_cb(event::Channel *channel, const Uptane::Target &target, const std::string &description,
@@ -24,6 +21,24 @@ static void report_progress_cb(event::Channel *channel, const Uptane::Target &ta
   (*channel)(event);
 }
 
+SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in,
+                                   std::shared_ptr<HttpInterface> http_in,
+                                   std::shared_ptr<event::Channel> events_channel_in, Uptane::EcuSerial primary_serial,
+                                   Uptane::HardwareIdentifier hwid)
+    : config(config_in),
+      storage(std::move(storage_in)),
+      http(std::move(http_in)),
+      package_manager_(PackageManagerFactory::makePackageManager(config.pacman, config.bootloader, storage, http)),
+      key_manager_(std::make_shared<KeyManager>(storage, config.keymanagerConfig())),
+      uptane_fetcher(new Uptane::Fetcher(config, http)),
+      events_channel(std::move(events_channel_in)),
+      primary_ecu_serial_(std::move(primary_serial)),
+      primary_ecu_hw_id_(std::move(hwid)),
+      provisioner_(config.provision, storage, http, key_manager_, secondaries) {
+  report_queue = std_::make_unique<ReportQueue>(config, http, storage);
+  secondary_provider_ = SecondaryProviderBuilder::Build(config, storage, package_manager_);
+}
+
 void SotaUptaneClient::addSecondary(const std::shared_ptr<SecondaryInterface> &sec) {
   Uptane::EcuSerial serial = sec->getSerial();
 
@@ -33,6 +48,8 @@ void SotaUptaneClient::addSecondary(const std::shared_ptr<SecondaryInterface> &s
   }
 
   secondaries.emplace(serial, sec);
+  sec->init(secondary_provider_);
+  provisioner_.SecondariesWereChanged();
 }
 
 std::vector<Uptane::Target> SotaUptaneClient::findForEcu(const std::vector<Uptane::Target> &targets,
@@ -344,28 +361,29 @@ bool SotaUptaneClient::hasPendingUpdates() const { return storage->hasPendingIns
 
 void SotaUptaneClient::initialize() {
   LOG_DEBUG << "Checking if device is provisioned...";
-  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-  Initializer initializer(config.provision, storage, http, *keys, secondaries);
+  bool provisioned = false;
+  for (int i = 0; i < 3 && !provisioned; i++) {
+    provisioned = provisioner_.Attempt();
+  }
+
+  // This is temporary. For offline updates it will be necessary to
+  // run updates before provisioning has completed.
+  if (!provisioned) {
+    throw std::runtime_error("Initialization failed after 3 attempts");
+  }
 
   EcuSerials serials;
-  /* unlikely, post-condition of Initializer::Initializer() */
+  /* unlikely, post-condition of Provisioner::Attempt() returning true */
   if (!storage->loadEcuSerials(&serials) || serials.empty()) {
     throw std::runtime_error("Unable to load ECU serials after device registration.");
   }
 
-  uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(keys, serials[0].first);
+  uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, serials[0].first);
+  // TODO: Move this debug logging out to somewhere else
   primary_ecu_serial_ = serials[0].first;
   primary_ecu_hw_id_ = serials[0].second;
   LOG_INFO << "Primary ECU serial: " << primary_ecu_serial_ << " with hardware ID: " << primary_ecu_hw_id_;
-
-  for (auto it = secondaries.begin(); it != secondaries.end(); ++it) {
-    try {
-      it->second->init(secondary_provider_);
-    } catch (const std::exception &ex) {
-      LOG_ERROR << "Failed to initialize Secondary with serial " << it->first << ": " << ex.what();
-    }
-  }
 
   std::string device_id;
   if (!storage->loadDeviceId(&device_id)) {
@@ -378,7 +396,7 @@ void SotaUptaneClient::initialize() {
   std::string issuer;
   std::string not_before;
   std::string not_after;
-  keys->getCertInfo(&subject, &issuer, &not_before, &not_after);
+  key_manager_->getCertInfo(&subject, &issuer, &not_before, &not_after);
   LOG_INFO << "Certificate subject: " << subject;
   LOG_INFO << "Certificate issuer: " << issuer;
   LOG_INFO << "Certificate valid from: " << not_before << " until: " << not_after;
