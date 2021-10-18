@@ -29,7 +29,7 @@ class Aktualizr:
                  uptane_server, wait_port=9040, wait_timeout=60, log_level=1,
                  primary_port=None, secondaries=None, secondary_wait_sec=600, output_logs=True,
                  run_mode='once', director=None, image_repo=None,
-                 sysroot=None, treehub=None, ostree_mock_path=None, **kwargs):
+                 sysroot=None, treehub=None, **kwargs):
         self.id = id
         self._aktualizr_primary_exe = aktualizr_primary_exe
         self._aktualizr_info_exe = aktualizr_info_exe
@@ -71,10 +71,6 @@ class Aktualizr:
                 self.add_secondary(s)
         self._output_logs = output_logs
         self._run_mode = run_mode
-        self._run_env = {}
-        if sysroot and ostree_mock_path:
-            self._run_env['LD_PRELOAD'] = os.path.abspath(ostree_mock_path)
-            self._run_env['OSTREE_DEPLOYMENT_VERSION_FILE'] = sysroot.version_file
 
     CONFIG_TEMPLATE = '''
     [tls]
@@ -100,6 +96,7 @@ class Aktualizr:
     sysroot = "{ostree_sysroot}"
     ostree_server = "{treehub_server}"
     os = "dummy-os"
+    booted = false
 
     [uptane]
     polling_sec = 0
@@ -157,7 +154,7 @@ class Aktualizr:
 
     def run(self, run_mode):
         subprocess.run([self._aktualizr_primary_exe, '-c', self._config_file, '--run-mode', run_mode],
-                       check=True, env=self._run_env)
+                       check=True)
 
     # another ugly stuff that could be replaced with something more reliable if Aktualizr had exposed API
     # to check status or aktualizr-info had output status/info in a structured way (e.g. json)
@@ -165,7 +162,7 @@ class Aktualizr:
         info_exe_res = None
         for ii in range(0, retry):
             info_exe_res = subprocess.run([self._aktualizr_info_exe, '-c', self._config_file],
-                                          timeout=60, stdout=subprocess.PIPE, env=self._run_env)
+                                          timeout=60, stdout=subprocess.PIPE)
             if info_exe_res.returncode == 0 and \
                     str(info_exe_res.stdout).find('Provisioned on server: yes') != -1 and \
                     str(info_exe_res.stdout).find('Current Primary ECU running version:') != -1:
@@ -245,8 +242,7 @@ class Aktualizr:
         self._process = subprocess.Popen([self._aktualizr_primary_exe, '-c', self._config_file, '--run-mode', self._run_mode],
                                          stdout=None if self._output_logs else subprocess.PIPE,
                                          stderr=None if self._output_logs else subprocess.STDOUT,
-                                         close_fds=True,
-                                         env=self._run_env)
+                                         close_fds=True)
         logger.debug("Aktualizr has been started")
         return self
 
@@ -304,7 +300,7 @@ class IPSecondary:
 
     def __init__(self, id, aktualizr_secondary_exe='src/aktualizr_secondary/aktualizr-secondary', port=None, primary_port=None,
                  sysroot=None, treehub=None, output_logs=True, force_reboot=False,
-                 ostree_mock_path=None, verification_type="Full", **kwargs):
+                 verification_type="Full", **kwargs):
         self.id = id
 
         self._aktualizr_secondary_exe = aktualizr_secondary_exe
@@ -337,11 +333,6 @@ class IPSecondary:
                                                                  ))
             self._config_file = config_file.name
 
-        self._run_env = {}
-        if sysroot and ostree_mock_path:
-            self._run_env['LD_PRELOAD'] = os.path.abspath(ostree_mock_path)
-            self._run_env['OSTREE_DEPLOYMENT_VERSION_FILE'] = sysroot.version_file
-
 
     CONFIG_TEMPLATE = '''
     [uptane]
@@ -364,6 +355,7 @@ class IPSecondary:
     sysroot = "{ostree_sysroot}"
     ostree_server = "{treehub_server}"
     os = "dummy-os"
+    booted = false
 
     [bootloader]
     reboot_sentinel_dir = "{sentinel_dir}"
@@ -386,8 +378,7 @@ class IPSecondary:
         self._process = subprocess.Popen([self._aktualizr_secondary_exe, '-c', self._config_file],
                                          stdout=None if self._output_logs else subprocess.PIPE,
                                          stderr=None if self._output_logs else subprocess.STDOUT,
-                                         close_fds=True,
-                                         env=self._run_env)
+                                         close_fds=True)
         logger.debug("IP Secondary {} has been started with port {} and verification type {}".format(self.id, self.port, self.verification_type))
         return self
 
@@ -838,13 +829,13 @@ def with_aktualizr(start=True, output_logs=False, id=('primary-hw-ID-001', str(u
                    run_mode='once'):
     def decorator(test):
         @wraps(test)
-        def wrapper(*args, ostree_mock_path=None, **kwargs):
+        def wrapper(*args, **kwargs):
             aktualizr = Aktualizr(aktualizr_primary_exe=aktualizr_primary_exe,
                                   aktualizr_info_exe=aktualizr_info_exe, id=id,
                                   wait_timeout=wait_timeout,
                                   secondary_wait_sec=secondary_wait_sec,
                                   log_level=log_level, output_logs=output_logs,
-                                  run_mode=run_mode, ostree_mock_path=ostree_mock_path, **kwargs)
+                                  run_mode=run_mode, **kwargs)
             if start:
                 with aktualizr:
                     result = test(*args, **kwargs, aktualizr=aktualizr)
@@ -1069,12 +1060,12 @@ class Sysroot:
                                      '{}\n'.format('1')])
 
 
-def with_sysroot(ostree_mock_path='tests/libostree_mock.so'):
+def with_sysroot():
     def decorator(test):
         @wraps(test)
         def wrapper(*args, **kwargs):
             with Sysroot() as sysroot:
-                return test(*args, **kwargs, sysroot=sysroot, ostree_mock_path=ostree_mock_path)
+                return test(*args, **kwargs, sysroot=sysroot)
         return wrapper
     return decorator
 
