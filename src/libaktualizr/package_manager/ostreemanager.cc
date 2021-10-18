@@ -444,10 +444,11 @@ GObjectUniquePtr<OstreeSysroot> OstreeManager::LoadSysroot(const boost::filesyst
   }
   GError *error = nullptr;
   if (ostree_sysroot_load(sysroot.get(), nullptr, &error) == 0) {
+    const std::string msg = error->message;
     if (error != nullptr) {
       g_error_free(error);
     }
-    throw std::runtime_error("could not load sysroot");
+    throw std::runtime_error("could not load sysroot at " + path.string() + ": " + msg);
   }
   return sysroot;
 }
