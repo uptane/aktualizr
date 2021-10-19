@@ -2,7 +2,6 @@
 ecu_hardware_id = "local-fake-secondary"
 
 [storage]
-type = "sqlite"
 path = "storage"
 sqldb_path = "secondary.db"
 

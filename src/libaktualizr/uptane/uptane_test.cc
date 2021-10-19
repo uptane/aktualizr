@@ -13,11 +13,11 @@
 #include <boost/filesystem.hpp>
 #include "json/json.h"
 
-#include "libaktualizr/secondaryinterface.h"
-
 #include "crypto/p11engine.h"
 #include "httpfake.h"
-#include "primary/initializer.h"
+#include "libaktualizr/secondaryinterface.h"
+#include "primary/provisioner.h"
+#include "primary/provisioner_test_utils.h"
 #include "primary/sotauptaneclient.h"
 #include "storage/fsstorage_read.h"
 #include "storage/invstorage.h"
@@ -1409,9 +1409,9 @@ TEST(Uptane, Pkcs11Provision) {
   auto storage = INvStorage::newStorage(config.storage);
   storage->importData(config.import);
   auto http = std::make_shared<HttpFake>(temp_dir.Path(), "hasupdates");
-  KeyManager keys(storage, config.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-  EXPECT_NO_THROW(Initializer(config.provision, storage, http, keys, {}));
+  ExpectProvisionOK(Provisioner(config.provision, storage, http, keys, {}));
 }
 #endif
 

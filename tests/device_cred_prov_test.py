@@ -31,7 +31,6 @@ server_url_path = "{tmp_dir}/gateway.url"
 
 [storage]
 path = "{tmp_dir}"
-type = "sqlite"
 
 [import]
 base_path = "{tmp_dir}/import"

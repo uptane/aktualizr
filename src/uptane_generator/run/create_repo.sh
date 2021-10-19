@@ -80,7 +80,6 @@ provision_path = "${repo_dir}/credentials.zip"
 primary_ecu_hardware_id = "desktop"
 
 [storage]
-type = "sqlite"
 path = "${repo_dir}/var_sota"
 sqldb_path = "${repo_dir}/var_sota/sql.db"
 
