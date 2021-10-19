@@ -462,8 +462,9 @@ class Manifest : public Json::Value {
   bool verifySignature(const PublicKey &pub_key) const;
 };
 
-static inline VerificationType VerificationTypeFromString(const std::string &vt_str) {
-  if (vt_str == "Tuf") {
+static inline VerificationType VerificationTypeFromString(std::string vt_str) {
+  std::transform(vt_str.begin(), vt_str.end(), vt_str.begin(), ::tolower);
+  if (vt_str == "tuf") {
     return VerificationType::kTuf;
   } else {
     return VerificationType::kFull;
