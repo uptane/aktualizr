@@ -10,7 +10,7 @@ class SecondaryProviderBuilder {
   static std::shared_ptr<SecondaryProvider> Build(
       Config& config, const std::shared_ptr<const INvStorage>& storage,
       const std::shared_ptr<const PackageManagerInterface>& package_manager) {
-    return std::shared_ptr<SecondaryProvider>(new SecondaryProvider(config, storage, package_manager));
+    return std::make_shared<SecondaryProvider>(SecondaryProvider(config, storage, package_manager));
   }
   SecondaryProviderBuilder(SecondaryProviderBuilder&&) = delete;
   SecondaryProviderBuilder(const SecondaryProviderBuilder&) = delete;

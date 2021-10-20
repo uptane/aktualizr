@@ -5,6 +5,8 @@
 
 #include "aktualizr_secondary_file.h"
 #include "crypto/keymanager.h"
+#include "libaktualizr/types.h"
+#include "storage/invstorage.h"
 #include "test_utils.h"
 #include "update_agent.h"
 #include "update_agent_file.h"
@@ -31,10 +33,10 @@ class UpdateAgentMock : public FileUpdateAgent {
 
 class AktualizrSecondaryWrapper {
  public:
-  AktualizrSecondaryWrapper() {
+  AktualizrSecondaryWrapper(VerificationType verification_type) {
     AktualizrSecondaryConfig config;
     config.pacman.type = PACKAGE_MANAGER_NONE;
-
+    config.uptane.verification_type = verification_type;
     config.storage.path = storage_dir_.Path();
     config.storage.type = StorageType::kSqlite;
 
@@ -114,6 +116,15 @@ class UptaneRepoWrapper {
     return getCurrentMetadata();
   }
 
+  void addCustomImageMetadata(const std::string& targetname, const std::string& hardware_id,
+                              const std::string& custom_version) {
+    auto custom = Json::Value();
+    custom["targetFormat"] = "BINARY";
+    custom["version"] = custom_version;
+    uptane_repo_.addCustomImage(targetname, Hash(Hash::Type::kSha256, targetname), 1, hardware_id, "", Delegation(),
+                                custom);
+  }
+
   Uptane::MetaBundle getCurrentMetadata() const {
     Uptane::MetaBundle meta_bundle;
     std::string metadata;
@@ -169,12 +180,16 @@ class UptaneRepoWrapper {
 };
 
 class SecondaryTest : public ::testing::Test {
- protected:
-  SecondaryTest() : update_agent_(*(secondary_.update_agent_)) {
-    uptane_repo_.addImageFile(default_target_, secondary_->hwID().ToString(), secondary_->serial().ToString(),
-                              target_size, true, true, inavlid_target_size_delta);
+ public:
+  SecondaryTest(VerificationType verification_type = VerificationType::kFull, bool default_target = true)
+      : secondary_(verification_type), update_agent_(*(secondary_.update_agent_)) {
+    if (default_target) {
+      uptane_repo_.addImageFile(default_target_, secondary_->hwID().ToString(), secondary_->serial().ToString(),
+                                target_size, true, true, inavlid_target_size_delta);
+    }
   }
 
+ private:
   std::vector<Uptane::Target> getCurrentTargets() {
     auto targets = Uptane::Targets(Utils::parseJSON(getMetaFromBundle(
         uptane_repo_.getCurrentMetadata(), Uptane::RepositoryType::Director(), Uptane::Role::Targets())));
@@ -189,6 +204,7 @@ class SecondaryTest : public ::testing::Test {
 
   Hash getDefaultTargetHash() { return Hash(Hash::Type::kSha256, getDefaultTarget().sha256Hash()); }
 
+ protected:
   data::ResultCode::Numeric sendImageFile(std::string target_name = default_target_) {
     auto image_path = uptane_repo_.getTargetImagePath(target_name);
     size_t total_size = boost::filesystem::file_size(image_path);
@@ -223,7 +239,22 @@ class SecondaryTest : public ::testing::Test {
     return result;
   }
 
- protected:
+  void verifyTargetAndManifest() {
+    // check if a file was actually updated
+    ASSERT_TRUE(boost::filesystem::exists(secondary_.targetFilepath()));
+    auto target = getDefaultTarget();
+
+    // check the updated file hash
+    auto target_hash = Hash(Hash::Type::kSha256, target.sha256Hash());
+    auto target_file_hash = Hash::generate(Hash::Type::kSha256, Utils::readFile(secondary_.targetFilepath()));
+    EXPECT_EQ(target_hash, target_file_hash);
+
+    // check the secondary manifest
+    auto manifest = secondary_->getManifest();
+    EXPECT_EQ(manifest.installedImageHash(), target_file_hash);
+    EXPECT_EQ(manifest.filepath(), target.filename());
+  }
+
   static constexpr const char* const default_target_{"default-target"};
   static constexpr const char* const bigger_target_{"default-target.bigger"};
   static constexpr const char* const smaller_target_{"default-target.smaller"};
@@ -239,10 +270,11 @@ class SecondaryTest : public ::testing::Test {
   TemporaryDirectory image_dir_;
 };
 
-class SecondaryTestNegative : public ::testing::Test,
-                              public ::testing::WithParamInterface<std::pair<Uptane::RepositoryType, Uptane::Role>> {
+class SecondaryTestNegative
+    : public SecondaryTest,
+      public ::testing::WithParamInterface<std::tuple<Uptane::RepositoryType, Uptane::Role, VerificationType, bool>> {
  public:
-  SecondaryTestNegative() : update_agent_(*(secondary_.update_agent_)) {}
+  SecondaryTestNegative() : SecondaryTest(std::get<2>(GetParam())), success_expected_(std::get<3>(GetParam())) {}
 
  protected:
   class MetadataInvalidator : public Metadata {
@@ -266,42 +298,72 @@ class SecondaryTestNegative : public ::testing::Test,
   };
 
   MetadataInvalidator currentMetadata() const {
-    return MetadataInvalidator(uptane_repo_.getCurrentMetadata(), GetParam().first, GetParam().second);
+    return MetadataInvalidator(uptane_repo_.getCurrentMetadata(), std::get<0>(GetParam()), std::get<1>(GetParam()));
   }
 
-  AktualizrSecondaryWrapper secondary_;
-  UptaneRepoWrapper uptane_repo_;
-  NiceMock<UpdateAgentMock>& update_agent_;
+  bool success_expected_;
 };
 
 /**
- * Parameterized test,
- * The parameter is std::pair<Uptane::RepositoryType, Uptane::Role> to indicate which metadata to malform
- *
- * see INSTANTIATE_TEST_SUITE_P for the test instantiations with concrete parameter values
+ * This test is parameterized to control which metadata to malform. See
+ * INSTANTIATE_TEST_SUITE_P for the list of test instantiations with concrete
+ * parameter values.
  */
 TEST_P(SecondaryTestNegative, MalformedMetadaJson) {
-  EXPECT_FALSE(secondary_->putMetadata(currentMetadata()).isSuccess());
+  data::ResultCode::Numeric result{data::ResultCode::Numeric::kGeneralError};
+  if (!success_expected_) {
+    EXPECT_CALL(update_agent_, receiveData).Times(0);
+    EXPECT_CALL(update_agent_, install).Times(0);
+  } else {
+    EXPECT_CALL(update_agent_, receiveData)
+        .Times(target_size / send_buffer_size + (target_size % send_buffer_size ? 1 : 0));
+    EXPECT_CALL(update_agent_, install).Times(1);
+    result = data::ResultCode::Numeric::kOk;
+  }
 
-  EXPECT_CALL(update_agent_, receiveData).Times(0);
-  EXPECT_CALL(update_agent_, install).Times(0);
+  EXPECT_EQ(secondary_->putMetadata(currentMetadata()).isSuccess(), success_expected_);
+  ASSERT_EQ(sendImageFile(), result);
+  EXPECT_EQ(secondary_->install().isSuccess(), success_expected_);
 
-  EXPECT_FALSE(secondary_->install().isSuccess());
+  if (success_expected_) {
+    verifyTargetAndManifest();
+  }
 }
 
 /**
- * Instantiates the parameterized test for each specified value of std::pair<Uptane::RepositoryType, Uptane::Role>
- * the parameter value indicates which metadata to malform
+ * Instantiates the parameterized test for each specified value of
+ * std::tuple<Uptane::RepositoryType, Uptane::Role, VerificationType, success_expected>.
+ * The parameter value indicates which metadata to malform. Anything that
+ * expects success (true) can be considered something like a failure to detect
+ * an attack.
  */
-INSTANTIATE_TEST_SUITE_P(SecondaryTestMalformedMetadata, SecondaryTestNegative,
-                         ::testing::Values(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()),
-                                           std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Root()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()),
-                                           std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Targets())));
+INSTANTIATE_TEST_SUITE_P(
+    SecondaryTestMalformedMetadata, SecondaryTestNegative,
+    ::testing::Values(
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Root(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Targets(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Root(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Targets(), VerificationType::kFull, false),
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Root(), VerificationType::kTuf, true),
+        std::make_tuple(Uptane::RepositoryType::Director(), Uptane::Role::Targets(), VerificationType::kTuf, true),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Root(), VerificationType::kTuf, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp(), VerificationType::kTuf, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot(), VerificationType::kTuf, false),
+        std::make_tuple(Uptane::RepositoryType::Image(), Uptane::Role::Targets(), VerificationType::kTuf, false)));
 
-TEST_F(SecondaryTest, fullUptaneVerificationPositive) {
+class SecondaryTestVerification : public SecondaryTest, public ::testing::WithParamInterface<VerificationType> {
+ public:
+  SecondaryTestVerification() : SecondaryTest(GetParam()){};
+};
+
+/**
+ * This test is parameterized with VerificationType to indicate what level of
+ * metadata verification to perform. See INSTANTIATE_TEST_SUITE_P for the list
+ * of test instantiations with concrete parameter values.
+ */
+TEST_P(SecondaryTestVerification, VerificationPositive) {
   EXPECT_CALL(update_agent_, receiveData)
       .Times(target_size / send_buffer_size + (target_size % send_buffer_size ? 1 : 0));
   EXPECT_CALL(update_agent_, install).Times(1);
@@ -310,48 +372,41 @@ TEST_F(SecondaryTest, fullUptaneVerificationPositive) {
   ASSERT_EQ(sendImageFile(), data::ResultCode::Numeric::kOk);
   ASSERT_TRUE(secondary_->install().isSuccess());
 
-  // check if a file was actually updated
-  ASSERT_TRUE(boost::filesystem::exists(secondary_.targetFilepath()));
-  auto target = getDefaultTarget();
-
-  // check the updated file hash
-  auto target_hash = Hash(Hash::Type::kSha256, target.sha256Hash());
-  auto target_file_hash = Hash::generate(Hash::Type::kSha256, Utils::readFile(secondary_.targetFilepath()));
-  EXPECT_EQ(target_hash, target_file_hash);
-
-  // check the secondary manifest
-  auto manifest = secondary_->getManifest();
-  EXPECT_EQ(manifest.installedImageHash(), target_file_hash);
-  EXPECT_EQ(manifest.filepath(), target.filename());
+  verifyTargetAndManifest();
 }
+
+/**
+ * Instantiates the parameterized test for each specified value of VerificationType.
+ */
+INSTANTIATE_TEST_SUITE_P(SecondaryTestVerificationType, SecondaryTestVerification,
+                         ::testing::Values(VerificationType::kFull, VerificationType::kTuf));
 
 TEST_F(SecondaryTest, TwoImagesAndOneTarget) {
   // two images for the same ECU, just one of them is added as a target and signed
   // default image and corresponding target has been already added, just add another image
-  uptane_repo_.addImageFile("second_image_00", secondary_->hwID().ToString(), secondary_->serial().ToString(),
-                            target_size, false, false);
-  EXPECT_TRUE(secondary_->putMetadata(uptane_repo_.getCurrentMetadata()).isSuccess());
+  auto metadata = uptane_repo_.addImageFile("second_image_00", secondary_->hwID().ToString(),
+                                            secondary_->serial().ToString(), target_size, false, false);
+  EXPECT_TRUE(secondary_->putMetadata(metadata).isSuccess());
 }
 
 TEST_F(SecondaryTest, IncorrectTargetQuantity) {
+  const std::string hwid{secondary_->hwID().ToString()};
+  const std::string serial{secondary_->serial().ToString()};
   {
     // two targets for the same ECU
-    uptane_repo_.addImageFile("second_target", secondary_->hwID().ToString(), secondary_->serial().ToString());
-
-    EXPECT_FALSE(secondary_->putMetadata(uptane_repo_.getCurrentMetadata()).isSuccess());
-  }
-
-  {
-    // zero targets for the ECU being tested
-    auto metadata = UptaneRepoWrapper().addImageFile("mytarget", secondary_->hwID().ToString(), "non-existing-serial");
-
+    auto metadata = uptane_repo_.addImageFile("second_target", hwid, serial);
     EXPECT_FALSE(secondary_->putMetadata(metadata).isSuccess());
   }
 
   {
     // zero targets for the ECU being tested
-    auto metadata = UptaneRepoWrapper().addImageFile("mytarget", "non-existig-hwid", secondary_->serial().ToString());
+    auto metadata = uptane_repo_.addImageFile("mytarget", hwid, "non-existing-serial");
+    EXPECT_FALSE(secondary_->putMetadata(metadata).isSuccess());
+  }
 
+  {
+    // zero targets for the ECU being tested
+    auto metadata = uptane_repo_.addImageFile("mytarget", "non-existig-hwid", serial);
     EXPECT_FALSE(secondary_->putMetadata(metadata).isSuccess());
   }
 }
@@ -399,6 +454,71 @@ TEST_F(SecondaryTest, InvalidImageData) {
   EXPECT_EQ(sendImageFile(broken_target_), data::ResultCode::Numeric::kOk);
   EXPECT_FALSE(secondary_->install().isSuccess());
 }
+
+class SecondaryTestTuf
+    : public SecondaryTest,
+      public ::testing::WithParamInterface<std::pair<std::vector<std::string>, boost::optional<std::string>>> {
+ public:
+  // No default Targets so as to be able to more thoroughly test the Target
+  // comparison.
+  SecondaryTestTuf() : SecondaryTest(VerificationType::kTuf, false){};
+};
+
+/**
+ * This test is parameterized with a series of Targets with custom versions and
+ * which one should be considered the latest, if any. See
+ * INSTANTIATE_TEST_SUITE_P for the list of test instantiations with concrete
+ * parameter values.
+ */
+TEST_P(SecondaryTestTuf, TufVersions) {
+  const std::string hwid{secondary_->hwID().ToString()};
+  {
+    int counter = 0;
+    for (const auto& version : GetParam().first) {
+      // Add counter so we can add multiple Targets with the same version.
+      uptane_repo_.addCustomImageMetadata("v" + version + "-" + std::to_string(++counter), hwid, version);
+    }
+    auto metadata = uptane_repo_.getCurrentMetadata();
+    auto expected = GetParam().second;
+    EXPECT_EQ(secondary_->putMetadata(metadata).isSuccess(), !!expected);
+    if (!!expected) {
+      EXPECT_EQ(secondary_->getPendingTarget().custom_version(), expected);
+      // Ignore the initial "v" and the counter suffix.
+      EXPECT_EQ(secondary_->getPendingTarget().filename().compare(1, expected->size(), expected.get()), 0);
+    }
+  }
+}
+
+/**
+ * Instantiates the parameterized test for each specified value of
+ * std::pair<std::vector<std::string>, boost::optional<std::string>>>.
+ * The first parameter value is a list of Targets with custom versions and the
+ * second paramter is which one should be considered the latest, if any.
+ */
+INSTANTIATE_TEST_SUITE_P(SecondaryTestTufVersions, SecondaryTestTuf,
+                         ::testing::Values(std::make_pair(std::vector<std::string>{"1"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"1", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "3"}, "3"),
+                                           std::make_pair(std::vector<std::string>{"3", "2", "1"}, "3"),
+                                           std::make_pair(std::vector<std::string>{"2", "3", "1"}, "3"),
+                                           std::make_pair(std::vector<std::string>{"invalid", "1"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"1", "invalid"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"invalid", "1", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "invalid"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "invalid", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "invalid1", "invalid2"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"invalid1", "1", "invalid2"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"invalid1", "invalid2", "1"}, "1"),
+                                           std::make_pair(std::vector<std::string>{"1", "1", "2"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"2", "1", "1"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "1"}, "2"),
+                                           std::make_pair(std::vector<std::string>{"1", "2", "2"}, boost::none),
+                                           std::make_pair(std::vector<std::string>{"2", "2", "1"}, boost::none),
+                                           std::make_pair(std::vector<std::string>{"2", "1", "2"}, boost::none),
+                                           std::make_pair(std::vector<std::string>{""}, ""),
+                                           std::make_pair(std::vector<std::string>{"text"}, "text"),
+                                           std::make_pair(std::vector<std::string>{"invalid1", "invalid2"},
+                                                          boost::none)));
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -5,6 +5,7 @@
 
 #include "libaktualizr/config.h"
 #include "libaktualizr/packagemanagerinterface.h"
+#include "libaktualizr/types.h"
 
 class INvStorage;
 
@@ -15,9 +16,8 @@ class SecondaryProvider {
   friend class SecondaryProviderBuilder;
 
   bool getMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const;
-  bool getDirectorMetadata(std::string* root, std::string* targets) const;
-  bool getImageRepoMetadata(std::string* root, std::string* timestamp, std::string* snapshot,
-                            std::string* targets) const;
+  bool getDirectorMetadata(Uptane::MetaBundle* meta_bundle) const;
+  bool getImageRepoMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const;
   std::string getTreehubCredentials() const;
   std::ifstream getTargetFileHandle(const Uptane::Target& target) const;
 

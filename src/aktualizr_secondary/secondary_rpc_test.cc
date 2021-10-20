@@ -26,13 +26,14 @@ enum class HandlerVersion { kV1, kV2, kV2Failure };
 class SecondaryMock : public MsgDispatcher {
  public:
   SecondaryMock(const Uptane::EcuSerial& serial, const Uptane::HardwareIdentifier& hdw_id, const PublicKey& pub_key,
-                const Uptane::Manifest& manifest, HandlerVersion handler_version = HandlerVersion::kV2)
+                const Uptane::Manifest& manifest, VerificationType vtype, HandlerVersion handler_version)
       : serial_(serial),
         hdw_id_(hdw_id),
         pub_key_(pub_key),
         manifest_(manifest),
         image_filepath_{image_dir_ / "image.bin"},
         hasher_{MultiPartHasher::create(Hash::Type::kSha256)},
+        vtype_{vtype},
         handler_version_(handler_version) {
     registerHandlers();
   }
@@ -162,7 +163,8 @@ class SecondaryMock : public MsgDispatcher {
     return ReturnCode::kOk;
   }
 
-  // This is basically the old implemention from AktualizrSecondary.
+  // This is basically the old implemention from AktualizrSecondary. The v1
+  // protocol never had TUF verification so it isn't accounted for here.
   MsgHandler::ReturnCode putMetaHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
     auto md = in_msg.putMetaReq();
 
@@ -191,19 +193,22 @@ class SecondaryMock : public MsgDispatcher {
     Uptane::MetaBundle meta_bundle;
 
     EXPECT_EQ(md->directorRepo.present, directorRepo_PR_collection);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
-    const int director_meta_count = md->directorRepo.choice.collection.list.count;
-    EXPECT_EQ(director_meta_count, 2);
-    for (int i = 0; i < director_meta_count; i++) {
-      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-union-access)
-      const AKMetaJson_t object = *md->directorRepo.choice.collection.list.array[i];
-      const std::string role = ToString(object.role);
-      std::string json = ToString(object.json);
-      if (role == Uptane::Role::ROOT) {
-        meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()), std::move(json));
-      } else if (role == Uptane::Role::TARGETS) {
-        meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
-                            std::move(json));
+    if (vtype_ == VerificationType::kFull) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
+      const int director_meta_count = md->directorRepo.choice.collection.list.count;
+      EXPECT_EQ(director_meta_count, 2);
+      for (int i = 0; i < director_meta_count; i++) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-union-access)
+        const AKMetaJson_t object = *md->directorRepo.choice.collection.list.array[i];
+        const std::string role = ToString(object.role);
+        std::string json = ToString(object.json);
+        if (role == Uptane::Role::ROOT) {
+          meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()),
+                              std::move(json));
+        } else if (role == Uptane::Role::TARGETS) {
+          meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
+                              std::move(json));
+        }
       }
     }
 
@@ -379,6 +384,7 @@ class SecondaryMock : public MsgDispatcher {
   std::unordered_map<unsigned int, Handler> handler_map_;
   std::string tls_creds_;
   std::string received_firmware_data_;
+  VerificationType vtype_;
   HandlerVersion handler_version_;
 };
 
@@ -450,14 +456,19 @@ class SecondaryRpcCommon : public ::testing::Test {
   const std::string image_targets_ = "image-targets";
 
  protected:
-  SecondaryRpcCommon(size_t image_size, HandlerVersion handler_version)
-      : secondary_{Uptane::EcuSerial("serial"), Uptane::HardwareIdentifier("hardware-id"),
-                   PublicKey("pub-key", KeyType::kED25519), Uptane::Manifest(), handler_version},
+  SecondaryRpcCommon(size_t image_size, HandlerVersion handler_version, VerificationType vtype)
+      : secondary_{Uptane::EcuSerial("serial"),
+                   Uptane::HardwareIdentifier("hardware-id"),
+                   PublicKey("pub-key", KeyType::kED25519),
+                   Uptane::Manifest(),
+                   vtype,
+                   handler_version},
         secondary_server_{secondary_, "", 0},
         secondary_server_thread_{std::bind(&SecondaryRpcCommon::runSecondaryServer, this)},
-        image_file_{"mytarget_image.img", image_size} {
+        image_file_{"mytarget_image.img", image_size},
+        vtype_{vtype} {
     secondary_server_.wait_until_running();
-    ip_secondary_ = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_server_.port());
+    ip_secondary_ = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_server_.port(), vtype);
 
     config_.pacman.ostree_server = server_;
     config_.pacman.type = PACKAGE_MANAGER_NONE;
@@ -491,10 +502,12 @@ class SecondaryRpcCommon : public ::testing::Test {
   }
 
   void verifyMetadata(const Uptane::MetaBundle& meta_bundle) {
-    EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root()),
-              director_root_);
-    EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
-              director_targets_);
+    if (vtype_ == VerificationType::kFull) {
+      EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root()),
+                director_root_);
+      EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
+                director_targets_);
+    }
     EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Root()),
               image_root_);
     EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Timestamp()),
@@ -591,6 +604,7 @@ class SecondaryRpcCommon : public ::testing::Test {
   SecondaryTcpServer secondary_server_;
   std::thread secondary_server_thread_;
   TargetFile image_file_;
+  VerificationType vtype_;
   SecondaryInterface::Ptr ip_secondary_;
   TemporaryDirectory temp_dir_;
   std::shared_ptr<INvStorage> storage_;
@@ -599,9 +613,9 @@ class SecondaryRpcCommon : public ::testing::Test {
 };
 
 class SecondaryRpcTest : public SecondaryRpcCommon,
-                         public ::testing::WithParamInterface<std::pair<size_t, HandlerVersion>> {
+                         public ::testing::WithParamInterface<std::tuple<size_t, HandlerVersion, VerificationType>> {
  protected:
-  SecondaryRpcTest() : SecondaryRpcCommon(GetParam().first, GetParam().second) {}
+  SecondaryRpcTest() : SecondaryRpcCommon(std::get<0>(GetParam()), std::get<1>(GetParam()), std::get<2>(GetParam())) {}
 };
 
 // Test the serialization/deserialization and the TCP/IP communication implementation
@@ -621,18 +635,27 @@ TEST_P(SecondaryRpcTest, AllRpcCallsTest) {
 /* These tests use a mock of most of the Secondary internals in order to test
  * the RPC mechanism between the Primary and IP Secondary. The tests cover the
  * old/v1/fallback handlers as well as the new/v2 versions. */
-INSTANTIATE_TEST_SUITE_P(
-    SecondaryRpcTestCases, SecondaryRpcTest,
-    ::testing::Values(std::make_pair(1, HandlerVersion::kV2), std::make_pair(1024, HandlerVersion::kV2),
-                      std::make_pair(1024 - 1, HandlerVersion::kV2), std::make_pair(1024 + 1, HandlerVersion::kV2),
-                      std::make_pair(1024 * 10 + 1, HandlerVersion::kV2), std::make_pair(1, HandlerVersion::kV1),
-                      std::make_pair(1024, HandlerVersion::kV1), std::make_pair(1024 - 1, HandlerVersion::kV1),
-                      std::make_pair(1024 + 1, HandlerVersion::kV1), std::make_pair(1024 * 10 + 1, HandlerVersion::kV1),
-                      std::make_pair(1024, HandlerVersion::kV2Failure)));
+INSTANTIATE_TEST_SUITE_P(SecondaryRpcTestCases, SecondaryRpcTest,
+                         ::testing::Values(std::make_tuple(1, HandlerVersion::kV2, VerificationType::kFull),
+                                           std::make_tuple(1024, HandlerVersion::kV2, VerificationType::kFull),
+                                           std::make_tuple(1024 - 1, HandlerVersion::kV2, VerificationType::kFull),
+                                           std::make_tuple(1024 + 1, HandlerVersion::kV2, VerificationType::kFull),
+                                           std::make_tuple(1024 * 10 + 1, HandlerVersion::kV2, VerificationType::kFull),
+                                           std::make_tuple(1, HandlerVersion::kV2, VerificationType::kTuf),
+                                           std::make_tuple(1024, HandlerVersion::kV2, VerificationType::kTuf),
+                                           std::make_tuple(1024 - 1, HandlerVersion::kV2, VerificationType::kTuf),
+                                           std::make_tuple(1024 + 1, HandlerVersion::kV2, VerificationType::kTuf),
+                                           std::make_tuple(1024 * 10 + 1, HandlerVersion::kV2, VerificationType::kTuf),
+                                           std::make_tuple(1, HandlerVersion::kV1, VerificationType::kFull),
+                                           std::make_tuple(1024, HandlerVersion::kV1, VerificationType::kFull),
+                                           std::make_tuple(1024 - 1, HandlerVersion::kV1, VerificationType::kFull),
+                                           std::make_tuple(1024 + 1, HandlerVersion::kV1, VerificationType::kFull),
+                                           std::make_tuple(1024 * 10 + 1, HandlerVersion::kV1, VerificationType::kFull),
+                                           std::make_tuple(1024, HandlerVersion::kV2Failure, VerificationType::kFull)));
 
 class SecondaryRpcUpgrade : public SecondaryRpcCommon {
  protected:
-  SecondaryRpcUpgrade() : SecondaryRpcCommon(1024, HandlerVersion::kV1) {}
+  SecondaryRpcUpgrade() : SecondaryRpcCommon(1024, HandlerVersion::kV1, VerificationType::kFull) {}
 };
 
 /* Test upgrade and downgrade of protocol versions after installation, both for
@@ -661,13 +684,13 @@ TEST(SecondaryTcpServer, TestIpSecondaryIfSecondaryIsNotRunning) {
   SecondaryInterface::Ptr ip_secondary;
 
   // Try to connect to a non-running Secondary and create a corresponding instance on Primary.
-  ip_secondary = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_port);
+  ip_secondary = Uptane::IpUptaneSecondary::connectAndCreate("localhost", secondary_port, VerificationType::kFull);
   EXPECT_EQ(ip_secondary, nullptr);
 
   // Create Secondary on Primary without actually connecting to Secondary.
-  ip_secondary = std::make_shared<Uptane::IpUptaneSecondary>("localhost", secondary_port, Uptane::EcuSerial("serial"),
-                                                             Uptane::HardwareIdentifier("hwid"),
-                                                             PublicKey("key", KeyType::kED25519));
+  ip_secondary = std::make_shared<Uptane::IpUptaneSecondary>(
+      "localhost", secondary_port, VerificationType::kFull, Uptane::EcuSerial("serial"),
+      Uptane::HardwareIdentifier("hwid"), PublicKey("key", KeyType::kED25519));
 
   TemporaryDirectory temp_dir;
   Config config;

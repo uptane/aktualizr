@@ -1,10 +1,18 @@
 #include "aktualizr_secondary_metadata.h"
 
 Metadata::Metadata(Uptane::MetaBundle meta_bundle_in) : meta_bundle_(std::move(meta_bundle_in)) {
-  director_root_version_ = Uptane::Version(Uptane::extractVersionUntrusted(
-      Uptane::getMetaFromBundle(meta_bundle_, Uptane::RepositoryType::Director(), Uptane::Role::Root())));
-  image_root_version_ = Uptane::Version(Uptane::extractVersionUntrusted(
-      Uptane::getMetaFromBundle(meta_bundle_, Uptane::RepositoryType::Image(), Uptane::Role::Root())));
+  try {
+    director_root_version_ = Uptane::Version(Uptane::extractVersionUntrusted(
+        Uptane::getMetaFromBundle(meta_bundle_, Uptane::RepositoryType::Director(), Uptane::Role::Root())));
+  } catch (const std::exception& e) {
+    LOG_DEBUG << "Failed to read Director Root version: " << e.what();
+  }
+  try {
+    image_root_version_ = Uptane::Version(Uptane::extractVersionUntrusted(
+        Uptane::getMetaFromBundle(meta_bundle_, Uptane::RepositoryType::Image(), Uptane::Role::Root())));
+  } catch (const std::exception& e) {
+    LOG_DEBUG << "Failed to read Image repo Root version: " << e.what();
+  }
 }
 
 void Metadata::fetchRole(std::string* result, int64_t maxsize, Uptane::RepositoryType repo, const Uptane::Role& role,

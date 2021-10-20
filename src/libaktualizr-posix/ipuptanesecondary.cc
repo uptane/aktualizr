@@ -12,7 +12,8 @@
 
 namespace Uptane {
 
-SecondaryInterface::Ptr IpUptaneSecondary::connectAndCreate(const std::string& address, unsigned short port) {
+SecondaryInterface::Ptr IpUptaneSecondary::connectAndCreate(const std::string& address, unsigned short port,
+                                                            VerificationType verification_type) {
   LOG_INFO << "Connecting to and getting info about IP Secondary: " << address << ":" << port << "...";
 
   ConnectionSocket con_sock{address, port};
@@ -25,10 +26,11 @@ SecondaryInterface::Ptr IpUptaneSecondary::connectAndCreate(const std::string& a
     return nullptr;
   }
 
-  return create(address, port, *con_sock);
+  return create(address, port, verification_type, *con_sock);
 }
 
-SecondaryInterface::Ptr IpUptaneSecondary::create(const std::string& address, unsigned short port, int con_fd) {
+SecondaryInterface::Ptr IpUptaneSecondary::create(const std::string& address, unsigned short port,
+                                                  VerificationType verification_type, int con_fd) {
   Asn1Message::Ptr req(Asn1Message::Empty());
   req->present(AKIpUptaneMes_PR_getInfoReq);
 
@@ -37,8 +39,8 @@ SecondaryInterface::Ptr IpUptaneSecondary::create(const std::string& address, un
 
   if (resp->present() != AKIpUptaneMes_PR_getInfoResp) {
     LOG_ERROR << "IP Secondary failed to respond to information request at " << address << ":" << port;
-    return std::make_shared<IpUptaneSecondary>(address, port, EcuSerial::Unknown(), HardwareIdentifier::Unknown(),
-                                               PublicKey("", KeyType::kUnknown));
+    return std::make_shared<IpUptaneSecondary>(address, port, verification_type, EcuSerial::Unknown(),
+                                               HardwareIdentifier::Unknown(), PublicKey("", KeyType::kUnknown));
   }
   auto r = resp->getInfoResp();
 
@@ -51,17 +53,17 @@ SecondaryInterface::Ptr IpUptaneSecondary::create(const std::string& address, un
   LOG_INFO << "Got ECU information from IP Secondary: "
            << "hardware ID: " << hw_id << " serial: " << serial;
 
-  return std::make_shared<IpUptaneSecondary>(address, port, serial, hw_id, pub_key);
+  return std::make_shared<IpUptaneSecondary>(address, port, verification_type, serial, hw_id, pub_key);
 }
 
 SecondaryInterface::Ptr IpUptaneSecondary::connectAndCheck(const std::string& address, unsigned short port,
-                                                           EcuSerial serial, HardwareIdentifier hw_id,
-                                                           PublicKey pub_key) {
+                                                           VerificationType verification_type, EcuSerial serial,
+                                                           HardwareIdentifier hw_id, PublicKey pub_key) {
   // try to connect:
   // - if it succeeds compare with what we expect
   // - otherwise, keep using what we know
   try {
-    auto sec = IpUptaneSecondary::connectAndCreate(address, port);
+    auto sec = IpUptaneSecondary::connectAndCreate(address, port, verification_type);
     if (sec != nullptr) {
       auto s = sec->getSerial();
       if (s != serial && serial != EcuSerial::Unknown()) {
@@ -88,12 +90,18 @@ SecondaryInterface::Ptr IpUptaneSecondary::connectAndCheck(const std::string& ad
     LOG_WARNING << "Could not connect to IP Secondary at " << address << ":" << port << " with serial " << serial;
   }
 
-  return std::make_shared<IpUptaneSecondary>(address, port, std::move(serial), std::move(hw_id), std::move(pub_key));
+  return std::make_shared<IpUptaneSecondary>(address, port, verification_type, std::move(serial), std::move(hw_id),
+                                             std::move(pub_key));
 }
 
-IpUptaneSecondary::IpUptaneSecondary(const std::string& address, unsigned short port, EcuSerial serial,
-                                     HardwareIdentifier hw_id, PublicKey pub_key)
-    : addr_{address, port}, serial_{std::move(serial)}, hw_id_{std::move(hw_id)}, pub_key_{std::move(pub_key)} {}
+IpUptaneSecondary::IpUptaneSecondary(const std::string& address, unsigned short port,
+                                     VerificationType verification_type, EcuSerial serial, HardwareIdentifier hw_id,
+                                     PublicKey pub_key)
+    : addr_{address, port},
+      verification_type_{verification_type},
+      serial_{std::move(serial)},
+      hw_id_{std::move(hw_id)},
+      pub_key_{std::move(pub_key)} {}
 
 /* Determine the best protocol version to use for this Secondary. This did not
  * exist for v1 and thus only works for v2 and beyond. It would be great if we
@@ -136,7 +144,13 @@ void IpUptaneSecondary::getSecondaryVersion() const {
 
 data::InstallationResult IpUptaneSecondary::putMetadata(const Target& target) {
   Uptane::MetaBundle meta_bundle;
-  if (!secondary_provider_->getMetadata(&meta_bundle, target)) {
+  bool load_result;
+  if (verification_type_ == VerificationType::kTuf) {
+    load_result = secondary_provider_->getImageRepoMetadata(&meta_bundle, target);
+  } else {
+    load_result = secondary_provider_->getMetadata(&meta_bundle, target);
+  }
+  if (!load_result) {
     return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
                                     "Unable to load stored metadata from Primary");
   }
@@ -160,15 +174,19 @@ data::InstallationResult IpUptaneSecondary::putMetadata(const Target& target) {
 data::InstallationResult IpUptaneSecondary::putMetadata_v1(const Uptane::MetaBundle& meta_bundle) {
   Asn1Message::Ptr req(Asn1Message::Empty());
   req->present(AKIpUptaneMes_PR_putMetaReq);
-
   auto m = req->putMetaReq();
+
   m->director.present = director_PR_json;
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
-  SetString(&m->director.choice.json.root,
-            getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root()));
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
-  SetString(&m->director.choice.json.targets,
-            getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets()));
+  // Technically no Secondary supported TUF verification with the v1 protocol,
+  // so this probably wouldn't work.
+  if (verification_type_ != VerificationType::kTuf) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
+    SetString(&m->director.choice.json.root,
+              getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root()));
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
+    SetString(&m->director.choice.json.targets,
+              getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets()));
+  }
 
   m->image.present = image_PR_json;
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
@@ -213,15 +231,17 @@ void IpUptaneSecondary::addMetadata(const Uptane::MetaBundle& meta_bundle, const
 data::InstallationResult IpUptaneSecondary::putMetadata_v2(const Uptane::MetaBundle& meta_bundle) {
   Asn1Message::Ptr req(Asn1Message::Empty());
   req->present(AKIpUptaneMes_PR_putMetaReq2);
-
   auto m = req->putMetaReq2();
-  m->directorRepo.present = directorRepo_PR_collection;
-  m->imageRepo.present = imageRepo_PR_collection;
 
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
-  addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root(), m->directorRepo.choice.collection);
-  addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets(),
-              m->directorRepo.choice.collection);  // NOLINT(cppcoreguidelines-pro-type-union-access)
+  m->directorRepo.present = directorRepo_PR_collection;
+  if (verification_type_ != VerificationType::kTuf) {
+    addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root(),
+                m->directorRepo.choice.collection);  // NOLINT(cppcoreguidelines-pro-type-union-access)
+    addMetadata(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets(),
+                m->directorRepo.choice.collection);  // NOLINT(cppcoreguidelines-pro-type-union-access)
+  }
+
+  m->imageRepo.present = imageRepo_PR_collection;
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
   addMetadata(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Root(), m->imageRepo.choice.collection);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)

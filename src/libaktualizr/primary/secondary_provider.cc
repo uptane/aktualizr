@@ -1,23 +1,60 @@
 #include "libaktualizr/secondary_provider.h"
+
 #include "logging/logging.h"
 #include "storage/invstorage.h"
 #include "uptane/tuf.h"
 
 bool SecondaryProvider::getMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const {
+  if (!getDirectorMetadata(meta_bundle)) {
+    return false;
+  }
+  if (!getImageRepoMetadata(meta_bundle, target)) {
+    return false;
+  }
+  return true;
+}
+
+bool SecondaryProvider::getDirectorMetadata(Uptane::MetaBundle* meta_bundle) const {
+  std::string root;
+  std::string targets;
+
+  if (!storage_->loadLatestRoot(&root, Uptane::RepositoryType::Director())) {
+    LOG_ERROR << "No Director Root metadata to send";
+    return false;
+  }
+  if (!storage_->loadNonRoot(&targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
+    LOG_ERROR << "No Director Targets metadata to send";
+    return false;
+  }
+
+  meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()), root);
+  meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()), targets);
+  return true;
+}
+
+bool SecondaryProvider::getImageRepoMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const {
   std::string root;
   std::string timestamp;
   std::string snapshot;
   std::string targets;
 
-  if (!getDirectorMetadata(&root, &targets)) {
+  if (!storage_->loadLatestRoot(&root, Uptane::RepositoryType::Image())) {
+    LOG_ERROR << "No Image repo Root metadata to send";
     return false;
   }
-  meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()), root);
-  meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()), targets);
+  if (!storage_->loadNonRoot(&timestamp, Uptane::RepositoryType::Image(), Uptane::Role::Timestamp())) {
+    LOG_ERROR << "No Image repo Timestamp metadata to send";
+    return false;
+  }
+  if (!storage_->loadNonRoot(&snapshot, Uptane::RepositoryType::Image(), Uptane::Role::Snapshot())) {
+    LOG_ERROR << "No Image repo Snapshot metadata to send";
+    return false;
+  }
+  if (!storage_->loadNonRoot(&targets, Uptane::RepositoryType::Image(), Uptane::Role::Targets())) {
+    LOG_ERROR << "No Image repo Targets metadata to send";
+    return false;
+  }
 
-  if (!getImageRepoMetadata(&root, &timestamp, &snapshot, &targets)) {
-    return false;
-  }
   meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Root()), root);
   meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp()), timestamp);
   meta_bundle->emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()), snapshot);
@@ -27,39 +64,6 @@ bool SecondaryProvider::getMetadata(Uptane::MetaBundle* meta_bundle, const Uptan
   // the desired Target.
   (void)target;
 
-  return true;
-}
-
-bool SecondaryProvider::getDirectorMetadata(std::string* root, std::string* targets) const {
-  if (!storage_->loadLatestRoot(root, Uptane::RepositoryType::Director())) {
-    LOG_ERROR << "No Director Root metadata to send";
-    return false;
-  }
-  if (!storage_->loadNonRoot(targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
-    LOG_ERROR << "No Director Targets metadata to send";
-    return false;
-  }
-  return true;
-}
-
-bool SecondaryProvider::getImageRepoMetadata(std::string* root, std::string* timestamp, std::string* snapshot,
-                                             std::string* targets) const {
-  if (!storage_->loadLatestRoot(root, Uptane::RepositoryType::Image())) {
-    LOG_ERROR << "No Image repo Root metadata to send";
-    return false;
-  }
-  if (!storage_->loadNonRoot(timestamp, Uptane::RepositoryType::Image(), Uptane::Role::Timestamp())) {
-    LOG_ERROR << "No Image repo Timestamp metadata to send";
-    return false;
-  }
-  if (!storage_->loadNonRoot(snapshot, Uptane::RepositoryType::Image(), Uptane::Role::Snapshot())) {
-    LOG_ERROR << "No Image repo Snapshot metadata to send";
-    return false;
-  }
-  if (!storage_->loadNonRoot(targets, Uptane::RepositoryType::Image(), Uptane::Role::Targets())) {
-    LOG_ERROR << "No Image repo Targets metadata to send";
-    return false;
-  }
   return true;
 }
 

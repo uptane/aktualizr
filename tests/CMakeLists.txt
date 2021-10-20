@@ -189,12 +189,9 @@ add_test(NAME test_log_negative
 set_tests_properties(test_log_negative
                      PROPERTIES PASS_REGULAR_EXPRESSION "Invalid log level")
 
-if (BUILD_OSTREE)
-    set(TEST_IPSEC_ARGS "--ostree")
-endif ()
 add_test(NAME test_ip_secondary
          COMMAND ${PROJECT_SOURCE_DIR}/tests/ipsecondary_test.py
-         --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR} ${TEST_IPSEC_ARGS})
+         --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
 set_tests_properties(test_ip_secondary PROPERTIES LABELS "noptest")
 
 add_test(NAME test_director_failure
@@ -213,6 +210,11 @@ add_test(NAME test_customrepo_failure
 set_tests_properties(test_customrepo_failure PROPERTIES LABELS "noptest")
 
 if(BUILD_OSTREE)
+    add_test(NAME test_ip_secondary_ostree
+             COMMAND ${PROJECT_SOURCE_DIR}/tests/ipsecondary_ostree_test.py
+             --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
+    set_tests_properties(test_ip_secondary_ostree PROPERTIES LABELS "noptest")
+
     add_test(NAME test_treehub_failure
              COMMAND ${PROJECT_SOURCE_DIR}/tests/test_treehub_failure.py
              --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})

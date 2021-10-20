@@ -53,18 +53,9 @@ class OstreeRootfs {
  public:
   OstreeRootfs(const std::string& rootfs_template) {
     auto sysroot_copy = Process("cp").run({"-r", rootfs_template, getPath().c_str()});
-    EXPECT_EQ(std::get<0>(sysroot_copy), 0) << std::get<1>(sysroot_copy);
-
-    auto deployment_rev = Process("ostree").run(
-        {"rev-parse", std::string("--repo"), getPath().string() + "/ostree/repo", "generate-remote/generated"});
-
-    EXPECT_EQ(std::get<0>(deployment_rev), 0) << std::get<2>(deployment_rev);
-
-    rev_ = std::get<1>(deployment_rev);
-    boost::trim_right_if(rev_, boost::is_any_of(" \t\r\n"));
-
-    deployment_.reset(ostree_deployment_new(0, getOSName(), getDeploymentRev(), getDeploymentSerial(),
-                                            getDeploymentRev(), getDeploymentSerial()));
+    EXPECT_EQ(std::get<0>(sysroot_copy), 0)
+        << "stdout: " << std::get<1>(sysroot_copy) << " stderr:" << std::get<2>(sysroot_copy);
+    resetDeployment();
   }
 
   const boost::filesystem::path& getPath() const { return sysroot_dir_; }
@@ -75,12 +66,33 @@ class OstreeRootfs {
   OstreeDeployment* getDeployment() const { return deployment_.get(); }
   void setNewDeploymentRev(const std::string& new_rev) { rev_ = new_rev; }
 
+  void resetDeployment() {
+    Process::Result deployment_rev;
+    // When reset after the first time, this annoyingly returns an error code
+    // despite apparently succeeding. Retry to be extra safe.
+    for (int i = 0; i < 2; ++i) {
+      deployment_rev = Process("ostree").run(
+          {"rev-parse", std::string("--repo"), getPath().string() + "/ostree/repo", "generate-remote/generated"});
+      if (std::get<0>(deployment_rev) == 0) {
+        break;
+      }
+    }
+
+    EXPECT_EQ(std::get<0>(deployment_rev), 0)
+        << "stdout: " << std::get<1>(deployment_rev) << " stderr:" << std::get<2>(deployment_rev);
+
+    rev_ = std::get<1>(deployment_rev);
+    boost::trim_right_if(rev_, boost::is_any_of(" \t\r\n"));
+
+    deployment_.reset(ostree_deployment_new(0, getOSName(), getDeploymentRev(), getDeploymentSerial(),
+                                            getDeploymentRev(), getDeploymentSerial()));
+  }
+
  private:
   struct OstreeDeploymentDeleter {
     void operator()(OstreeDeployment* e) const { g_object_unref(reinterpret_cast<gpointer>(e)); }
   };
 
- private:
   const std::string os_name_{"dummy-os"};
   TemporaryDirectory tmp_dir_;
   boost::filesystem::path sysroot_dir_{tmp_dir_ / "ostree-rootfs"};
@@ -90,9 +102,7 @@ class OstreeRootfs {
 
 class AktualizrSecondaryWrapper {
  public:
-  AktualizrSecondaryWrapper(const OstreeRootfs& sysroot, const Treehub& treehub) {
-    // OSTree update
-
+  AktualizrSecondaryWrapper(const OstreeRootfs& sysroot, const Treehub& treehub, const VerificationType vtype) {
     config_.pacman.type = PACKAGE_MANAGER_OSTREE;
     config_.pacman.os = sysroot.getOSName();
     config_.pacman.sysroot = sysroot.getPath();
@@ -104,12 +114,13 @@ class AktualizrSecondaryWrapper {
     config_.storage.path = storage_dir_.Path();
     config_.storage.type = StorageType::kSqlite;
 
+    config_.uptane.verification_type = vtype;
+
     storage_ = INvStorage::newStorage(config_.storage);
     secondary_ = std::make_shared<AktualizrSecondaryOstree>(config_, storage_);
     secondary_->initialize();
   }
 
- public:
   std::shared_ptr<AktualizrSecondaryOstree>& operator->() { return secondary_; }
 
   Uptane::Target getPendingVersion() const { return getVersion().first; }
@@ -196,7 +207,7 @@ class UptaneRepoWrapper {
   UptaneRepo uptane_repo_{root_dir_.Path(), "", ""};
 };
 
-class SecondaryOstreeTest : public ::testing::Test {
+class SecondaryOstreeTest : public ::testing::TestWithParam<VerificationType> {
  public:
   static const char* curOstreeRootfsRev(OstreeDeployment* ostree_depl) {
     (void)ostree_depl;
@@ -224,7 +235,12 @@ class SecondaryOstreeTest : public ::testing::Test {
   }
 
  protected:
-  SecondaryOstreeTest() {}
+  SecondaryOstreeTest() {
+    if (needs_reset_) {
+      sysroot_->resetDeployment();
+      needs_reset_ = false;
+    }
+  }
 
   Uptane::MetaBundle addDefaultTarget() { return addTarget(treehub_->curRev()); }
 
@@ -259,29 +275,36 @@ class SecondaryOstreeTest : public ::testing::Test {
   static std::shared_ptr<Treehub> treehub_;
   static std::string ostree_rootfs_template_;
   static std::shared_ptr<OstreeRootfs> sysroot_;
+  static bool needs_reset_;
 
-  AktualizrSecondaryWrapper secondary_{*sysroot_, *treehub_};
+  AktualizrSecondaryWrapper secondary_{*sysroot_, *treehub_, GetParam()};
   UptaneRepoWrapper uptane_repo_;
 };
 
 std::shared_ptr<Treehub> SecondaryOstreeTest::treehub_{nullptr};
 std::string SecondaryOstreeTest::ostree_rootfs_template_{"./build/ostree_repo"};
 std::shared_ptr<OstreeRootfs> SecondaryOstreeTest::sysroot_{nullptr};
+bool SecondaryOstreeTest::needs_reset_{false};
 
-TEST_F(SecondaryOstreeTest, fullUptaneVerificationInvalidRevision) {
+TEST_P(SecondaryOstreeTest, fullUptaneVerificationInvalidRevision) {
   EXPECT_TRUE(secondary_->putMetadata(addTarget("invalid-revision")).isSuccess());
   EXPECT_FALSE(secondary_->downloadOstreeUpdate(getCredsToSend()).isSuccess());
 }
 
-TEST_F(SecondaryOstreeTest, fullUptaneVerificationInvalidHwID) {
+TEST_P(SecondaryOstreeTest, fullUptaneVerificationInvalidHwID) {
   EXPECT_FALSE(secondary_->putMetadata(addTarget("", "invalid-hardware-id", "")).isSuccess());
 }
 
-TEST_F(SecondaryOstreeTest, fullUptaneVerificationInvalidSerial) {
-  EXPECT_FALSE(secondary_->putMetadata(addTarget("", "", "invalid-serial-id")).isSuccess());
+TEST_P(SecondaryOstreeTest, fullUptaneVerificationInvalidSerial) {
+  bool expected_result = false;
+  if (GetParam() == VerificationType::kTuf) {
+    // Serials aren't checked, so we won't notice the problem.
+    expected_result = true;
+  }
+  EXPECT_EQ(secondary_->putMetadata(addTarget("", "", "invalid-serial-id")).isSuccess(), expected_result);
 }
 
-TEST_F(SecondaryOstreeTest, verifyUpdatePositive) {
+TEST_P(SecondaryOstreeTest, verifyUpdatePositive) {
   // check the version reported in the manifest just after an initial boot
   Uptane::Manifest manifest = secondary_->getManifest();
   EXPECT_TRUE(manifest.verifySignature(secondary_->publicKey()));
@@ -322,7 +345,13 @@ TEST_F(SecondaryOstreeTest, verifyUpdatePositive) {
   manifest = secondary_->getManifest();
   EXPECT_TRUE(manifest.verifySignature(secondary_->publicKey()));
   EXPECT_EQ(manifest.installedImageHash(), treehubCurRevHash());
+
+  // The next run will require the OSTree deployment to be reset.
+  needs_reset_ = true;
 }
+
+INSTANTIATE_TEST_SUITE_P(SecondaryTestVerificationType, SecondaryOstreeTest,
+                         ::testing::Values(VerificationType::kFull, VerificationType::kTuf));
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

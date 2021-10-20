@@ -6,6 +6,7 @@
 #include <boost/property_tree/ini_parser.hpp>
 
 #include "libaktualizr/config.h"
+#include "libaktualizr/types.h"
 #include "utilities/config_utils.h"
 
 // Try to keep the order of config options the same as in
@@ -27,6 +28,7 @@ struct AktualizrSecondaryUptaneConfig {
   CryptoSource key_source{CryptoSource::kFile};
   KeyType key_type{KeyType::kRSA2048};
   bool force_install_completion{false};
+  VerificationType verification_type{VerificationType::kFull};
 
   void updateFromPropertyTree(const boost::property_tree::ptree& pt);
   void writeToStream(std::ostream& out_stream) const;

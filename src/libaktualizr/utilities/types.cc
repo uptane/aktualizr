@@ -23,6 +23,12 @@ std::ostream &operator<<(std::ostream &os, const StorageType stype) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
+  const std::string type_s = Uptane::VerificationTypeToString(vtype);
+  os << '"' << type_s << '"';
+  return os;
+}
+
 std::string TimeToString(struct tm time) {
   std::array<char, 22> formatted{};
   strftime(formatted.data(), 22, "%Y-%m-%dT%H:%M:%SZ", &time);
@@ -134,9 +140,9 @@ std::ostream &operator<<(std::ostream &os, const ResultCode &result_code) {
 
 }  // namespace data
 
-// vim: set tabstop=2 shiftwidth=2 expandtab:
-
 boost::filesystem::path utils::BasedPath::get(const boost::filesystem::path &base) const {
   // note: BasedPath(bp.get() == bp)
   return Utils::absolutePath(base, p_);
 }
+
+// vim: set tabstop=2 shiftwidth=2 expandtab:

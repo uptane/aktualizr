@@ -12,7 +12,7 @@ AktualizrSecondaryOstree::AktualizrSecondaryOstree(const AktualizrSecondaryConfi
                                                                    std::placeholders::_1, std::placeholders::_2));
 
   std::shared_ptr<OstreeManager> pack_man =
-      std::make_shared<OstreeManager>(config.pacman, config.bootloader, AktualizrSecondary::storagePtr(), nullptr);
+      std::make_shared<OstreeManager>(config.pacman, config.bootloader, AktualizrSecondary::storage(), nullptr);
   update_agent_ =
       std::make_shared<OstreeUpdateAgent>(config.pacman.sysroot, keyMngr(), pack_man, config.uptane.ecu_hardware_id);
 }
@@ -26,7 +26,7 @@ void AktualizrSecondaryOstree::initialize() {
     // an installation status of each ECU but store it just for a given secondary ECU
     std::vector<Uptane::Target> installed_versions;
     boost::optional<Uptane::Target> pending_target;
-    AktualizrSecondary::storage().loadInstalledVersions(serial().ToString(), nullptr, &pending_target);
+    AktualizrSecondary::storage()->loadInstalledVersions(serial().ToString(), nullptr, &pending_target);
 
     if (!!pending_target) {
       data::InstallationResult install_res =
@@ -36,20 +36,20 @@ void AktualizrSecondaryOstree::initialize() {
       install_res = applyPendingInstall(*pending_target);
 
       if (install_res.result_code != data::ResultCode::Numeric::kNeedCompletion) {
-        AktualizrSecondary::storage().saveEcuInstallationResult(serial(), install_res);
+        AktualizrSecondary::storage()->saveEcuInstallationResult(serial(), install_res);
 
         if (install_res.isSuccess()) {
           LOG_INFO << "Pending update has been successfully applied: " << pending_target->sha256Hash();
-          AktualizrSecondary::storage().saveInstalledVersion(serial().ToString(), *pending_target,
-                                                             InstalledVersionUpdateMode::kCurrent);
+          AktualizrSecondary::storage()->saveInstalledVersion(serial().ToString(), *pending_target,
+                                                              InstalledVersionUpdateMode::kCurrent);
         } else {
           LOG_ERROR << "Application of the pending update has failed: (" << install_res.result_code.toString() << ")"
                     << install_res.description;
-          AktualizrSecondary::storage().saveInstalledVersion(serial().ToString(), *pending_target,
-                                                             InstalledVersionUpdateMode::kNone);
+          AktualizrSecondary::storage()->saveInstalledVersion(serial().ToString(), *pending_target,
+                                                              InstalledVersionUpdateMode::kNone);
         }
 
-        directorRepo().dropTargets(AktualizrSecondary::storage());
+        directorRepo().dropTargets(*AktualizrSecondary::storage());
       } else {
         LOG_INFO << "Pending update hasn't been applied because a reboot hasn't been detected";
       }
@@ -69,17 +69,13 @@ MsgHandler::ReturnCode AktualizrSecondaryOstree::downloadOstreeRev(Asn1Message& 
 }
 
 data::InstallationResult AktualizrSecondaryOstree::downloadOstreeUpdate(const std::string& packed_tls_creds) {
-  if (!pendingTarget().IsValid()) {
+  if (!getPendingTarget().IsValid()) {
     LOG_ERROR << "Aborting image download; no valid target found.";
     return data::InstallationResult(data::ResultCode::Numeric::kGeneralError,
                                     "Aborting image download; no valid target found.");
   }
 
-  auto result = update_agent_->downloadTargetRev(pendingTarget(), packed_tls_creds);
-  if (!result.isSuccess()) {
-    pendingTarget() = Uptane::Target::Unknown();
-  }
-  return result;
+  return update_agent_->downloadTargetRev(getPendingTarget(), packed_tls_creds);
 }
 
 bool AktualizrSecondaryOstree::isTargetSupported(const Uptane::Target& target) const {

@@ -288,6 +288,8 @@ class Targets : public MetaWithKeys {
     terminating_role_.clear();
   }
 
+  // Only makes sense for Targets from the Director repo; the Image repo doesn't
+  // specify ECU serials.
   std::vector<Uptane::Target> getTargets(const Uptane::EcuSerial &ecu_id,
                                          const Uptane::HardwareIdentifier &hw_id) const {
     std::vector<Uptane::Target> result;
