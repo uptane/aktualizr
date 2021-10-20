@@ -10,7 +10,6 @@ class FileUpdateAgent : public UpdateAgent {
         new_target_filepath_{target_filepath_.string() + ".newtarget"},
         current_target_name_{std::move(target_name)} {}
 
- public:
   bool isTargetSupported(const Uptane::Target& target) const override;
   bool getInstalledImageInfo(Uptane::InstalledImageInfo& installed_image_info) const override;
 
@@ -23,7 +22,6 @@ class FileUpdateAgent : public UpdateAgent {
  private:
   static Hash getTargetHash(const Uptane::Target& target);
 
- private:
   const boost::filesystem::path target_filepath_;
   const boost::filesystem::path new_target_filepath_;
   std::string current_target_name_;

@@ -16,7 +16,9 @@ class P11ContextWrapper {
   explicit P11ContextWrapper(const boost::filesystem::path &module);
   ~P11ContextWrapper();  // NOLINT(performance-trivially-destructible)
   P11ContextWrapper(const P11ContextWrapper &) = delete;
+  P11ContextWrapper(P11ContextWrapper &&) = delete;
   P11ContextWrapper &operator=(const P11ContextWrapper &) = delete;
+  P11ContextWrapper &operator=(P11ContextWrapper &&) = delete;
   PKCS11_ctx_st *get() const { return ctx; }
 
  private:
@@ -28,13 +30,15 @@ class P11SlotsWrapper {
   explicit P11SlotsWrapper(PKCS11_ctx_st *ctx_in);
   ~P11SlotsWrapper();  // NOLINT(performance-trivially-destructible)
   P11SlotsWrapper(const P11SlotsWrapper &) = delete;
+  P11SlotsWrapper(P11SlotsWrapper &&) = delete;
   P11SlotsWrapper &operator=(const P11SlotsWrapper &) = delete;
-  PKCS11_slot_st *get_slots() const { return wslots_; }
+  P11SlotsWrapper &operator=(P11SlotsWrapper &&) = delete;
+  PKCS11_slot_st *get_slots() const { return slots_; }
   unsigned int get_nslots() const { return nslots; }
 
  private:
   PKCS11_ctx_st *ctx;  // NOLINT
-  PKCS11_slot_st *wslots_;
+  PKCS11_slot_st *slots_;
   unsigned int nslots;
 };
 
@@ -43,7 +47,9 @@ class P11EngineGuard;
 class P11Engine {
  public:
   P11Engine(const P11Engine &) = delete;
+  P11Engine(P11Engine &&) = delete;
   P11Engine &operator=(const P11Engine &) = delete;
+  P11Engine &operator=(P11Engine &&) = delete;
 
   virtual ~P11Engine() {
     if (ssl_engine_ != nullptr) {
@@ -67,7 +73,7 @@ class P11Engine {
   ENGINE *ssl_engine_{nullptr};
   std::string uri_prefix_;
   P11ContextWrapper ctx_;
-  P11SlotsWrapper slots_;
+  P11SlotsWrapper wslots_;
 
   static boost::filesystem::path findPkcsLibrary();
   PKCS11_slot_st *findTokenSlot() const;
@@ -85,7 +91,8 @@ class P11EngineGuard {
       instance = new P11Engine(config);
     }
     ++ref_counter;
-  };
+  }
+
   ~P11EngineGuard() {
     if (ref_counter != 0) {
       --ref_counter;
@@ -95,6 +102,12 @@ class P11EngineGuard {
       instance = nullptr;
     }
   }
+
+  P11EngineGuard(const P11EngineGuard &) = delete;
+  P11EngineGuard(P11EngineGuard &&) = delete;
+  P11EngineGuard &operator=(const P11EngineGuard &) = delete;
+  P11EngineGuard &operator=(P11EngineGuard &&) = delete;
+
   P11Engine *operator->() const { return instance; }
 
  private:

@@ -23,11 +23,12 @@ class SecondaryTcpServer {
 
   SecondaryTcpServer(MsgHandler& msg_handler, const std::string& primary_ip, in_port_t primary_port, in_port_t port = 0,
                      bool reboot_after_install = false);
-
+  ~SecondaryTcpServer() = default;
   SecondaryTcpServer(const SecondaryTcpServer&) = delete;
+  SecondaryTcpServer(SecondaryTcpServer&&) = delete;
   SecondaryTcpServer& operator=(const SecondaryTcpServer&) = delete;
+  SecondaryTcpServer& operator=(const SecondaryTcpServer&&) = delete;
 
- public:
   /**
    * Accept connections on the socket, decode requests and respond using the secondary implementation
    */
@@ -42,7 +43,6 @@ class SecondaryTcpServer {
  private:
   bool HandleOneConnection(int socket);
 
- private:
   MsgHandler& msg_handler_;
   ListenSocket listen_socket_;
   std::atomic<bool> keep_running_;

@@ -10,7 +10,7 @@ namespace Primary {
 
 class VirtualSecondaryConfig : public ManagedSecondaryConfig {
  public:
-  static const char* const Type;
+  static constexpr const char* const Type{"virtual"};
 
   VirtualSecondaryConfig() : ManagedSecondaryConfig(Type) {}
   explicit VirtualSecondaryConfig(const Json::Value& json_config);
@@ -22,7 +22,6 @@ class VirtualSecondaryConfig : public ManagedSecondaryConfig {
 class VirtualSecondary : public ManagedSecondary {
  public:
   explicit VirtualSecondary(Primary::VirtualSecondaryConfig sconfig_in);
-  ~VirtualSecondary() override = default;
 
   std::string Type() const override { return VirtualSecondaryConfig::Type; }
   data::InstallationResult putMetadata(const Uptane::Target& target) override;

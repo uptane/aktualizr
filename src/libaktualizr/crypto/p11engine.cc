@@ -43,11 +43,11 @@ P11ContextWrapper::~P11ContextWrapper() {
 P11SlotsWrapper::P11SlotsWrapper(PKCS11_ctx_st* ctx_in) {
   ctx = ctx_in;
   if (ctx == nullptr) {
-    wslots_ = nullptr;
+    slots_ = nullptr;
     nslots = 0;
     return;
   }
-  if (PKCS11_enumerate_slots(ctx, &wslots_, &nslots) != 0) {
+  if (PKCS11_enumerate_slots(ctx, &slots_, &nslots) != 0) {
     LOG_ERROR << "Couldn't enumerate slots"
               << ": " << ERR_error_string(ERR_get_error(), nullptr);
     throw std::runtime_error("PKCS11 error");
@@ -55,17 +55,17 @@ P11SlotsWrapper::P11SlotsWrapper(PKCS11_ctx_st* ctx_in) {
 }
 
 P11SlotsWrapper::~P11SlotsWrapper() {
-  if ((wslots_ != nullptr) && (nslots != 0U)) {
-    PKCS11_release_all_slots(ctx, wslots_, nslots);
+  if ((slots_ != nullptr) && (nslots != 0U)) {
+    PKCS11_release_all_slots(ctx, slots_, nslots);
   }
 }
 
-P11Engine::P11Engine(P11Config config) : config_(std::move(config)), ctx_(config_.module), slots_(ctx_.get()) {
+P11Engine::P11Engine(P11Config config) : config_(std::move(config)), ctx_(config_.module), wslots_(ctx_.get()) {
   if (config_.module.empty()) {
     return;
   }
 
-  PKCS11_SLOT* slot = PKCS11_find_token(ctx_.get(), slots_.get_slots(), slots_.get_nslots());
+  PKCS11_SLOT* slot = PKCS11_find_token(ctx_.get(), wslots_.get_slots(), wslots_.get_nslots());
   if ((slot == nullptr) || (slot->token == nullptr)) {
     throw std::runtime_error("Couldn't find pkcs11 token");
   }
@@ -127,6 +127,11 @@ P11Engine::P11Engine(P11Config config) : config_(std::move(config)), ctx_(config
   ssl_engine_ = engine;
 }
 
+// Hack for clang-tidy
+#ifndef PKCS11_ENGINE_PATH
+#define PKCS11_ENGINE_PATH "dummy"
+#endif
+
 boost::filesystem::path P11Engine::findPkcsLibrary() {
   static const boost::filesystem::path engine_path = PKCS11_ENGINE_PATH;
 
@@ -139,7 +144,7 @@ boost::filesystem::path P11Engine::findPkcsLibrary() {
 }
 
 PKCS11_SLOT* P11Engine::findTokenSlot() const {
-  PKCS11_SLOT* slot = PKCS11_find_token(ctx_.get(), slots_.get_slots(), slots_.get_nslots());
+  PKCS11_SLOT* slot = PKCS11_find_token(ctx_.get(), wslots_.get_slots(), wslots_.get_nslots());
   if ((slot == nullptr) || (slot->token == nullptr)) {
     LOG_ERROR << "Couldn't find a token";
     return nullptr;

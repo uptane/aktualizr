@@ -8,6 +8,10 @@ class FSStorageRead {
  public:
   explicit FSStorageRead(const StorageConfig& config);
   ~FSStorageRead() = default;
+  FSStorageRead(const FSStorageRead&) = delete;
+  FSStorageRead(FSStorageRead&&) = delete;
+  FSStorageRead& operator=(const FSStorageRead&) = delete;
+  FSStorageRead& operator=(FSStorageRead&&) = delete;
   bool loadPrimaryKeys(std::string* public_key, std::string* private_key) const;
   bool loadPrimaryPublic(std::string* public_key) const;
   bool loadPrimaryPrivate(std::string* private_key) const;

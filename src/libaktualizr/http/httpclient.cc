@@ -87,7 +87,8 @@ HttpClient::HttpClient(const std::string& socket) {
   curlEasySetoptWrapper(curl, CURLOPT_USERAGENT, Utils::getUserAgent());
 }
 
-HttpClient::HttpClient(const HttpClient& curl_in) : pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
+HttpClient::HttpClient(const HttpClient& curl_in)
+    : HttpInterface(curl_in), pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
   curl = curl_easy_duphandle(curl_in.curl);
   headers = curl_slist_dup(curl_in.headers);
 }

@@ -37,8 +37,11 @@ class Asn1Message {
   template <typename T>
   using SubPtr = Asn1Sub<T>;
 
+  ~Asn1Message() { ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_AKIpUptaneMes, &msg_); }
   Asn1Message(const Asn1Message&) = delete;
+  Asn1Message(Asn1Message&&) = delete;
   Asn1Message operator=(const Asn1Message&) = delete;
+  Asn1Message operator=(Asn1Message&&) = delete;
 
   /**
    * Create a new Asn1Message, in order to fill it with data and send it
@@ -52,7 +55,6 @@ class Asn1Message {
    */
   static Asn1Message::Ptr FromRaw(AKIpUptaneMes_t** msg) { return new Asn1Message(msg); }
 
-  ~Asn1Message() { ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_AKIpUptaneMes, &msg_); }
   friend void intrusive_ptr_add_ref(Asn1Message* m) { m->ref_count_++; }
   friend void intrusive_ptr_release(Asn1Message* m) {
     if (--m->ref_count_ == 0) {
@@ -101,7 +103,7 @@ class Asn1Message {
   case MessageID:                               \
     return #MessageID;
 
-  const char* toStr() {
+  const char* toStr() const {
     switch (present()) {
       default:
         ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_NOTHING);
@@ -149,6 +151,7 @@ class Asn1Message {
   explicit Asn1Message(AKIpUptaneMes_t** msg) {
     if (msg != nullptr && *msg != nullptr) {
       memmove(&msg_, *msg, sizeof(AKIpUptaneMes_t));
+      // NOLINTNEXTLINE(cppcoreguidelines-no-malloc, hicpp-no-malloc)
       free(*msg);  // Be careful. This needs to be the same free() used in der_decode
       *msg = nullptr;
     }
@@ -186,6 +189,7 @@ Asn1Message::Ptr Asn1Rpc(const Asn1Message::Ptr& tx, const std::pair<std::string
  */
 template <typename T>
 T* Asn1Allocation() {
+  // NOLINTNEXTLINE(cppcoreguidelines-no-malloc, hicpp-no-malloc)
   auto ptr = static_cast<T*>(calloc(1, sizeof(T)));
   if (!ptr) {
     throw std::bad_alloc();

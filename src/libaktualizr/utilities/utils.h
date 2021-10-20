@@ -68,9 +68,11 @@ struct Utils {
 class TemporaryFile {
  public:
   explicit TemporaryFile(const std::string &hint = "file");
-  TemporaryFile(const TemporaryFile &) = delete;
-  TemporaryFile operator=(const TemporaryFile &) = delete;
   ~TemporaryFile();
+  TemporaryFile(const TemporaryFile &guard) = delete;
+  TemporaryFile(TemporaryFile &&) = delete;
+  TemporaryFile &operator=(const TemporaryFile &guard) = delete;
+  TemporaryFile &operator=(TemporaryFile &&) = delete;
   void PutContents(const std::string &contents) const;
   boost::filesystem::path Path() const;
   std::string PathString() const;
@@ -82,9 +84,11 @@ class TemporaryFile {
 class TemporaryDirectory {
  public:
   explicit TemporaryDirectory(const std::string &hint = "dir");
-  TemporaryDirectory(const TemporaryDirectory &) = delete;
-  TemporaryDirectory operator=(TemporaryDirectory &) = delete;
   ~TemporaryDirectory();
+  TemporaryDirectory(const TemporaryDirectory &guard) = delete;
+  TemporaryDirectory(TemporaryDirectory &&) = delete;
+  TemporaryDirectory &operator=(const TemporaryDirectory &guard) = delete;
+  TemporaryDirectory &operator=(TemporaryDirectory &&) = delete;
   boost::filesystem::path Path() const;
   std::string PathString() const;
   boost::filesystem::path operator/(const boost::filesystem::path &subdir) const;
@@ -105,11 +109,12 @@ using StructGuardInt = std::unique_ptr<T, int (*)(T *)>;
 class Socket {
  public:
   Socket();
-  Socket(int fd) : socket_fd_(fd) {}
+  explicit Socket(int fd) : socket_fd_(fd) {}
   virtual ~Socket();
-
-  Socket(const Socket &) = delete;
-  Socket &operator=(const Socket &) = delete;
+  Socket(const Socket &guard) = delete;
+  Socket(Socket &&) = delete;
+  Socket &operator=(const Socket &guard) = delete;
+  Socket &operator=(Socket &&) = delete;
 
   int &operator*() { return socket_fd_; }
   std::string ToString() const;
@@ -117,7 +122,6 @@ class Socket {
  protected:
   void bind(in_port_t port, bool reuse = true) const;
 
- protected:
   int socket_fd_;
 };
 
@@ -125,8 +129,11 @@ class ConnectionSocket : public Socket {
  public:
   ConnectionSocket(const std::string &ip, in_port_t port, in_port_t bind_port = 0);
   ~ConnectionSocket() override;
+  ConnectionSocket(const ConnectionSocket &guard) = delete;
+  ConnectionSocket(ConnectionSocket &&) = delete;
+  ConnectionSocket &operator=(const ConnectionSocket &guard) = delete;
+  ConnectionSocket &operator=(ConnectionSocket &&) = delete;
 
- public:
   int connect();
 
  private:
@@ -135,7 +142,7 @@ class ConnectionSocket : public Socket {
 
 class ListenSocket : public Socket {
  public:
-  ListenSocket(in_port_t port);
+  explicit ListenSocket(in_port_t port);
   in_port_t port() const { return _port; }
 
  private:
@@ -147,6 +154,10 @@ class CurlEasyWrapper {
  public:
   CurlEasyWrapper();
   ~CurlEasyWrapper();
+  CurlEasyWrapper(const CurlEasyWrapper &guard) = delete;
+  CurlEasyWrapper(CurlEasyWrapper &&) = delete;
+  CurlEasyWrapper &operator=(const CurlEasyWrapper &guard) = delete;
+  CurlEasyWrapper &operator=(CurlEasyWrapper &&) = delete;
   CURL *get() { return handle; }
 
  private:

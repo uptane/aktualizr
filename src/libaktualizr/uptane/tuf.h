@@ -30,8 +30,9 @@ class RepositoryType {
   RepositoryType() = default;
   static constexpr int Director() { return static_cast<int>(Type::kDirector); }
   static constexpr int Image() { return static_cast<int>(Type::kImage); }
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   RepositoryType(int type) { type_ = static_cast<RepositoryType::Type>(type); }
-  RepositoryType(const std::string &repo_type) {
+  explicit RepositoryType(const std::string &repo_type) {
     if (repo_type == DIRECTOR) {
       type_ = RepositoryType::Type::kDirector;
     } else if (repo_type == IMAGE) {
@@ -40,7 +41,9 @@ class RepositoryType {
       throw std::runtime_error(std::string("Incorrect repo type: ") + repo_type);
     }
   }
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   operator int() const { return static_cast<int>(type_); }
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   operator std::string() const { return ToString(); }
   Type type_;
   std::string ToString() const {
@@ -174,11 +177,12 @@ class MetaWithKeys : public BaseMeta {
    * delegations) and that implements TUF signature validation.
    * @param json - The contents of the 'signed' portion
    */
-  MetaWithKeys(const Json::Value &json);
+  explicit MetaWithKeys(const Json::Value &json);
   MetaWithKeys(RepositoryType repo, const Role &role, const Json::Value &json,
                const std::shared_ptr<MetaWithKeys> &signer);
 
   virtual ~MetaWithKeys() = default;
+  MetaWithKeys(const MetaWithKeys &guard) = default;
 
   void ParseKeys(RepositoryType repo, const Json::Value &keys);
   // role is the name of a role described in this object's metadata.
@@ -208,6 +212,10 @@ class MetaWithKeys : public BaseMeta {
   }
 
  protected:
+  MetaWithKeys(MetaWithKeys &&) = default;
+  MetaWithKeys &operator=(const MetaWithKeys &guard) = default;
+  MetaWithKeys &operator=(MetaWithKeys &&) = default;
+
   static const int64_t kMinSignatures = 1;
   static const int64_t kMaxSignatures = 1000;
 
@@ -230,8 +238,6 @@ class Root : public MetaWithKeys {
    */
   Root(RepositoryType repo, const Json::Value &json);
   Root(RepositoryType repo, const Json::Value &json, Root &root);
-
-  ~Root() override = default;
 
   /**
    * Take a JSON blob that contains a signatures/signed component that is supposedly for a given role, and check that is
@@ -277,7 +283,6 @@ class Targets : public MetaWithKeys {
   explicit Targets(const Json::Value &json);
   Targets(RepositoryType repo, const Role &role, const Json::Value &json, const std::shared_ptr<MetaWithKeys> &signer);
   Targets() = default;
-  ~Targets() override = default;
 
   bool operator==(const Targets &rhs) const {
     return version_ == rhs.version() && expiry_ == rhs.expiry() && MatchTargetVector(targets, rhs.targets);

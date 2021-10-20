@@ -1,3 +1,5 @@
+#include "ipuptanesecondary.h"
+
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
@@ -6,8 +8,9 @@
 
 #include "asn1/asn1_message.h"
 #include "der_encoder.h"
-#include "ipuptanesecondary.h"
 #include "logging/logging.h"
+#include "uptane/tuf.h"
+#include "utilities/utils.h"
 
 namespace Uptane {
 
