@@ -23,7 +23,6 @@ add_aktualizr_test(NAME aktualizr
                    PROJECT_WORKING_DIRECTORY
                    ARGS ${PROJECT_BINARY_DIR}/uptane_repos
                    LIBRARIES uptane_generator_lib virtual_secondary)
-
 add_dependencies(t_aktualizr uptane_repo_full_no_correlation_id)
 
 add_aktualizr_test(NAME reregistration

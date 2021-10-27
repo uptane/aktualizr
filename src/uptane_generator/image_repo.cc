@@ -25,7 +25,7 @@ void ImageRepo::addBinaryImage(const boost::filesystem::path &image_path, const 
 
   auto targetname_dir = targetname.parent_path();
   boost::filesystem::create_directories(targets_path / targetname_dir);
-  boost::filesystem::copy_file(image_path, targets_path / targetname_dir / image_path.filename(),
+  boost::filesystem::copy_file(image_path, targets_path / targetname_dir / targetname.filename(),
                                boost::filesystem::copy_option::overwrite_if_exists);
 
   std::string image = Utils::readFile(image_path);
