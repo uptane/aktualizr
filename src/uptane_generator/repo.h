@@ -40,6 +40,7 @@ class Repo {
   Json::Value signTuf(const Uptane::Role &role, const Json::Value &json);
   void generateCampaigns() const;
   void refresh(const Uptane::Role &role);
+  void rotate(const Uptane::Role &role, KeyType key_type = KeyType::kRSA2048);
 
  protected:
   void generateRepoKeys(KeyType key_type);
@@ -56,6 +57,7 @@ class Repo {
 
  private:
   void addDelegationToSnapshot(Json::Value *snapshot, const Uptane::Role &role);
+  static Json::Value signTuf(const KeyPair &key, const Json::Value &json);
 };
 
 #endif  // REPO_H_

@@ -591,9 +591,61 @@ TEST(uptane_generator, refreshImageTargets) {
   check_repo(temp_dir);
 }
 
+void test_rotation(const Uptane::RepositoryType repo_type) {
+  TemporaryDirectory temp_dir;
 
+  boost::filesystem::path repo_dir;
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    repo_dir = temp_dir.Path() / DirectorRepo::dir;
+  } else {
+    repo_dir = temp_dir.Path() / ImageRepo::dir;
+  }
+
+  UptaneRepo repo(temp_dir.Path(), "", "");
+  repo.generateRepo(key_type);
+  repo.rotate(repo_type, Uptane::Role::Root(), key_type);
+
+  const auto root1_raw = Utils::readFile(repo_dir / "1.root.json");
+  const auto root2_raw = Utils::readFile(repo_dir / "2.root.json");
+  auto root = Uptane::Root(repo_type, Utils::parseJSON(root1_raw));  // initialization and format check
+  root = Uptane::Root(repo_type, Utils::parseJSON(root1_raw),
+                      root);                                          // signature verification against itself
+  root = Uptane::Root(repo_type, Utils::parseJSON(root2_raw), root);  // verify new Root
+
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    checkVersions(temp_dir, 2, 2, 2, 1, 1, 1, 1, 1);
+  } else {
+    checkVersions(temp_dir, 1, 1, 1, 1, 2, 2, 2, 1);
+  }
   check_repo(temp_dir);
+
+  repo.rotate(repo_type, Uptane::Role::Root(), key_type);
+  const auto root3_raw = Utils::readFile(repo_dir / "3.root.json");
+  root = Uptane::Root(repo_type, Utils::parseJSON(root3_raw), root);  // verify new Root
+
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    checkVersions(temp_dir, 3, 3, 3, 1, 1, 1, 1, 1);
+  } else {
+    checkVersions(temp_dir, 1, 1, 1, 1, 3, 3, 3, 1);
+  }
+  check_repo(temp_dir);
+
+  // Skip v2 and thus expect failure when verifying v3.
+  root = Uptane::Root(repo_type, Utils::parseJSON(root1_raw));  // initialization and format check
+  root = Uptane::Root(repo_type, Utils::parseJSON(root1_raw),
+                      root);  // signature verification against itself
+  EXPECT_THROW(Uptane::Root(repo_type, Utils::parseJSON(root3_raw), root), Uptane::UnmetThreshold);
 }
+
+/*
+ * Rotate the Director Root.
+ */
+TEST(uptane_generator, rotateDirectorRoot) { test_rotation(Uptane::RepositoryType::Director()); }
+
+/*
+ * Rotate the Image repo Root.
+ */
+TEST(uptane_generator, rotateImageRoot) { test_rotation(Uptane::RepositoryType::Image()); }
 
 #ifndef __NO_MAIN__
 int main(int argc, char **argv) {

@@ -47,9 +47,17 @@ void UptaneRepo::oldTargets() { director_repo_.oldTargets(); }
 void UptaneRepo::generateCampaigns() { director_repo_.generateCampaigns(); }
 
 void UptaneRepo::refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role) {
-  if (repo_type == Uptane::RepositoryType(Uptane::RepositoryType::Director())) {
+  if (repo_type == Uptane::RepositoryType::Director()) {
     director_repo_.refresh(role);
-  } else if (repo_type == Uptane::RepositoryType(Uptane::RepositoryType::Image())) {
+  } else if (repo_type == Uptane::RepositoryType::Image()) {
     image_repo_.refresh(role);
+  }
+}
+
+void UptaneRepo::rotate(Uptane::RepositoryType repo_type, const Uptane::Role &role, KeyType key_type) {
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    director_repo_.rotate(role, key_type);
+  } else if (repo_type == Uptane::RepositoryType::Image()) {
+    image_repo_.rotate(role, key_type);
   }
 }

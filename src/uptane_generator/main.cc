@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
                                           "oldtargets: \tfill the staged Director Targets metadata with what is currently signed\n"
                                           "sign: \tsign arbitrary metadata with repo keys\n"
                                           "addcampaigns: \tgenerate campaigns json\n"
-                                          "refresh: \trefresh a metadata object (bump the version)")
+                                          "refresh: \trefresh a metadata object (bump the version)\n"
+                                          "rotate: \trotate a Root metadata key")
     ("path", po::value<boost::filesystem::path>(), "path to the repository")
     ("filename", po::value<boost::filesystem::path>(), "path to the image")
     ("hwid", po::value<std::string>(), "target hardware identifier")
@@ -237,6 +238,13 @@ int main(int argc, char **argv) {
         }
         repo.refresh(Uptane::RepositoryType(vm["repotype"].as<std::string>()),
                      Uptane::Role(vm["keyname"].as<std::string>()));
+      } else if (command == "rotate") {
+        if (vm.count("repotype") == 0) {
+          std::cerr << "refresh command requires --repotype\n";
+          exit(EXIT_FAILURE);
+        }
+        KeyType key_type = parseKeyType(vm);
+        repo.rotate(Uptane::RepositoryType(vm["repotype"].as<std::string>()), Uptane::Role::Root(), key_type);
       } else {
         std::cout << desc << std::endl;
         exit(EXIT_FAILURE);
