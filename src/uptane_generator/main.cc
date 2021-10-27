@@ -186,8 +186,8 @@ int main(int argc, char **argv) {
         std::string dparent = vm["dparent"].as<std::string>();
         std::string dpattern = vm["dpattern"].as<std::string>();
         KeyType key_type = parseKeyType(vm);
-        repo.addDelegation(Uptane::Role(dname, true), Uptane::Role(dparent, dparent != "targets"),
-                           vm["dpattern"].as<std::string>(), vm["dterm"].as<bool>(), key_type);
+        repo.addDelegation(Uptane::Role(dname, true), Uptane::Role(dparent, dparent != "targets"), dpattern,
+                           vm["dterm"].as<bool>(), key_type);
         std::cout << "Added a delegated role " << dname << " with dpattern " << dpattern
                   << " to the Image repo metadata" << std::endl;
       } else if (command == "revokedelegation") {
