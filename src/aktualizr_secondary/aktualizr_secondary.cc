@@ -310,7 +310,7 @@ void AktualizrSecondary::copyMetadata(Uptane::MetaBundle& meta_bundle, const Upt
                                       const Uptane::Role& role, std::string& json) {
   auto key = std::make_pair(repo, role);
   if (meta_bundle.count(key) > 0) {
-    LOG_WARNING << repo.toString() << " metadata in contains multiple " << role.ToString() << " objects.";
+    LOG_WARNING << repo << " metadata in contains multiple " << role << " objects.";
     return;
   }
   meta_bundle.emplace(key, std::move(json));

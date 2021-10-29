@@ -26,14 +26,14 @@ void SQLStorage::cleanMetaVersion(Uptane::RepositoryType repo, const Uptane::Rol
     // Nothing to do here. The log message that used to be here was confusing.
     return;
   } else if (result != SQLITE_ROW) {
-    LOG_ERROR << "Failed to get " << repo.toString() << " " << role.ToString() << " metadata: " << db.errmsg();
+    LOG_ERROR << "Failed to get " << repo << " " << role << " metadata: " << db.errmsg();
     return;
   }
   const std::string meta = std::string(reinterpret_cast<const char*>(sqlite3_column_blob(statement.get(), 0)));
 
   const int version = Uptane::extractVersionUntrusted(meta);
   if (version < 0) {
-    LOG_ERROR << "Corrupted " << repo.toString() << " " << role.ToString() << " metadata.";
+    LOG_ERROR << "Corrupted " << repo << " " << role << " metadata.";
     return;
   }
 
@@ -42,7 +42,7 @@ void SQLStorage::cleanMetaVersion(Uptane::RepositoryType repo, const Uptane::Rol
                                                  static_cast<int>(repo), role.ToInt(), version);
 
   if (statement.step() != SQLITE_DONE) {
-    LOG_ERROR << "Failed to clear " << repo.toString() << " " << role.ToString() << " metadata: " << db.errmsg();
+    LOG_ERROR << "Failed to clear " << repo << " " << role << " metadata: " << db.errmsg();
     return;
   }
 
@@ -51,7 +51,7 @@ void SQLStorage::cleanMetaVersion(Uptane::RepositoryType repo, const Uptane::Rol
       role.ToInt(), -1);
 
   if (statement.step() != SQLITE_DONE) {
-    LOG_ERROR << "Failed to update " << repo.toString() << " " << role.ToString() << " metadata: " << db.errmsg();
+    LOG_ERROR << "Failed to update " << repo << " " << role << " metadata: " << db.errmsg();
     return;
   }
 
@@ -541,7 +541,7 @@ void SQLStorage::storeNonRoot(const std::string& data, Uptane::RepositoryType re
                                                      static_cast<int>(repo), role.ToInt());
 
   if (del_statement.step() != SQLITE_DONE) {
-    LOG_ERROR << "Failed to clear " << role.ToString() << " metadata: " << db.errmsg();
+    LOG_ERROR << "Failed to clear " << role << " metadata: " << db.errmsg();
     return;
   }
 
@@ -550,7 +550,7 @@ void SQLStorage::storeNonRoot(const std::string& data, Uptane::RepositoryType re
                                                   static_cast<int>(repo), role.ToInt(), Uptane::Version().version());
 
   if (ins_statement.step() != SQLITE_DONE) {
-    LOG_ERROR << "Failed to add " << role.ToString() << "metadata: " << db.errmsg();
+    LOG_ERROR << "Failed to add " << role << "metadata: " << db.errmsg();
     return;
   }
 
@@ -615,10 +615,10 @@ bool SQLStorage::loadNonRoot(std::string* data, Uptane::RepositoryType repo, con
   int result = statement.step();
 
   if (result == SQLITE_DONE) {
-    LOG_TRACE << role.ToString() << " metadata not found in database";
+    LOG_TRACE << role << " metadata not found in database";
     return false;
   } else if (result != SQLITE_ROW) {
-    LOG_ERROR << "Failed to get " << role.ToString() << " metadata: " << db.errmsg();
+    LOG_ERROR << "Failed to get " << role << " metadata: " << db.errmsg();
     return false;
   }
   if (data != nullptr) {

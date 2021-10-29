@@ -122,7 +122,7 @@ std::string Repo::getExpirationTime(const std::string &expires) {
   }
 }
 void Repo::generateKeyPair(KeyType key_type, const Uptane::Role &key_name) {
-  boost::filesystem::path keys_dir = path_ / ("keys/" + repo_type_.toString() + "/" + key_name.ToString());
+  boost::filesystem::path keys_dir = path_ / ("keys/" + repo_type_.ToString() + "/" + key_name.ToString());
   boost::filesystem::create_directories(keys_dir);
 
   std::string public_key_string;
@@ -266,7 +266,7 @@ Json::Value Repo::getTarget(const std::string &target_name) {
 }
 
 void Repo::readKeys() {
-  auto keys_path = path_ / "keys" / repo_type_.toString();
+  auto keys_path = path_ / "keys" / repo_type_.ToString();
   for (auto &p : boost::filesystem::directory_iterator(keys_path)) {
     std::string public_key_string = Utils::readFile(p / "public.key");
     std::istringstream key_type_str(Utils::readFile(p / "key_type"));

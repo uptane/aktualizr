@@ -41,9 +41,9 @@ class RepositoryType {
     }
   }
   operator int() const { return static_cast<int>(type_); }
-  operator std::string() const { return toString(); }
+  operator std::string() const { return ToString(); }
   Type type_;
-  std::string toString() const {
+  std::string ToString() const {
     if (type_ == RepositoryType::Type::kDirector) {
       return DIRECTOR;
     } else if (type_ == RepositoryType::Type::kImage) {
@@ -52,7 +52,11 @@ class RepositoryType {
       return "";
     }
   }
+
+  friend std::ostream &operator<<(std::ostream &os, const RepositoryType &repo_type);
 };
+
+std::ostream &operator<<(std::ostream &os, const RepositoryType &repo_type);
 
 using KeyId = std::string;
 /**
@@ -357,7 +361,7 @@ class Snapshot : public BaseMeta {
 
 struct MetaPairHash {
   std::size_t operator()(const std::pair<RepositoryType, Role> &pair) const {
-    return std::hash<std::string>()(pair.first.toString()) ^ std::hash<std::string>()(pair.second.ToString());
+    return std::hash<std::string>()(pair.first.ToString()) ^ std::hash<std::string>()(pair.second.ToString());
   }
 };
 

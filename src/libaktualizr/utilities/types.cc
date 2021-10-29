@@ -23,6 +23,16 @@ std::ostream &operator<<(std::ostream &os, const StorageType stype) {
   return os;
 }
 
+std::ostream &Uptane::operator<<(std::ostream &os, const HardwareIdentifier &hwid) {
+  os << hwid.ToString();
+  return os;
+}
+
+std::ostream &Uptane::operator<<(std::ostream &os, const EcuSerial &ecu_serial) {
+  os << ecu_serial.ToString();
+  return os;
+}
+
 std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
   const std::string type_s = Uptane::VerificationTypeToString(vtype);
   os << '"' << type_s << '"';
@@ -92,7 +102,7 @@ const std::map<data::ResultCode::Numeric, const char *> data::ResultCode::string
 };
 
 std::string data::ResultCode::toRepr() const {
-  std::string s = toString();
+  std::string s = ToString();
 
   if (s.find('\"') != std::string::npos) {
     throw std::runtime_error("Result code cannot contain double quotes");
@@ -128,7 +138,7 @@ ResultCode data::ResultCode::fromRepr(const std::string &repr) {
 Json::Value InstallationResult::toJson() const {
   Json::Value json;
   json["success"] = success;
-  json["code"] = result_code.toString();
+  json["code"] = result_code.ToString();
   json["description"] = description;
   return json;
 }
