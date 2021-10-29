@@ -72,10 +72,8 @@ class SecondaryMock : public MsgDispatcher {
   void registerBaseHandlers() {
     registerHandler(AKIpUptaneMes_PR_getInfoReq,
                     std::bind(&SecondaryMock::getInfoHdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_versionReq,
                     std::bind(&SecondaryMock::versionHdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_manifestReq,
                     std::bind(&SecondaryMock::getManifestHdlr, this, std::placeholders::_1, std::placeholders::_2));
   }
@@ -84,42 +82,48 @@ class SecondaryMock : public MsgDispatcher {
   void registerV1Handlers() {
     registerHandler(AKIpUptaneMes_PR_putMetaReq,
                     std::bind(&SecondaryMock::putMetaHdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_sendFirmwareReq,
                     std::bind(&SecondaryMock::sendFirmwareHdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_installReq,
                     std::bind(&SecondaryMock::installHdlr, this, std::placeholders::_1, std::placeholders::_2));
+
+    // These didn't exist in v1 and should just simply fail.
+    registerHandler(AKIpUptaneMes_PR_rootVerReq,
+                    std::bind(&SecondaryMock::rootVerFailureHdlr, this, std::placeholders::_1, std::placeholders::_2));
+    registerHandler(AKIpUptaneMes_PR_putRootReq,
+                    std::bind(&SecondaryMock::putRootFailureHdlr, this, std::placeholders::_1, std::placeholders::_2));
   }
 
   // Used by protocol v2 (based on current aktualizr-secondary implementation) only:
   void registerV2Handlers() {
     registerHandler(AKIpUptaneMes_PR_putMetaReq2,
                     std::bind(&SecondaryMock::putMeta2Hdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_uploadDataReq,
                     std::bind(&SecondaryMock::uploadDataHdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_downloadOstreeRevReq,
                     std::bind(&SecondaryMock::downloadOstreeRev, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_installReq,
                     std::bind(&SecondaryMock::install2Hdlr, this, std::placeholders::_1, std::placeholders::_2));
+    registerHandler(AKIpUptaneMes_PR_rootVerReq,
+                    std::bind(&SecondaryMock::rootVerHdlr, this, std::placeholders::_1, std::placeholders::_2));
+    registerHandler(AKIpUptaneMes_PR_putRootReq,
+                    std::bind(&SecondaryMock::putRootHdlr, this, std::placeholders::_1, std::placeholders::_2));
   }
 
   // Procotol v2 handlers that fail in predictable ways.
   void registerV2FailureHandlers() {
     registerHandler(AKIpUptaneMes_PR_putMetaReq2,
                     std::bind(&SecondaryMock::putMeta2FailureHdlr, this, std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_uploadDataReq, std::bind(&SecondaryMock::uploadDataFailureHdlr, this,
                                                               std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_downloadOstreeRevReq, std::bind(&SecondaryMock::downloadOstreeRevFailure, this,
                                                                      std::placeholders::_1, std::placeholders::_2));
-
     registerHandler(AKIpUptaneMes_PR_installReq,
                     std::bind(&SecondaryMock::install2FailureHdlr, this, std::placeholders::_1, std::placeholders::_2));
+    registerHandler(AKIpUptaneMes_PR_rootVerReq,
+                    std::bind(&SecondaryMock::rootVerFailureHdlr, this, std::placeholders::_1, std::placeholders::_2));
+    registerHandler(AKIpUptaneMes_PR_putRootReq,
+                    std::bind(&SecondaryMock::putRootFailureHdlr, this, std::placeholders::_1, std::placeholders::_2));
   }
 
  private:
@@ -140,13 +144,11 @@ class SecondaryMock : public MsgDispatcher {
   MsgHandler::ReturnCode versionHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
     (void)in_msg;
 
-    out_msg.present(AKIpUptaneMes_PR_versionResp);
-    auto version_resp = out_msg.versionResp();
-
+    auto m = out_msg.present(AKIpUptaneMes_PR_versionResp).versionResp();
     if (handler_version_ == HandlerVersion::kV1) {
-      version_resp->version = 1;
+      m->version = 1;
     } else {
-      version_resp->version = 2;
+      m->version = 2;
     }
 
     return ReturnCode::kOk;
@@ -341,6 +343,53 @@ class SecondaryMock : public MsgDispatcher {
     return ReturnCode::kOk;
   }
 
+  MsgHandler::ReturnCode rootVerHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
+    // Note this shouldn't get called at all with Director metadata for TUF verification.
+    (void)in_msg;
+
+    auto m = out_msg.present(AKIpUptaneMes_PR_rootVerResp).versionResp();
+    // Very hacky!
+    m->version = 1;
+
+    return ReturnCode::kOk;
+  }
+
+  MsgHandler::ReturnCode rootVerFailureHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
+    (void)in_msg;
+
+    auto m = out_msg.present(AKIpUptaneMes_PR_rootVerResp).rootVerResp();
+    m->version = -1;
+
+    return ReturnCode::kOk;
+  }
+
+  MsgHandler::ReturnCode putRootHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
+    // Note this shouldn't get called at all with Director metadata for TUF verification.
+    auto pr = in_msg.putRootReq();
+    if (pr->repotype == AKRepoType_director) {
+      meta_bundle_.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()),
+                           ToString(pr->json));
+    } else if (pr->repotype == AKRepoType_image) {
+      meta_bundle_.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Root()), ToString(pr->json));
+    }
+
+    auto m = out_msg.present(AKIpUptaneMes_PR_putRootResp).putRootResp();
+    m->result = static_cast<AKInstallationResultCode_t>(data::ResultCode::Numeric::kOk);
+    SetString(&m->description, "");
+
+    return ReturnCode::kOk;
+  }
+
+  MsgHandler::ReturnCode putRootFailureHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
+    (void)in_msg;
+
+    auto m = out_msg.present(AKIpUptaneMes_PR_putRootResp).putRootResp();
+    m->result = static_cast<AKInstallationResultCode_t>(data::ResultCode::Numeric::kVerificationFailed);
+    SetString(&m->description, verification_failure);
+
+    return ReturnCode::kOk;
+  }
+
   data::InstallationResult putMetadata2(const Uptane::MetaBundle& meta_bundle) {
     meta_bundle_ = meta_bundle;
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
@@ -449,8 +498,10 @@ class SecondaryRpcCommon : public ::testing::Test {
   const std::string pkey_ = "pkey";
   const std::string server_ = "ostree-server";
   const std::string director_root_ = "director-root";
+  const std::string director_root_v2_ = "director-root-v2";
   const std::string director_targets_ = "director-targets";
   const std::string image_root_ = "image-root";
+  const std::string image_root_v2_ = "image-root-v2";
   const std::string image_timestamp_ = "image-timestamp";
   const std::string image_snapshot_ = "image-snapshot";
   const std::string image_targets_ = "image-targets";
@@ -504,12 +555,12 @@ class SecondaryRpcCommon : public ::testing::Test {
   void verifyMetadata(const Uptane::MetaBundle& meta_bundle) {
     if (vtype_ == VerificationType::kFull) {
       EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Root()),
-                director_root_);
+                latest_director_root_);
       EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
                 director_targets_);
     }
     EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Root()),
-              image_root_);
+              latest_image_root_);
     EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Timestamp()),
               image_timestamp_);
     EXPECT_EQ(Uptane::getMetaFromBundle(meta_bundle, Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()),
@@ -599,6 +650,44 @@ class SecondaryRpcCommon : public ::testing::Test {
     }
   }
 
+  void rotateRoot() {
+    const HandlerVersion handler_version = secondary_.handlerVersion();
+
+    const int32_t droot_ver = ip_secondary_->getRootVersion(true);
+    const int32_t iroot_ver = ip_secondary_->getRootVersion(false);
+    if (handler_version == HandlerVersion::kV1 || handler_version == HandlerVersion::kV2Failure) {
+      EXPECT_EQ(droot_ver, -1);
+      EXPECT_EQ(iroot_ver, -1);
+    } else {
+      if (vtype_ == VerificationType::kTuf) {
+        EXPECT_EQ(droot_ver, 0);
+      } else {
+        EXPECT_EQ(droot_ver, 1);
+      }
+      EXPECT_EQ(iroot_ver, 1);
+    }
+
+    data::InstallationResult dresult = ip_secondary_->putRoot(director_root_v2_, true);
+    data::InstallationResult iresult = ip_secondary_->putRoot(image_root_v2_, false);
+    if (handler_version == HandlerVersion::kV1 || handler_version == HandlerVersion::kV2Failure) {
+      EXPECT_EQ(dresult.result_code, data::ResultCode::Numeric::kVerificationFailed);
+      EXPECT_EQ(dresult.description, secondary_.verification_failure);
+      EXPECT_EQ(iresult.result_code, data::ResultCode::Numeric::kVerificationFailed);
+      EXPECT_EQ(iresult.description, secondary_.verification_failure);
+    } else {
+      if (vtype_ == VerificationType::kTuf) {
+        EXPECT_EQ(dresult.result_code, data::ResultCode::Numeric::kOk);
+        EXPECT_EQ(dresult.description,
+                  "Secondary serial uses TUF verification and thus does not require Director Root metadata.");
+      } else {
+        EXPECT_TRUE(dresult.isSuccess());
+        EXPECT_EQ(dresult.description, "");
+      }
+      EXPECT_TRUE(iresult.isSuccess());
+      verifyMetadata(secondary_.metadata());
+    }
+  }
+
   SecondaryMock secondary_;
   std::shared_ptr<SecondaryProvider> secondary_provider_;
   SecondaryTcpServer secondary_server_;
@@ -610,6 +699,8 @@ class SecondaryRpcCommon : public ::testing::Test {
   std::shared_ptr<INvStorage> storage_;
   Config config_;
   std::shared_ptr<PackageManagerInterface> package_manager_;
+  std::string latest_director_root_{director_root_};
+  std::string latest_image_root_{image_root_};
 };
 
 class SecondaryRpcTest : public SecondaryRpcCommon,
@@ -630,6 +721,8 @@ TEST_P(SecondaryRpcTest, AllRpcCallsTest) {
   sendAndInstallBinaryImage();
 
   installOstreeRev();
+
+  rotateRoot();
 }
 
 /* These tests use a mock of most of the Secondary internals in order to test
@@ -711,6 +804,10 @@ TEST(SecondaryTcpServer, TestIpSecondaryIfSecondaryIsNotRunning) {
   Uptane::Target target = target_file.createTarget(package_manager);
 
   // Expect failures since the Secondary is not running.
+  EXPECT_EQ(ip_secondary->getRootVersion(true), -1);
+  EXPECT_EQ(ip_secondary->getRootVersion(false), -1);
+  EXPECT_FALSE(ip_secondary->putRoot("director-root-v2", true).isSuccess());
+  EXPECT_FALSE(ip_secondary->putRoot("image-root-v2", false).isSuccess());
   EXPECT_FALSE(ip_secondary->putMetadata(target).isSuccess());
   EXPECT_FALSE(ip_secondary->sendFirmware(target).isSuccess());
   EXPECT_FALSE(ip_secondary->install(target).isSuccess());

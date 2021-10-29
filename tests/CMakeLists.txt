@@ -194,6 +194,11 @@ add_test(NAME test_ip_secondary
          --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
 set_tests_properties(test_ip_secondary PROPERTIES LABELS "noptest")
 
+add_test(NAME test_ip_secondary_rotation
+         COMMAND ${PROJECT_SOURCE_DIR}/tests/ipsecondary_rotation_test.py
+         --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
+set_tests_properties(test_ip_secondary_rotation PROPERTIES LABELS "noptest")
+
 add_test(NAME test_director_failure
         COMMAND ${PROJECT_SOURCE_DIR}/tests/test_director_failure.py
         --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})

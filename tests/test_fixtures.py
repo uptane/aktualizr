@@ -748,8 +748,7 @@ class UptaneTestRepo:
     def target_file(self):
         return path.join(self.image_dir, 'targets.json')
 
-    def add_image(self, id, image_filename, target_name=None, image_size=1024, custom_url=''):
-
+    def add_image(self, id, image_filename, target_name=None, image_size=1024, custom_url='', custom_version=''):
         targetname = target_name if target_name else image_filename
 
         with open(path.join(self.image_dir, image_filename), 'wb') as image_file:
@@ -761,6 +760,10 @@ class UptaneTestRepo:
         if custom_url:
             image_creation_cmdline.append('--url')
             image_creation_cmdline.append(custom_url)
+
+        if custom_version:
+            image_creation_cmdline.append('--customversion')
+            image_creation_cmdline.append(custom_version)
 
         subprocess.run(image_creation_cmdline, cwd=self.image_dir, check=True)
 
@@ -806,6 +809,16 @@ class UptaneTestRepo:
         subprocess.run([self._repo_manager_exe, '--path', self.root_dir, '--command', 'signtargets'], check=True)
 
         return target_name
+
+    def clear_targets(self):
+        subprocess.run([self._repo_manager_exe, '--path', self.root_dir, '--command', 'emptytargets'], check=True)
+
+    def rotate_root(self, is_director):
+        if is_director:
+            repo_type = 'director'
+        else:
+            repo_type = 'image'
+        subprocess.run([self._repo_manager_exe, '--path', self.root_dir, '--command', 'rotate', '--repotype', repo_type, '--keytype', 'ED25519'], check=True)
 
     def __enter__(self):
         self._generate_repo()
@@ -1122,7 +1135,10 @@ class TestRunner:
     def test_runner(test):
         logger.info('>>> Running {}...'.format(test.__name__))
         test_run_result = test()
-        logger.info('>>> {}: {}\n'.format('OK' if test_run_result else 'FAILED', test.__name__))
+        if test_run_result:
+            logger.info('\033[32m>>> OK: {}\033[0m\n'.format(test.__name__))
+        else:
+            logger.info('\033[31m>>> FAILED: {}\033[0m\n'.format(test.__name__))
         return test_run_result
 
     def run(self):

@@ -264,6 +264,61 @@ data::InstallationResult IpUptaneSecondary::putMetadata_v2(const Uptane::MetaBun
   return data::InstallationResult(static_cast<data::ResultCode::Numeric>(r->result), ToString(r->description));
 }
 
+int32_t IpUptaneSecondary::getRootVersion(bool director) const {
+  if (director && verification_type_ == VerificationType::kTuf) {
+    return 0;
+  }
+  Asn1Message::Ptr req(Asn1Message::Empty());
+  req->present(AKIpUptaneMes_PR_rootVerReq);
+  auto m = req->rootVerReq();
+
+  if (director) {
+    m->repotype = AKRepoType_director;
+  } else {
+    m->repotype = AKRepoType_image;
+  }
+
+  auto resp = Asn1Rpc(req, getAddr());
+  if (resp->present() != AKIpUptaneMes_PR_rootVerResp) {
+    // v1 (and v2 until this was added) Secondaries won't understand this.
+    // Return -1 to indicate an invalid value. Sending intermediate Roots will
+    // be skipped, which will probably be fatal.
+    LOG_ERROR << "Secondary " << getSerial() << " failed to respond to a Root version request.";
+    return -1;
+  }
+  auto r = resp->rootVerResp();
+  return static_cast<int32_t>(r->version);
+}
+
+data::InstallationResult IpUptaneSecondary::putRoot(const std::string& root, bool director) {
+  if (director && verification_type_ == VerificationType::kTuf) {
+    return data::InstallationResult(data::ResultCode::Numeric::kOk,
+                                    "Secondary " + getSerial().ToString() +
+                                        " uses TUF verification and thus does not require Director Root metadata.");
+  }
+  Asn1Message::Ptr req(Asn1Message::Empty());
+  req->present(AKIpUptaneMes_PR_putRootReq);
+  auto m = req->putRootReq();
+
+  if (director) {
+    m->repotype = AKRepoType_director;
+  } else {
+    m->repotype = AKRepoType_image;
+  }
+  SetString(&m->json, root);
+
+  auto resp = Asn1Rpc(req, getAddr());
+  if (resp->present() != AKIpUptaneMes_PR_putRootResp) {
+    LOG_ERROR << "Secondary " << getSerial() << " failed to respond to a request to receive Root metadata.";
+    return data::InstallationResult(
+        data::ResultCode::Numeric::kInternalError,
+        "Secondary " + getSerial().ToString() + " failed to respond to a request to receive Root metadata.");
+  }
+
+  auto r = resp->putRootResp();
+  return data::InstallationResult(static_cast<data::ResultCode::Numeric>(r->result), ToString(r->description));
+}
+
 Manifest IpUptaneSecondary::getManifest() const {
   getSecondaryVersion();
 

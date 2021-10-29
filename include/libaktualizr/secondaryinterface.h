@@ -20,6 +20,7 @@ class SecondaryInterface {
   virtual data::InstallationResult putMetadata(const Uptane::Target& target) = 0;
   virtual bool ping() const = 0;
 
+  // return 0 during initialization and -1 for error.
   virtual int32_t getRootVersion(bool director) const = 0;
   virtual data::InstallationResult putRoot(const std::string& root, bool director) = 0;
 

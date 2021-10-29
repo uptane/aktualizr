@@ -248,6 +248,12 @@ void AktualizrSecondary::registerHandlers() {
   registerHandler(AKIpUptaneMes_PR_manifestReq,
                   std::bind(&AktualizrSecondary::getManifestHdlr, this, std::placeholders::_1, std::placeholders::_2));
 
+  registerHandler(AKIpUptaneMes_PR_rootVerReq,
+                  std::bind(&AktualizrSecondary::getRootVerHdlr, this, std::placeholders::_1, std::placeholders::_2));
+
+  registerHandler(AKIpUptaneMes_PR_putRootReq,
+                  std::bind(&AktualizrSecondary::putRootHdlr, this, std::placeholders::_1, std::placeholders::_2));
+
   registerHandler(AKIpUptaneMes_PR_putMetaReq2,
                   std::bind(&AktualizrSecondary::putMetaHdlr, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -282,9 +288,8 @@ MsgHandler::ReturnCode AktualizrSecondary::versionHdlr(Asn1Message& in_msg, Asn1
              << ". Please consider upgrading the Secondary.";
   }
 
-  out_msg.present(AKIpUptaneMes_PR_versionResp);
-  auto version_resp = out_msg.versionResp();
-  version_resp->version = version;
+  auto m = out_msg.present(AKIpUptaneMes_PR_versionResp).versionResp();
+  m->version = version;
 
   return ReturnCode::kOk;
 }
@@ -300,9 +305,94 @@ AktualizrSecondary::ReturnCode AktualizrSecondary::getManifestHdlr(Asn1Message& 
   out_msg.present(AKIpUptaneMes_PR_manifestResp);
   auto manifest_resp = out_msg.manifestResp();
   manifest_resp->manifest.present = manifest_PR_json;
-  SetString(&manifest_resp->manifest.choice.json, Utils::jsonToStr(getManifest()));  // NOLINT
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
+  SetString(&manifest_resp->manifest.choice.json, Utils::jsonToStr(getManifest()));
 
   LOG_TRACE << "Manifest: \n" << getManifest();
+  return ReturnCode::kOk;
+}
+
+AktualizrSecondary::ReturnCode AktualizrSecondary::getRootVerHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const {
+  LOG_INFO << "Received a Root version request message.";
+  auto rv = in_msg.rootVerReq();
+  Uptane::RepositoryType repo_type{};
+  if (rv->repotype == AKRepoType_director) {
+    repo_type = Uptane::RepositoryType::Director();
+  } else if (rv->repotype == AKRepoType_image) {
+    repo_type = Uptane::RepositoryType::Image();
+  } else {
+    LOG_WARNING << "Received Root version request with invalid repo type: " << rv->repotype;
+    repo_type = Uptane::RepositoryType(-1);
+  }
+
+  int32_t root_version = -1;
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    root_version = director_repo_.rootVersion();
+  } else if (repo_type == Uptane::RepositoryType::Image()) {
+    root_version = image_repo_.rootVersion();
+  }
+  LOG_DEBUG << "Current " << repo_type << " repo Root metadata version: " << root_version;
+
+  auto m = out_msg.present(AKIpUptaneMes_PR_rootVerResp).rootVerResp();
+  m->version = root_version;
+
+  return ReturnCode::kOk;
+}
+
+AktualizrSecondary::ReturnCode AktualizrSecondary::putRootHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
+  LOG_INFO << "Received a put Root request message; verifying contents...";
+  auto pr = in_msg.putRootReq();
+  Uptane::RepositoryType repo_type{};
+  if (pr->repotype == AKRepoType_director) {
+    repo_type = Uptane::RepositoryType::Director();
+  } else if (pr->repotype == AKRepoType_image) {
+    repo_type = Uptane::RepositoryType::Image();
+  } else {
+    repo_type = Uptane::RepositoryType(-1);
+  }
+
+  const std::string json = ToString(pr->json);
+  LOG_DEBUG << "Received " << repo_type << " repo Root metadata:\n" << json;
+  data::InstallationResult result(data::ResultCode::Numeric::kOk, "");
+
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    if (config_.uptane.verification_type == VerificationType::kTuf) {
+      LOG_WARNING << "Ignoring new Director Root metadata as it is unnecessary for TUF verification.";
+      result =
+          data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                   "Ignoring new Director Root metadata as it is unnecessary for TUF verification.");
+    } else {
+      try {
+        director_repo_.verifyRoot(json);
+      } catch (const std::exception& e) {
+        LOG_ERROR << "Failed to update Director Root metadata: " << e.what();
+        result = data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
+                                          std::string("Failed to update Director Root metadata: ") + e.what());
+      }
+      storage_->storeRoot(json, repo_type, Uptane::Version(director_repo_.rootVersion()));
+      storage_->clearNonRootMeta(repo_type);
+    }
+  } else if (repo_type == Uptane::RepositoryType::Image()) {
+    try {
+      image_repo_.verifyRoot(json);
+    } catch (const std::exception& e) {
+      LOG_ERROR << "Failed to update Image repo Root metadata: " << e.what();
+      result = data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
+                                        std::string("Failed to update Image repo Root metadata: ") + e.what());
+    }
+    storage_->storeRoot(json, repo_type, Uptane::Version(image_repo_.rootVersion()));
+    storage_->clearNonRootMeta(repo_type);
+  } else {
+    LOG_WARNING << "Received Root version request with invalid repo type: " << pr->repotype;
+    result = data::InstallationResult(
+        data::ResultCode::Numeric::kInternalError,
+        "Received Root version request with invalid repo type: " + std::to_string(pr->repotype));
+  }
+
+  auto m = out_msg.present(AKIpUptaneMes_PR_putRootResp).putRootResp();
+  m->result = static_cast<AKInstallationResultCode_t>(result.result_code.num_code);
+  SetString(&m->description, result.description);
+
   return ReturnCode::kOk;
 }
 

@@ -1247,18 +1247,28 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
   data::InstallationResult result{data::ResultCode::Numeric::kOk, ""};
   const int last_root_version = Uptane::extractVersionUntrusted(latest_root);
   const int sec_root_version = secondary.getRootVersion((repo == Uptane::RepositoryType::Director()));
-  if (sec_root_version > 0 && last_root_version - sec_root_version > 1) {
-    for (int v = sec_root_version + 1; v <= last_root_version; v++) {
+  if (sec_root_version < 0) {
+    LOG_WARNING << "Secondary with serial " << secondary.getSerial() << " reported an invalid " << repo
+                << " repo Root version: " << sec_root_version;
+    result =
+        data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                 "Secondary with serial " + secondary.getSerial().ToString() + " reported an invalid " +
+                                     repo.ToString() + " repo Root version: " + std::to_string(sec_root_version));
+  } else if (sec_root_version > 0 && last_root_version - sec_root_version > 1) {
+    // Only send intermediate Roots that would otherwise be skipped. The latest
+    // will be sent with the complete set of the latest metadata.
+    for (int v = sec_root_version + 1; v < last_root_version; v++) {
       std::string root;
       if (!storage->loadRoot(&root, repo, Uptane::Version(v))) {
         LOG_WARNING << "Couldn't find Root metadata in the storage, trying remote repo";
         try {
           uptane_fetcher->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(), Uptane::Version(v));
         } catch (const std::exception &e) {
-          // TODO(OTA-4552): looks problematic, robust procedure needs to be defined
-          LOG_ERROR << "Root metadata could not be fetched, skipping to the next Secondary";
+          LOG_ERROR << "Root metadata could not be fetched for Secondary with serial " << secondary.getSerial()
+                    << ", skipping to the next Secondary";
           result = data::InstallationResult(data::ResultCode::Numeric::kInternalError,
-                                            "Root metadata could not be fetched, skipping to the next Secondary");
+                                            "Root metadata could not be fetched for Secondary with serial " +
+                                                secondary.getSerial().ToString() + ", skipping to the next Secondary");
           break;
         }
       }
@@ -1268,8 +1278,8 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
         result = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
       }
       if (!result.isSuccess()) {
-        LOG_ERROR << "Sending metadata to " << secondary.getSerial() << " failed: " << result.result_code << " "
-                  << result.description;
+        LOG_ERROR << "Sending Root metadata to Secondary with serial " << secondary.getSerial()
+                  << " failed: " << result.result_code << " " << result.description;
         break;
       }
     }

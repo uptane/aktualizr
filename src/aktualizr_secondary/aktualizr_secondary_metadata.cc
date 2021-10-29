@@ -18,7 +18,6 @@ Metadata::Metadata(Uptane::MetaBundle meta_bundle_in) : meta_bundle_(std::move(m
 void Metadata::fetchRole(std::string* result, int64_t maxsize, Uptane::RepositoryType repo, const Uptane::Role& role,
                          Uptane::Version version) const {
   (void)maxsize;
-
   getRoleMetadata(result, repo, role, version);
 }
 
@@ -35,11 +34,11 @@ void Metadata::getRoleMetadata(std::string* result, const Uptane::RepositoryType
     // expected. If requesting a version before what is available, just use what
     // is available, since root rotation isn't supported here.
     if (repo == Uptane::RepositoryType::Director() && director_root_version_ < version) {
-      LOG_DEBUG << "Requested Director root version " << version << " but only version " << director_root_version_
+      LOG_DEBUG << "Requested Director Root version " << version << " but only version " << director_root_version_
                 << " is available.";
       throw std::runtime_error("Metadata not found");
     } else if (repo == Uptane::RepositoryType::Image() && image_root_version_ < version) {
-      LOG_DEBUG << "Requested Image repo root version " << version << " but only version " << image_root_version_
+      LOG_DEBUG << "Requested Image repo Root version " << version << " but only version " << image_root_version_
                 << " is available.";
       throw std::runtime_error("Metadata not found");
     }
