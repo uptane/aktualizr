@@ -72,9 +72,9 @@ bool Aktualizr::UptaneCycle() {
   return true;
 }
 
-std::future<void> Aktualizr::RunForever(const Json::Value &custom_hwinfo) {
-  std::future<void> future = std::async(std::launch::async, [this, custom_hwinfo]() {
-    SendDeviceData(custom_hwinfo).get();
+std::future<void> Aktualizr::RunForever() {
+  std::future<void> future = std::async(std::launch::async, [this]() {
+    SendDeviceData().get();
 
     std::unique_lock<std::mutex> l(exit_cond_.m);
     while (true) {
@@ -139,8 +139,9 @@ std::future<void> Aktualizr::CampaignControl(const std::string &campaign_id, cam
   return api_queue_->enqueue(task);
 }
 
-std::future<void> Aktualizr::SendDeviceData(const Json::Value &custom_hwinfo) {
-  std::function<void()> task([this, custom_hwinfo] { uptane_client_->sendDeviceData(custom_hwinfo); });
+void Aktualizr::SetCustomHardwareInfo(Json::Value hwinfo) { uptane_client_->setCustomHardwareInfo(std::move(hwinfo)); }
+std::future<void> Aktualizr::SendDeviceData() {
+  std::function<void()> task([this] { uptane_client_->sendDeviceData(); });
   return api_queue_->enqueue(task);
 }
 

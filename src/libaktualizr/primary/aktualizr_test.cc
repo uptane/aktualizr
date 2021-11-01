@@ -2347,7 +2347,8 @@ TEST(Aktualizr, CustomHwInfo) {
   aktualizr.SendDeviceData().get();
 
   auto hwinfo = Utils::parseJSON(custom_hwinfo);
-  aktualizr.SendDeviceData(hwinfo).get();
+  aktualizr.SetCustomHardwareInfo(hwinfo);
+  aktualizr.SendDeviceData().get();
 }
 
 #ifndef __NO_MAIN__

@@ -996,7 +996,8 @@ TEST(Uptane, ProvisionOnServer) {
 
   // Try sending device data again to confirm that it isn't resent if it hasn't
   // changed (and hardware info is only sent once).
-  EXPECT_NO_THROW(up->sendDeviceData(http->custom_hw_info));
+  up->setCustomHardwareInfo(http->custom_hw_info);
+  EXPECT_NO_THROW(up->sendDeviceData());
   EXPECT_EQ(http->installed_count, 1);
   EXPECT_EQ(http->system_info_count, 1);
   EXPECT_EQ(http->network_count, 1);
@@ -1004,7 +1005,7 @@ TEST(Uptane, ProvisionOnServer) {
 
   // Clear the stored values and resend to verify the data is resent.
   storage->clearDeviceData();
-  EXPECT_NO_THROW(up->sendDeviceData(http->custom_hw_info));
+  EXPECT_NO_THROW(up->sendDeviceData());
   EXPECT_EQ(http->installed_count, 2);
   EXPECT_EQ(http->system_info_count, 2);
   EXPECT_EQ(http->network_count, 2);
@@ -1012,15 +1013,15 @@ TEST(Uptane, ProvisionOnServer) {
 
   // Set hardware info to a custom value and send device data again.
   http->custom_hw_info["hardware"] = "test-hw";
-  EXPECT_NO_THROW(up->sendDeviceData(http->custom_hw_info));
+  up->setCustomHardwareInfo(http->custom_hw_info);
+  EXPECT_NO_THROW(up->sendDeviceData());
   EXPECT_EQ(http->installed_count, 2);
   EXPECT_EQ(http->system_info_count, 3);
   EXPECT_EQ(http->network_count, 2);
   EXPECT_EQ(http->config_count, 2);
 
   // Try once again; nothing should be resent.
-  http->custom_hw_info["hardware"] = "test-hw";
-  EXPECT_NO_THROW(up->sendDeviceData(http->custom_hw_info));
+  EXPECT_NO_THROW(up->sendDeviceData());
   EXPECT_EQ(http->installed_count, 2);
   EXPECT_EQ(http->system_info_count, 3);
   EXPECT_EQ(http->network_count, 2);
