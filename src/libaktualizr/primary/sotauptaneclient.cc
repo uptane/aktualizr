@@ -486,7 +486,7 @@ void SotaUptaneClient::computeDeviceInstallationResult(data::InstallationResult 
       // format:
       // ecu1_hwid:failure1|ecu2_hwid:failure2
       if (!installation_res.isSuccess()) {
-        const std::string ecu_code_str = (*hw_id).ToString() + ":" + installation_res.result_code.toString();
+        const std::string ecu_code_str = (*hw_id).ToString() + ":" + installation_res.result_code.ToString();
         result_code_err_str += (!result_code_err_str.empty() ? "|" : "") + ecu_code_str;
       }
     }
@@ -533,23 +533,23 @@ void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, u
         // This is triggered if a Secondary is removed after an update was
         // installed on it because of the empty targets optimization.
         // Thankfully if the Director issues new Targets, it fixes itself.
-        LOG_ERROR << "Unknown ECU ID in Director Targets metadata: " << ecu_serial.ToString();
+        LOG_ERROR << "Unknown ECU ID in Director Targets metadata: " << ecu_serial;
         throw Uptane::BadEcuId(target.filename());
       }
 
       if (*hw_id_known != hw_id) {
-        LOG_ERROR << "Wrong hardware identifier for ECU " << ecu_serial.ToString();
+        LOG_ERROR << "Wrong hardware identifier for ECU " << ecu_serial;
         throw Uptane::BadHardwareId(target.filename());
       }
 
       boost::optional<Uptane::Target> current_version;
       if (!storage->loadInstalledVersions(ecu_serial.ToString(), &current_version, nullptr)) {
-        LOG_WARNING << "Could not load currently installed version for ECU ID: " << ecu_serial.ToString();
+        LOG_WARNING << "Could not load currently installed version for ECU ID: " << ecu_serial;
         break;
       }
 
       if (!current_version) {
-        LOG_WARNING << "Current version for ECU ID: " << ecu_serial.ToString() << " is unknown";
+        LOG_WARNING << "Current version for ECU ID: " << ecu_serial << " is unknown";
         is_new = true;
       } else if (current_version->MatchTarget(target)) {
         // Do nothing; target is already installed.
@@ -1313,7 +1313,7 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
       if (!local_result.isSuccess()) {
         LOG_ERROR << "Sending metadata to " << sec->first << " failed: " << local_result.result_code << " "
                   << local_result.description;
-        const std::string ecu_code_str = hw_id.ToString() + ":" + local_result.result_code.toString();
+        const std::string ecu_code_str = hw_id.ToString() + ":" + local_result.result_code.ToString();
         result_code_err_str += (!result_code_err_str.empty() ? "|" : "") + ecu_code_str;
       }
     }

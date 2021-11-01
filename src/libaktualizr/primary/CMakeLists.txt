@@ -89,7 +89,6 @@ add_aktualizr_test(NAME target_mismatch
 add_aktualizr_test(NAME metadata_fetch
                    SOURCES metadata_fetch_test.cc
                    PROJECT_WORKING_DIRECTORY
-                   ARGS "$<TARGET_FILE:uptane-generator>"
                    LIBRARIES uptane_generator_lib virtual_secondary)
 
 add_aktualizr_test(NAME metadata_expiration

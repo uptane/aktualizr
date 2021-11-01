@@ -2082,7 +2082,7 @@ TEST(Aktualizr, ManifestCustom) {
 
 TEST(Aktualizr, CustomInstallationRawReport) {
   TemporaryDirectory temp_dir;
-  auto http = std::make_shared<HttpFake>(temp_dir.Path(), "hasupdate", fake_meta_dir);
+  auto http = std::make_shared<HttpFake>(temp_dir.Path(), "hasupdates", fake_meta_dir);
 
   Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http->tls_server);
   auto storage = INvStorage::newStorage(conf.storage);

@@ -250,7 +250,7 @@ struct ResultCode {
   ResultCode(ResultCode::Numeric in_num_code, std::string text_code_in)
       : num_code(in_num_code), text_code(std::move(text_code_in)) {}
 
-  bool operator==(const ResultCode &rhs) const { return num_code == rhs.num_code && toString() == rhs.toString(); }
+  bool operator==(const ResultCode &rhs) const { return num_code == rhs.num_code && ToString() == rhs.ToString(); }
   bool operator!=(const ResultCode &rhs) const { return !(*this == rhs); }
   friend std::ostream &operator<<(std::ostream &os, const ResultCode &result_code);
 
@@ -261,7 +261,7 @@ struct ResultCode {
   // any string representation. This is specifically useful for campaign success
   // analysis, because the device installation report concatenates the
   // individual ECU ResultCodes.
-  std::string toString() const {
+  std::string ToString() const {
     if (text_code != "") {
       return text_code;
     }
