@@ -35,6 +35,8 @@ class Aktualizr {
 
   Aktualizr(const Aktualizr&) = delete;
   Aktualizr& operator=(const Aktualizr&) = delete;
+  Aktualizr(const Aktualizr&&) = delete;
+  Aktualizr& operator=(const Aktualizr&&) = delete;
   ~Aktualizr();
 
   /**
