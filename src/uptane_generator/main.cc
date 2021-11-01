@@ -68,8 +68,8 @@ int main(int argc, char **argv) {
     ("dterm", po::bool_switch(), "if the created delegated role is terminating")
     ("dparent", po::value<std::string>()->default_value("targets"), "delegated role parent name")
     ("dpattern", po::value<std::string>(), "delegated file path pattern")
-    ("url", po::value<std::string>(), "custom download URL");
-
+    ("url", po::value<std::string>(), "custom download URL")
+    ("customversion", po::value<int32_t>(), "custom version");
   // clang-format on
 
   po::positional_options_description positionalOptions;
@@ -133,8 +133,13 @@ int main(int argc, char **argv) {
         if (vm.count("url") != 0) {
           url = vm["url"].as<std::string>();
         }
+        int32_t custom_version{0};
+        if (vm.count("customversion") != 0) {
+          custom_version = vm["customversion"].as<int32_t>();
+        }
         if (vm.count("filename") > 0) {
-          repo.addImage(vm["filename"].as<boost::filesystem::path>(), targetname, hwid, url, delegation);
+          repo.addImage(vm["filename"].as<boost::filesystem::path>(), targetname, hwid, url, custom_version,
+                        delegation);
           std::cout << "Added a target " << targetname << " to the Image repo metadata" << std::endl;
         } else {
           if ((vm.count("targetsha256") == 0 && vm.count("targetsha512") == 0) || vm.count("targetlength") == 0) {
@@ -160,8 +165,8 @@ int main(int argc, char **argv) {
             custom = Json::Value();
             custom["targetFormat"] = vm["targetformat"].as<std::string>();
           }
-          repo.addCustomImage(targetname.string(), *hash, vm["targetlength"].as<uint64_t>(), hwid, url, delegation,
-                              custom);
+          repo.addCustomImage(targetname.string(), *hash, vm["targetlength"].as<uint64_t>(), hwid, url, custom_version,
+                              delegation, custom);
           std::cout << "Added a custom image target " << targetname.string() << std::endl;
         }
       } else if (command == "addtarget") {

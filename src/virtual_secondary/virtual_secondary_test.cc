@@ -48,7 +48,7 @@ TEST(VirtualSecondary, RootRotation) {
 
   UptaneRepo uptane_repo{meta_dir.PathString(), "", ""};
   uptane_repo.generateRepo(KeyType::kED25519);
-  uptane_repo.addImage("tests/test_data/firmware.txt", "firmware.txt", "secondary_hw", "", Delegation());
+  uptane_repo.addImage("tests/test_data/firmware.txt", "firmware.txt", "secondary_hw");
   uptane_repo.addTarget("firmware.txt", "secondary_hw", "secondary_ecu_serial", "");
   uptane_repo.signTargets();
 
@@ -62,7 +62,7 @@ TEST(VirtualSecondary, RootRotation) {
   uptane_repo.rotate(Uptane::RepositoryType::Director(), Uptane::Role::Root(), KeyType::kED25519);
   uptane_repo.rotate(Uptane::RepositoryType::Director(), Uptane::Role::Root(), KeyType::kED25519);
   uptane_repo.emptyTargets();
-  uptane_repo.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "secondary_hw", "", Delegation());
+  uptane_repo.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "secondary_hw");
   uptane_repo.addTarget("firmware_name.txt", "secondary_hw", "secondary_ecu_serial", "");
   uptane_repo.signTargets();
 
@@ -76,7 +76,7 @@ TEST(VirtualSecondary, RootRotation) {
   uptane_repo.rotate(Uptane::RepositoryType::Image(), Uptane::Role::Root(), KeyType::kED25519);
   uptane_repo.rotate(Uptane::RepositoryType::Image(), Uptane::Role::Root(), KeyType::kED25519);
   uptane_repo.emptyTargets();
-  uptane_repo.addImage("tests/test_data/firmware.txt", "firmware2.txt", "secondary_hw", "", Delegation());
+  uptane_repo.addImage("tests/test_data/firmware.txt", "firmware2.txt", "secondary_hw");
   uptane_repo.addTarget("firmware2.txt", "secondary_hw", "secondary_ecu_serial", "");
   uptane_repo.signTargets();
 

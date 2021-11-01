@@ -85,8 +85,8 @@ TEST(Aktualizr, MetadataFetch) {
 
   // Two images added, but only one update scheduled: all metadata objects
   // should be fetched once.
-  uptane_repo_.addImage("tests/test_data/firmware.txt", "firmware.txt", "primary_hw", "", Delegation());
-  uptane_repo_.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "primary_hw", "", Delegation());
+  uptane_repo_.addImage("tests/test_data/firmware.txt", "firmware.txt", "primary_hw");
+  uptane_repo_.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "primary_hw");
   uptane_repo_.addTarget("firmware.txt", "primary_hw", "CA:FE:A6:D2:84:9D", "");
   uptane_repo_.addDelegation(Uptane::Role("role-abc", true), Uptane::Role("targets", false), "abc/*", false,
                              KeyType::kED25519);
