@@ -366,24 +366,24 @@ AktualizrSecondary::ReturnCode AktualizrSecondary::putRootHdlr(Asn1Message& in_m
     } else {
       try {
         director_repo_.verifyRoot(json);
+        storage_->storeRoot(json, repo_type, Uptane::Version(director_repo_.rootVersion()));
+        storage_->clearNonRootMeta(repo_type);
       } catch (const std::exception& e) {
         LOG_ERROR << "Failed to update Director Root metadata: " << e.what();
         result = data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                           std::string("Failed to update Director Root metadata: ") + e.what());
       }
-      storage_->storeRoot(json, repo_type, Uptane::Version(director_repo_.rootVersion()));
-      storage_->clearNonRootMeta(repo_type);
     }
   } else if (repo_type == Uptane::RepositoryType::Image()) {
     try {
       image_repo_.verifyRoot(json);
+      storage_->storeRoot(json, repo_type, Uptane::Version(image_repo_.rootVersion()));
+      storage_->clearNonRootMeta(repo_type);
     } catch (const std::exception& e) {
       LOG_ERROR << "Failed to update Image repo Root metadata: " << e.what();
       result = data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                         std::string("Failed to update Image repo Root metadata: ") + e.what());
     }
-    storage_->storeRoot(json, repo_type, Uptane::Version(image_repo_.rootVersion()));
-    storage_->clearNonRootMeta(repo_type);
   } else {
     LOG_WARNING << "Received Root version request with invalid repo type: " << pr->repotype;
     result = data::InstallationResult(
