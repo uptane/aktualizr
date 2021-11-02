@@ -155,27 +155,28 @@ data::InstallationResult SotaUptaneClient::PackageInstallSetResult(const Uptane:
  * changes. (Unfortunately, it can change often due to CPU frequency scaling.)
  * However, users can provide custom info via the API, and that will be sent if
  * it has changed. */
-void SotaUptaneClient::reportHwInfo(const Json::Value &custom_hwinfo) {
-  Json::Value system_info;
+void SotaUptaneClient::reportHwInfo() {
+  Json::Value hw_info;
   std::string stored_hash;
   storage->loadDeviceDataHash("hardware_info", &stored_hash);
 
-  if (custom_hwinfo.empty()) {
+  if (custom_hardware_info_.empty()) {
     if (!stored_hash.empty()) {
       LOG_TRACE << "Not reporting default hardware information because it has already been reported";
       return;
     }
-    system_info = Utils::getHardwareInfo();
-    if (system_info.empty()) {
+    hw_info = Utils::getHardwareInfo();
+    if (hw_info.empty()) {
       LOG_WARNING << "Unable to fetch hardware information from host system.";
       return;
     }
+  } else {
+    hw_info = custom_hardware_info_;
   }
 
-  const Json::Value &hw_info = custom_hwinfo.empty() ? system_info : custom_hwinfo;
   const Hash new_hash = Hash::generate(Hash::Type::kSha256, Utils::jsonToCanonicalStr(hw_info));
   if (new_hash != Hash(Hash::Type::kSha256, stored_hash)) {
-    if (custom_hwinfo.empty()) {
+    if (custom_hardware_info_.empty()) {
       LOG_DEBUG << "Reporting default hardware information";
     } else {
       LOG_DEBUG << "Reporting custom hardware information";
@@ -823,8 +824,8 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
   }
 }
 
-void SotaUptaneClient::sendDeviceData(const Json::Value &custom_hwinfo) {
-  reportHwInfo(custom_hwinfo);
+void SotaUptaneClient::sendDeviceData() {
+  reportHwInfo();
   reportInstalledPackages();
   reportNetworkInfo();
   reportAktualizrConfiguration();

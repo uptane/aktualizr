@@ -47,9 +47,12 @@ class SotaUptaneClient {
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
   result::Download downloadImages(const std::vector<Uptane::Target> &targets,
                                   const api::FlowControlToken *token = nullptr);
+
+  /** See Aktualizr::SetCustomHardwareInfo(Json::Value) */
+  void setCustomHardwareInfo(Json::Value hwinfo) { custom_hardware_info_ = std::move(hwinfo); }
   void reportPause();
   void reportResume();
-  void sendDeviceData(const Json::Value &custom_hwinfo = Json::nullValue);
+  void sendDeviceData();
   result::UpdateCheck fetchMeta();
   bool putManifest(const Json::Value &custom = Json::nullValue);
   result::Install uptaneInstall(const std::vector<Uptane::Target> &updates);
@@ -115,9 +118,13 @@ class SotaUptaneClient {
                                                 const Uptane::EcuSerial &ecu_id);
   data::InstallationResult PackageInstallSetResult(const Uptane::Target &target);
   void finalizeAfterReboot();
-  void reportHwInfo(const Json::Value &custom_hwinfo);
+  // Part of sendDeviceData()
+  void reportHwInfo();
+  // Part of sendDeviceData()
   void reportInstalledPackages();
+  // Called by sendDeviceData() and fetchMeta()
   void reportNetworkInfo();
+  // Part of sendDeviceData()
   void reportAktualizrConfiguration();
   bool waitSecondariesReachable(const std::vector<Uptane::Target> &updates);
   void storeInstallationFailure(const data::InstallationResult &result);
@@ -174,6 +181,7 @@ class SotaUptaneClient {
   Uptane::EcuSerial primary_ecu_serial_;
   Uptane::HardwareIdentifier primary_ecu_hw_id_;
   Provisioner provisioner_;
+  Json::Value custom_hardware_info_{Json::nullValue};
 };
 
 class TargetCompare {

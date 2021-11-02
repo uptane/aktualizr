@@ -146,14 +146,14 @@ int main(int argc, char *argv[]) {
     SigHandler::signal(SIGINT);
     SigHandler::signal(SIGTERM);
 
-    Json::Value hwinfo;
     if (commandline_map.count("hwinfo-file") != 0) {
       auto file = commandline_map["hwinfo-file"].as<boost::filesystem::path>();
-      hwinfo = Utils::parseJSONFile(file);
+      auto hwinfo = Utils::parseJSONFile(file);
       if (hwinfo.empty()) {
         LOG_ERROR << file << " is not a valid JSON file";
         return EXIT_FAILURE;
       }
+      aktualizr.SetCustomHardwareInfo(hwinfo);
     }
 
     std::string run_mode;
@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
       aktualizr.CampaignControl(commandline_map["campaign-id"].as<std::string>(), campaign::cmdFromName(run_mode))
           .get();
     } else if (run_mode == "check") {
-      aktualizr.SendDeviceData(hwinfo).get();
+      aktualizr.SendDeviceData().get();
       aktualizr.CheckUpdates().get();
     } else if (run_mode == "download") {
       result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
@@ -179,14 +179,14 @@ int main(int argc, char *argv[]) {
       result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
       aktualizr.Install(update_result.updates).get();
     } else if (run_mode == "once") {
-      aktualizr.SendDeviceData(hwinfo).get();
+      aktualizr.SendDeviceData().get();
       aktualizr.UptaneCycle();
     } else {
       boost::signals2::connection ac_conn =
           aktualizr.SetSignalHandler(std::bind(targets_autoclean_cb, std::ref(aktualizr), std::placeholders::_1));
 
       try {
-        aktualizr.RunForever(hwinfo).get();
+        aktualizr.RunForever().get();
       } catch (const std::exception &ex) {
         LOG_ERROR << ex.what();
       }
