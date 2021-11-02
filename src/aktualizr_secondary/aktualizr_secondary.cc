@@ -36,7 +36,9 @@ Uptane::Manifest AktualizrSecondary::getManifest() const {
   return manifest;
 }
 
-data::InstallationResult AktualizrSecondary::putMetadata(const Metadata& metadata) { return verifyMetadata(metadata); }
+data::InstallationResult AktualizrSecondary::putMetadata(const Uptane::SecondaryMetadata& metadata) {
+  return verifyMetadata(metadata);
+}
 
 data::InstallationResult AktualizrSecondary::install() {
   if (!pending_target_.IsValid()) {
@@ -68,7 +70,7 @@ data::InstallationResult AktualizrSecondary::install() {
   return result;
 }
 
-data::InstallationResult AktualizrSecondary::verifyMetadata(const Metadata& metadata) {
+data::InstallationResult AktualizrSecondary::verifyMetadata(const Uptane::SecondaryMetadata& metadata) {
   // 5.4.4.2. Full verification  https://uptane.github.io/uptane-standard/uptane-standard.html#metadata_verification
 
   // 1. Load and verify the current time or the most recent securely attested time.

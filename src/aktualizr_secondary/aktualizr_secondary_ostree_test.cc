@@ -158,7 +158,8 @@ class UptaneRepoWrapper {
  public:
   UptaneRepoWrapper() { uptane_repo_.generateRepo(KeyType::kED25519); }
 
-  Metadata addOstreeRev(const std::string& rev, const std::string& hardware_id, const std::string& serial) {
+  Uptane::SecondaryMetadata addOstreeRev(const std::string& rev, const std::string& hardware_id,
+                                         const std::string& serial) {
     // it makes sense to add 'addOstreeImage' to UptaneRepo interface/class uptane_repo.h
     auto custom = Json::Value();
     custom["targetFormat"] = "OSTREE";
