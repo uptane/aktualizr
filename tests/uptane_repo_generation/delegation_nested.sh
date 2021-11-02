@@ -52,6 +52,7 @@ else
     uptane_gen --command image --targetname "cde/target1" --dname role-cde --targetsha256 40c1fb5a90ea02744126187dc8372f9a289c59f1af4afd9855fd2285f9648bb3 --targetsha512 671718e0c9025135aba25bca6b794920cee047a8031e1f955d5c4d82072422467af5d367243f4113d1b9ca79321091f738e68f27f136f633a5fc9cd6f430c689 --targetlength 100 --hwid secondary_hw
     uptane_gen --command image --targetname "def/target0" --dname role-def --targetsha256 40c1fb5a90ea02744126187dc8372f9a289c59f1af4afd9855fd2285f9648bb3 --targetsha512 671718e0c9025135aba25bca6b794920cee047a8031e1f955d5c4d82072422467af5d367243f4113d1b9ca79321091f738e68f27f136f633a5fc9cd6f430c689 --targetlength 100 --hwid secondary_hw
     uptane_gen --command addtarget --hwid primary_hw --serial CA:FE:A6:D2:84:9D --targetname primary.txt
-    uptane_gen --command addtarget --hwid secondary_hw --serial secondary_ecu_serial --targetname "abc/secondary.txt"
+    # TODO: implement delegation support in ManagedSecondary.
+    #uptane_gen --command addtarget --hwid secondary_hw --serial secondary_ecu_serial --targetname "abc/secondary.txt"
     uptane_gen --command signtargets
 fi
