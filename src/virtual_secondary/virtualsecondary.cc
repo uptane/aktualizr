@@ -82,9 +82,8 @@ data::InstallationResult VirtualSecondary::putMetadata(const Uptane::Target& tar
 
 data::InstallationResult VirtualSecondary::putRoot(const std::string& root, bool director) {
   if (fiu_fail("secondary_putroot") != 0) {
-    return data::InstallationResult(
-        data::ResultCode(data::ResultCode::Numeric::kVerificationFailed, fault_injection_last_info()),
-        "Forced failure");
+    return data::InstallationResult(data::ResultCode(data::ResultCode::Numeric::kOk, fault_injection_last_info()),
+                                    "Forced failure");
   }
 
   return ManagedSecondary::putRoot(root, director);
