@@ -32,11 +32,8 @@ class IpUptaneSecondary : public SecondaryInterface {
     secondary_provider_ = std::move(secondary_provider_in);
   }
   data::InstallationResult putMetadata(const Target& target) override;
-  int32_t getRootVersion(bool /* director */) const override { return 0; }
-  // TODO(OTA-4552): Support multiple Root rotations.
-  data::InstallationResult putRoot(const std::string& /* root */, bool /* director */) override {
-    return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
-  }
+  int32_t getRootVersion(bool director) const override;
+  data::InstallationResult putRoot(const std::string& root, bool director) override;
   Manifest getManifest() const override;
   bool ping() const override;
   data::InstallationResult sendFirmware(const Uptane::Target& target) override;

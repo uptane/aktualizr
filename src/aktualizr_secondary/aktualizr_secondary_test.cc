@@ -83,7 +83,7 @@ class UptaneRepoWrapper {
     const auto image_file_path = root_dir_ / targetname;
     generateRandomFile(image_file_path, size);
 
-    uptane_repo_.addImage(image_file_path, targetname, hardware_id, "", Delegation());
+    uptane_repo_.addImage(image_file_path, targetname, hardware_id);
     if (add_and_sign_target) {
       uptane_repo_.addTarget(targetname, hardware_id, serial, "");
       uptane_repo_.signTargets();
@@ -121,7 +121,9 @@ class UptaneRepoWrapper {
     auto custom = Json::Value();
     custom["targetFormat"] = "BINARY";
     custom["version"] = custom_version;
-    uptane_repo_.addCustomImage(targetname, Hash(Hash::Type::kSha256, targetname), 1, hardware_id, "", Delegation(),
+    // Don't use the custom_version since it only allows integers and we want to
+    // be able to put garbage there.
+    uptane_repo_.addCustomImage(targetname, Hash(Hash::Type::kSha256, targetname), 1, hardware_id, "", 0, Delegation(),
                                 custom);
   }
 

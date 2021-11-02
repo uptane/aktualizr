@@ -11,17 +11,20 @@ class UptaneRepo {
   void addTarget(const std::string &target_name, const std::string &hardware_id, const std::string &ecu_serial,
                  const std::string &url, const std::string &expires = "");
   void addImage(const boost::filesystem::path &image_path, const boost::filesystem::path &targetname,
-                const std::string &hardware_id, const std::string &url, const Delegation &delegation);
+                const std::string &hardware_id, const std::string &url = "", const int32_t custom_version = 0,
+                const Delegation &delegation = {});
+  void addCustomImage(const std::string &name, const Hash &hash, uint64_t length, const std::string &hardware_id,
+                      const std::string &url = "", const int32_t custom_version = 0, const Delegation &delegation = {},
+                      const Json::Value &custom = {});
   void addDelegation(const Uptane::Role &name, const Uptane::Role &parent_role, const std::string &path,
                      bool terminating, KeyType key_type);
   void revokeDelegation(const Uptane::Role &name);
-  void addCustomImage(const std::string &name, const Hash &hash, uint64_t length, const std::string &hardware_id,
-                      const std::string &url, const Delegation &delegation = {}, const Json::Value &custom = {});
   void signTargets();
   void emptyTargets();
   void oldTargets();
   void generateCampaigns();
   void refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role);
+  void rotate(Uptane::RepositoryType repo_type, const Uptane::Role &role, KeyType key_type = KeyType::kRSA2048);
 
  private:
   DirectorRepo director_repo_;

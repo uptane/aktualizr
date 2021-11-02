@@ -19,13 +19,14 @@ void ImageRepo::addImage(const std::string &name, Json::Value &target, const std
 }
 
 void ImageRepo::addBinaryImage(const boost::filesystem::path &image_path, const boost::filesystem::path &targetname,
-                               const std::string &hardware_id, const std::string &url, const Delegation &delegation) {
+                               const std::string &hardware_id, const std::string &url, const int32_t custom_version,
+                               const Delegation &delegation) {
   boost::filesystem::path repo_dir(path_ / ImageRepo::dir);
   boost::filesystem::path targets_path = repo_dir / "targets";
 
   auto targetname_dir = targetname.parent_path();
   boost::filesystem::create_directories(targets_path / targetname_dir);
-  boost::filesystem::copy_file(image_path, targets_path / targetname_dir / image_path.filename(),
+  boost::filesystem::copy_file(image_path, targets_path / targetname_dir / targetname.filename(),
                                boost::filesystem::copy_option::overwrite_if_exists);
 
   std::string image = Utils::readFile(image_path);
@@ -38,12 +39,15 @@ void ImageRepo::addBinaryImage(const boost::filesystem::path &image_path, const 
   if (!url.empty()) {
     target["custom"]["uri"] = url;
   }
+  if (custom_version != 0) {
+    target["custom"]["version"] = custom_version;
+  }
   addImage(targetname.string(), target, hardware_id, delegation);
 }
 
 void ImageRepo::addCustomImage(const std::string &name, const Hash &hash, const uint64_t length,
-                               const std::string &hardware_id, const std::string &url, const Delegation &delegation,
-                               const Json::Value &custom) {
+                               const std::string &hardware_id, const std::string &url, const int32_t custom_version,
+                               const Delegation &delegation, const Json::Value &custom) {
   Json::Value target;
   target["length"] = Json::UInt(length);
   if (hash.type() == Hash::Type::kSha256) {
@@ -54,6 +58,9 @@ void ImageRepo::addCustomImage(const std::string &name, const Hash &hash, const 
   target["custom"] = custom;
   if (!url.empty()) {
     target["custom"]["uri"] = url;
+  }
+  if (custom_version != 0) {
+    target["custom"]["version"] = custom_version;
   }
   addImage(name, target, hardware_id, delegation);
 }

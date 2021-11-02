@@ -59,6 +59,8 @@ class AktualizrSecondary : public MsgDispatcher {
   ReturnCode getInfoHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const;
   static ReturnCode versionHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
   ReturnCode getManifestHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const;
+  ReturnCode getRootVerHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const;
+  ReturnCode putRootHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
   ReturnCode putMetaHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
   ReturnCode installHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
 
