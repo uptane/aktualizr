@@ -2,11 +2,11 @@
 #define AKTUALIZR_SECONDARY_H
 
 #include "aktualizr_secondary_config.h"
-#include "aktualizr_secondary_metadata.h"
 #include "msg_handler.h"
 #include "uptane/directorrepository.h"
 #include "uptane/imagerepository.h"
 #include "uptane/manifest.h"
+#include "uptane/secondary_metadata.h"
 
 class UpdateAgent;
 class INvStorage;
@@ -23,9 +23,9 @@ class AktualizrSecondary : public MsgDispatcher {
   Uptane::Manifest getManifest() const;
   const Uptane::Target& getPendingTarget() const { return pending_target_; }
 
-  virtual data::InstallationResult putMetadata(const Metadata& metadata);
+  virtual data::InstallationResult putMetadata(const Uptane::SecondaryMetadata& metadata);
   virtual data::InstallationResult putMetadata(const Uptane::MetaBundle& meta_bundle) {
-    return putMetadata(Metadata(meta_bundle));
+    return putMetadata(Uptane::SecondaryMetadata(meta_bundle));
   }
 
   virtual data::InstallationResult install();
@@ -50,7 +50,7 @@ class AktualizrSecondary : public MsgDispatcher {
  private:
   static void copyMetadata(Uptane::MetaBundle& meta_bundle, Uptane::RepositoryType repo, const Uptane::Role& role,
                            std::string& json);
-  data::InstallationResult verifyMetadata(const Metadata& metadata);
+  data::InstallationResult verifyMetadata(const Uptane::SecondaryMetadata& metadata);
   data::InstallationResult findTargets();
   void uptaneInitialize();
   void registerHandlers();

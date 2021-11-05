@@ -1,24 +1,26 @@
 set(SOURCES
+    directorrepository.cc
     fetcher.cc
+    imagerepository.cc
     iterator.cc
+    manifest.cc
     metawithkeys.cc
     role.cc
     root.cc
+    secondary_metadata.cc
     tuf.cc
-    uptanerepository.cc
-    directorrepository.cc
-    imagerepository.cc
-    manifest.cc)
+    uptanerepository.cc)
 
 set(HEADERS
+    directorrepository.h
     exceptions.h
     fetcher.h
-    iterator.h
-    tuf.h
-    uptanerepository.h
-    directorrepository.h
     imagerepository.h
-    manifest.h)
+    iterator.h
+    manifest.h
+    secondary_metadata.h
+    tuf.h
+    uptanerepository.h)
 
 
 add_library(uptane OBJECT ${SOURCES})

@@ -126,6 +126,9 @@ TEST(VirtualSecondary, RootRotationFailure) {
   uptane_repo.addTarget("firmware_name.txt", "secondary_hw", "secondary_ecu_serial", "");
   uptane_repo.signTargets();
 
+  // This causes putRoot to be skipped, which means when the latest (v3)
+  // metadata is sent, the Secondary can't verify it, since it only has the v1
+  // Root.
   fault_injection_init();
   fiu_enable("secondary_putroot", 1, nullptr, 0);
 

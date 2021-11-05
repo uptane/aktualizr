@@ -77,9 +77,9 @@ class UptaneRepoWrapper {
  public:
   UptaneRepoWrapper() { uptane_repo_.generateRepo(KeyType::kED25519); }
 
-  Metadata addImageFile(const std::string& targetname, const std::string& hardware_id, const std::string& serial,
-                        size_t size = 2049, bool add_and_sign_target = true, bool add_invalid_images = false,
-                        size_t delta = 2) {
+  Uptane::SecondaryMetadata addImageFile(const std::string& targetname, const std::string& hardware_id,
+                                         const std::string& serial, size_t size = 2049, bool add_and_sign_target = true,
+                                         bool add_invalid_images = false, size_t delta = 2) {
     const auto image_file_path = root_dir_ / targetname;
     generateRandomFile(image_file_path, size);
 
@@ -279,15 +279,15 @@ class SecondaryTestNegative
   SecondaryTestNegative() : SecondaryTest(std::get<2>(GetParam())), success_expected_(std::get<3>(GetParam())) {}
 
  protected:
-  class MetadataInvalidator : public Metadata {
+  class MetadataInvalidator : public Uptane::SecondaryMetadata {
    public:
     MetadataInvalidator(const Uptane::MetaBundle& valid_metadata, const Uptane::RepositoryType& repo,
                         const Uptane::Role& role)
-        : Metadata(valid_metadata), repo_type_(repo), role_(role) {}
+        : Uptane::SecondaryMetadata(valid_metadata), repo_type_(repo), role_(role) {}
 
     void getRoleMetadata(std::string* result, const Uptane::RepositoryType& repo, const Uptane::Role& role,
                          Uptane::Version version) const override {
-      Metadata::getRoleMetadata(result, repo, role, version);
+      Uptane::SecondaryMetadata::getRoleMetadata(result, repo, role, version);
       if (!(repo_type_ == repo && role_ == role)) {
         return;
       }

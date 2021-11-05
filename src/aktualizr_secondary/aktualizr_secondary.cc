@@ -36,7 +36,9 @@ Uptane::Manifest AktualizrSecondary::getManifest() const {
   return manifest;
 }
 
-data::InstallationResult AktualizrSecondary::putMetadata(const Metadata& metadata) { return verifyMetadata(metadata); }
+data::InstallationResult AktualizrSecondary::putMetadata(const Uptane::SecondaryMetadata& metadata) {
+  return verifyMetadata(metadata);
+}
 
 data::InstallationResult AktualizrSecondary::install() {
   if (!pending_target_.IsValid()) {
@@ -68,7 +70,7 @@ data::InstallationResult AktualizrSecondary::install() {
   return result;
 }
 
-data::InstallationResult AktualizrSecondary::verifyMetadata(const Metadata& metadata) {
+data::InstallationResult AktualizrSecondary::verifyMetadata(const Uptane::SecondaryMetadata& metadata) {
   // 5.4.4.2. Full verification  https://uptane.github.io/uptane-standard/uptane-standard.html#metadata_verification
 
   // 1. Load and verify the current time or the most recent securely attested time.
@@ -364,24 +366,24 @@ AktualizrSecondary::ReturnCode AktualizrSecondary::putRootHdlr(Asn1Message& in_m
     } else {
       try {
         director_repo_.verifyRoot(json);
+        storage_->storeRoot(json, repo_type, Uptane::Version(director_repo_.rootVersion()));
+        storage_->clearNonRootMeta(repo_type);
       } catch (const std::exception& e) {
         LOG_ERROR << "Failed to update Director Root metadata: " << e.what();
         result = data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                           std::string("Failed to update Director Root metadata: ") + e.what());
       }
-      storage_->storeRoot(json, repo_type, Uptane::Version(director_repo_.rootVersion()));
-      storage_->clearNonRootMeta(repo_type);
     }
   } else if (repo_type == Uptane::RepositoryType::Image()) {
     try {
       image_repo_.verifyRoot(json);
+      storage_->storeRoot(json, repo_type, Uptane::Version(image_repo_.rootVersion()));
+      storage_->clearNonRootMeta(repo_type);
     } catch (const std::exception& e) {
       LOG_ERROR << "Failed to update Image repo Root metadata: " << e.what();
       result = data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
                                         std::string("Failed to update Image repo Root metadata: ") + e.what());
     }
-    storage_->storeRoot(json, repo_type, Uptane::Version(image_repo_.rootVersion()));
-    storage_->clearNonRootMeta(repo_type);
   } else {
     LOG_WARNING << "Received Root version request with invalid repo type: " << pr->repotype;
     result = data::InstallationResult(
