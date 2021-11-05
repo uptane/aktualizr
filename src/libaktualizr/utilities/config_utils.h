@@ -76,6 +76,20 @@ inline void CopyFromConfig(StorageType& dest, const std::string& option_name, co
 }
 
 template <>
+inline void CopyFromConfig(BootedType& dest, const std::string& option_name, const boost::property_tree::ptree& pt) {
+  boost::optional<std::string> value = pt.get_optional<std::string>(option_name);
+  if (value.is_initialized()) {
+    std::string storage_type{StripQuotesFromStrings(value.get())};
+    // "0" is for backwards compatibility with aktualizr-lite usage.
+    if (storage_type == "staged" || storage_type == "0") {
+      dest = BootedType::kStaged;
+    } else {
+      dest = BootedType::kBooted;
+    }
+  }
+}
+
+template <>
 inline void CopyFromConfig(KeyType& dest, const std::string& option_name, const boost::property_tree::ptree& pt) {
   boost::optional<std::string> value = pt.get_optional<std::string>(option_name);
   if (value.is_initialized()) {

@@ -33,6 +33,20 @@ std::ostream &Uptane::operator<<(std::ostream &os, const EcuSerial &ecu_serial) 
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const BootedType btype) {
+  std::string btype_str;
+  switch (btype) {
+    case BootedType::kStaged:
+      btype_str = "staged";
+      break;
+    default:
+      btype_str = "booted";
+      break;
+  }
+  os << '"' << btype_str << '"';
+  return os;
+}
+
 std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
   const std::string type_s = Uptane::VerificationTypeToString(vtype);
   os << '"' << type_s << '"';

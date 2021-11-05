@@ -18,6 +18,9 @@ std::ostream &operator<<(std::ostream &os, ProvisionMode mode);
 enum class StorageType { kFileSystem = 0, kSqlite };
 std::ostream &operator<<(std::ostream &os, StorageType stype);
 
+enum class BootedType { kBooted = 0, kStaged };
+std::ostream &operator<<(std::ostream &os, BootedType btype);
+
 enum class VerificationType {
   kFull = 0,
   kTuf

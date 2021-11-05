@@ -350,12 +350,23 @@ Json::Value OstreeManager::getInstalledPackages() const {
 }
 
 std::string OstreeManager::getCurrentHash() const {
+  OstreeDeployment *deployment = nullptr;
   GObjectUniquePtr<OstreeSysroot> sysroot_smart = OstreeManager::LoadSysroot(config.sysroot);
-  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment(sysroot_smart.get());
-  if (booted_deployment == nullptr) {
-    throw std::runtime_error("Could not get booted deployment in " + config.sysroot.string());
+  if (config.booted == BootedType::kBooted) {
+    deployment = ostree_sysroot_get_booted_deployment(sysroot_smart.get());
+  } else {
+    g_autoptr(GPtrArray) deployments = ostree_sysroot_get_deployments(sysroot_smart.get());
+    if (deployments != nullptr && deployments->len > 0) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+      deployment = static_cast<OstreeDeployment *>(deployments->pdata[0]);
+    }
   }
-  return ostree_deployment_get_csum(booted_deployment);
+  if (deployment == nullptr) {
+    std::stringstream text;
+    text << "Could not get " << config.booted << " deployment in " << config.sysroot.string();
+    throw std::runtime_error(text.str());
+  }
+  return ostree_deployment_get_csum(deployment);
 }
 
 Uptane::Target OstreeManager::getCurrent() const {
@@ -444,10 +455,11 @@ GObjectUniquePtr<OstreeSysroot> OstreeManager::LoadSysroot(const boost::filesyst
   }
   GError *error = nullptr;
   if (ostree_sysroot_load(sysroot.get(), nullptr, &error) == 0) {
+    const std::string msg = error->message;
     if (error != nullptr) {
       g_error_free(error);
     }
-    throw std::runtime_error("could not load sysroot");
+    throw std::runtime_error("could not load sysroot at " + path.string() + ": " + msg);
   }
   return sysroot;
 }
