@@ -56,7 +56,6 @@ class HttpClient : public HttpInterface {
   HttpResponse perform(CURL *curl_handler, int retry_times, int64_t size_limit);
   static curl_slist *curl_slist_dup(curl_slist *sl);
 
-  static CURLcode sslCtxFunction(CURL *handle, void *sslctx, void *parm);
   std::unique_ptr<TemporaryFile> tls_ca_file;
   std::unique_ptr<TemporaryFile> tls_cert_file;
   std::unique_ptr<TemporaryFile> tls_pkey_file;
