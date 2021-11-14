@@ -92,6 +92,7 @@ HttpClient::HttpClient(const HttpClient& curl_in) : pkcs11_key(curl_in.pkcs11_ke
   headers = curl_slist_dup(curl_in.headers);
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 CurlGlobalInitWrapper HttpClient::manageCurlGlobalInit_{};
 
 HttpClient::~HttpClient() {
@@ -223,6 +224,7 @@ HttpResponse HttpClient::perform(CURL* curl_handler, int retry_times, int64_t si
     LOG_ERROR << error_message.str();
     if (retry_times != 0) {
       sleep(1);
+      // NOLINTNEXTLINE(misc-no-recursion)
       response = perform(curl_handler, --retry_times, size_limit);
     }
   }
