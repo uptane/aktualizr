@@ -127,14 +127,13 @@ if(BUILD_P11)
                 message(STATUS "Detected pkcs11 engine path: ${engine}")
                 set(PKCS11_ENGINE_PATH ${engine})
             endif()
-
         endforeach()
 
         if (NOT PKCS11_ENGINE_PATH)
             message(FATAL_ERROR "Could not auto-detect path of PKCS11 engine, please specify PKCS11_ENGINE_PATH")
         endif()
 
-        set(PKCS11_ENGINE_PATH "${PKCS11_ENGINE_PATH}" CACHE STRING "Credentials.zip for tests involving the server")
+        set(PKCS11_ENGINE_PATH "${PKCS11_ENGINE_PATH}" CACHE STRING "Path to PKCS#11 engine library")
     endif()
 endif(BUILD_P11)
 

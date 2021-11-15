@@ -8,7 +8,6 @@
 #include "der_encoder.h"
 #include "ipuptanesecondary.h"
 #include "logging/logging.h"
-#include "storage/invstorage.h"
 
 namespace Uptane {
 
