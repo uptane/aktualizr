@@ -34,9 +34,9 @@ class Aktualizr {
   explicit Aktualizr(const Config& config);
 
   Aktualizr(const Aktualizr&) = delete;
+  Aktualizr(Aktualizr&&) = delete;
   Aktualizr& operator=(const Aktualizr&) = delete;
-  Aktualizr(const Aktualizr&&) = delete;
-  Aktualizr& operator=(const Aktualizr&&) = delete;
+  Aktualizr& operator=(Aktualizr&&) = delete;
   ~Aktualizr();
 
   /**

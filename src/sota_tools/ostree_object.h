@@ -40,9 +40,9 @@ class OSTreeObject {
   using ptr = boost::intrusive_ptr<OSTreeObject>;
   OSTreeObject(const OSTreeRepo& repo, OSTreeHash hash, OstreeObjectType object_type);
   OSTreeObject(const OSTreeObject&) = delete;
+  OSTreeObject(OSTreeObject&&) = delete;
   OSTreeObject operator=(const OSTreeObject&) = delete;
-  OSTreeObject(const OSTreeObject&&) = delete;
-  OSTreeObject operator=(const OSTreeObject&&) = delete;
+  OSTreeObject operator=(OSTreeObject&&) = delete;
 
   ~OSTreeObject();
 
