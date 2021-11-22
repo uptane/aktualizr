@@ -36,8 +36,7 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     "DownloadProgressReport",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::DownloadProgressReport *>(base);
-      return (std::string{"Progress at "} +
-              std::to_string(event_ptr->progress) + std::string{"%"});
+      return "Progress at " + std::to_string(event_ptr->progress) + "%";
     }
   },
   {
@@ -73,7 +72,7 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     "AllInstallsComplete",
     [](const event::BaseEvent *base) -> std::string {
       const auto *event_ptr = dynamic_cast<const event::AllInstallsComplete *>(base);
-      return std::string{"Result - "} + event_ptr->result.dev_report.result_code.toString();
+      return "Result - " + event_ptr->result.dev_report.result_code.ToString();
     }
   },
 };
