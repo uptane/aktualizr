@@ -117,6 +117,10 @@ class Aktualizr {
    */
   std::future<void> SendDeviceData();
 
+  // FIXME: [TDX] We should probably have a method to be used just for the data proxy.
+  //              Notice the parameter hwinfo here is being "abused" by the data proxy.
+  std::future<void> SendDeviceData(const Json::Value &hwinfo);
+
   /**
    * Fetch Uptane metadata and check for updates.
    * This collects a client manifest, PUTs it to the director, updates the
