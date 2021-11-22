@@ -1,7 +1,7 @@
 #include "p11engine.h"
 
-P11Engine* P11EngineGuard::instance = nullptr;
-int P11EngineGuard::ref_counter = 0;
+P11Engine* P11EngineGuard::instance = nullptr;  // NOLINT
+int P11EngineGuard::ref_counter = 0;            // NOLINT
 
 P11ContextWrapper::P11ContextWrapper(const boost::filesystem::path& module) : ctx(nullptr) {
   (void)module;
