@@ -19,6 +19,7 @@ static inline void addSubArray(Json::Value &d, const std::string &key, const Jso
 
 static const int MAX_DEPTH = 10;
 
+// NOLINTNEXTLINE(misc-no-recursion)
 static inline Json::Value treeJson(const boost::property_tree::ptree &tree, int depth = 0) {
   namespace bpt = boost::property_tree;
 

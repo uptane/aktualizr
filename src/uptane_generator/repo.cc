@@ -27,6 +27,7 @@ Repo::Repo(Uptane::RepositoryType repo_type, boost::filesystem::path path, const
   }
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 void Repo::addDelegationToSnapshot(Json::Value *snapshot, const Uptane::Role &role) {
   boost::filesystem::path repo_dir = repo_dir_;
   if (role.IsDelegation()) {
@@ -402,6 +403,7 @@ Delegation::Delegation(const boost::filesystem::path &repo_path, std::string del
   }
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 std::string Delegation::findPatternInTree(const boost::filesystem::path &repo_path, const std::string &name,
                                           const Json::Value &targets_json) {
   Json::Value delegations = targets_json["delegations"];

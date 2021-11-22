@@ -45,6 +45,7 @@ std::string cer_encode_integer(int32_t number) {
   return res;
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 std::string cer_encode_string(const std::string& contents, ASN1_UniversalTag tag) {
   size_t len = contents.length();
 
@@ -102,6 +103,7 @@ static int32_t cer_decode_length(const std::string& content, int32_t* endpos) {
   return res;
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 uint8_t cer_decode_token(const std::string& ber, int32_t* endpos, int32_t* int_param, std::string* string_param) {
   *endpos = 0;
   if (ber.length() < 2) {

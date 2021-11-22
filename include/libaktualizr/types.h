@@ -318,7 +318,7 @@ struct MetaPairHash;
 using MetaBundle = std::unordered_map<std::pair<RepositoryType, Role>, std::string, MetaPairHash>;
 
 struct InstalledImageInfo {
-  InstalledImageInfo() : name{""} {}
+  InstalledImageInfo() = default;
   InstalledImageInfo(std::string name_in, uint64_t len_in, std::string hash_in)
       : name(std::move(name_in)), len(len_in), hash(std::move(hash_in)) {}
   std::string name;

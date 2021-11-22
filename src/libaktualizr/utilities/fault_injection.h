@@ -15,8 +15,8 @@
  * http://blitiri.com.ar/p/libfiu.
  */
 
-#ifndef _FAULT_INJECTION_H
-#define _FAULT_INJECTION_H
+#ifndef FAULT_INJECTION_H_
+#define FAULT_INJECTION_H_
 
 #include <string>
 
@@ -134,4 +134,4 @@ static inline void fault_injection_init() {
 
 #endif /* FIU_ENABLE */
 
-#endif /* _FAULT_INJECTION_H */
+#endif /* FAULT_INJECTION_H_ */

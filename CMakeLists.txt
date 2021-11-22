@@ -218,9 +218,9 @@ if(TESTSUITE_VALGRIND)
 endif()
 add_custom_target(build_tests)
 
-# clang-check and clang-format
+# clang-tidy and clang-format
 find_program(CLANG_FORMAT NAMES clang-format-10)
-find_program(CLANG_TIDY NAMES clang-tidy-10)
+find_program(CLANG_TIDY NAMES clang-tidy-11 clang-tidy-10)
 
 if(CLANG_FORMAT)
     function(aktualizr_clang_format)
@@ -263,7 +263,7 @@ if(CLANG_TIDY)
         endforeach()
     endfunction()
 else()
-    message(WARNING "clang-tidy-10 not found, skipping")
+    message(WARNING "clang-tidy-11 or clang-tidy-10 not found, skipping")
     function(aktualizr_clang_tidy)
     endfunction()
 endif()

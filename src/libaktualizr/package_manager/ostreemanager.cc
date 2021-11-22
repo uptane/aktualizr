@@ -20,6 +20,7 @@
 #include "storage/invstorage.h"
 #include "utilities/utils.h"
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 AUTO_REGISTER_PACKAGE_MANAGER(PACKAGE_MANAGER_OSTREE, OstreeManager);
 
 static void aktualizr_progress_cb(OstreeAsyncProgress *progress, gpointer data) {

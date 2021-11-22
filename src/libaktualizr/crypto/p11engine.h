@@ -111,8 +111,8 @@ class P11EngineGuard {
   P11Engine *operator->() const { return instance; }
 
  private:
-  static P11Engine *instance;
-  static int ref_counter;
+  static P11Engine *instance;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static int ref_counter;      // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 };
 
 #endif
