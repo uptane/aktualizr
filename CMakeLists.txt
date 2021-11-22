@@ -105,7 +105,10 @@ if(BUILD_OSTREE)
     find_package(OSTree REQUIRED)
     add_definitions(-DBUILD_OSTREE)
 else(BUILD_OSTREE)
-    unset(LIBOSTREE_LIBRARIES CACHE)
+    # The sota tools depend on libostree so no reason to unset LIBOSTREE_LIBRARIES if they are enabled
+    if (NOT BUILD_SOTA_TOOLS)
+        unset(LIBOSTREE_LIBRARIES CACHE)
+    endif(NOT BUILD_SOTA_TOOLS)
 endif(BUILD_OSTREE)
 
 if(BUILD_P11)
@@ -138,10 +141,8 @@ endif(BUILD_P11)
 if(BUILD_SOTA_TOOLS)
     find_package(GLIB2 REQUIRED)
     find_program(STRACE NAMES strace)
-
-    if (NOT BUILD_OSTREE)
-        message(SEND_ERROR "BUILD_SOTA_TOOLS requires BUILD_OSTREE to be enabled")
-    endif()
+    # The sota tools depend on libostree, but they don't require/depend on software enabled by BUILD_OSTREE flag
+    find_package(OSTree REQUIRED)
 endif(BUILD_SOTA_TOOLS)
 
 if(FAULT_INJECTION)
