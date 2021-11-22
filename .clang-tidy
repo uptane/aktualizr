@@ -12,7 +12,7 @@ Checks:          >-
   misc-*,-misc-non-private-member-variables-in-classes,
   modernize-*,-modernize-avoid-bind,-modernize-loop-convert,-modernize-use-trailing-return-type,
   performance-*,
-  readability-*,-readability-else-after-return,-readability-identifier-naming,-readability-magic-numbers,
+  readability-*,-readability-else-after-return,-readability-identifier-naming,-readability-magic-numbers,-readability-function-cognitive-complexity,
 
 WarningsAsErrors: '*'
 AnalyzeTemporaryDtors: false

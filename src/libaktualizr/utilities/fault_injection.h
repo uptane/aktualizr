@@ -69,6 +69,7 @@ static inline std::string fault_injection_last_info() {
   auto info_id = reinterpret_cast<uint64_t>(fiu_failinfo());
 
   std::array<char, fault_injection_info_bs> arr{};
+  // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions)
   std::streamoff offset = (info_id & 0xfffffff) * fault_injection_info_bs;
   std::ifstream f;
   f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -115,6 +116,7 @@ static inline int fault_injection_enable(const char *name, int failnum, const st
     }
   }
 
+  // NOLINTNEXTLINE(performance-no-int-to-ptr)
   return fiu_enable(name, failnum, reinterpret_cast<void *>(failinfo_id), flags);
 }
 
