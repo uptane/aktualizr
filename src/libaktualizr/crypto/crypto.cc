@@ -259,9 +259,7 @@ bool Crypto::parseP12(BIO *p12_bio, const std::string &p12_password, std::string
   }
 
   // use a lambda here because sk_X509_pop_free is a macro
-  auto stackx509_free = [](STACK_OF(X509) * stack) {
-    sk_X509_pop_free(stack, X509_free);  // NOLINT
-  };
+  auto stackx509_free = [](STACK_OF(X509) * stack) { sk_X509_pop_free(stack, X509_free); };
 
   StructGuard<EVP_PKEY> pkey(nullptr, EVP_PKEY_free);
   StructGuard<X509> x509_cert(nullptr, X509_free);
@@ -307,8 +305,8 @@ bool Crypto::parseP12(BIO *p12_bio, const std::string &p12_password, std::string
     return false;
   }
   X509 *ca_cert = nullptr;
-  for (int i = 0; i < sk_X509_num(ca_certs.get()); i++) {  // NOLINT
-    ca_cert = sk_X509_value(ca_certs.get(), i);            // NOLINT
+  for (int i = 0; i < sk_X509_num(ca_certs.get()); i++) {
+    ca_cert = sk_X509_value(ca_certs.get(), i);
     PEM_write_bio_X509(ca_sink.get(), ca_cert);
     PEM_write_bio_X509(cert_sink.get(), ca_cert);
   }
