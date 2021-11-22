@@ -340,7 +340,7 @@ Manifest IpUptaneSecondary::getManifest() const {
     LOG_ERROR << "Manifest wasn't in json format";
     return Json::Value();
   }
-  std::string manifest = ToString(r->manifest.choice.json);  // NOLINT
+  std::string manifest = ToString(r->manifest.choice.json);  // NOLINT(cppcoreguidelines-pro-type-union-access)
   return Utils::parseJSON(manifest);
 }
 
