@@ -35,6 +35,7 @@ else
     uptane_gen --command image --filename "$PRIMARY_FIRMWARE" --targetname primary.txt --hwid primary_hw
     uptane_gen --command image --filename "$SECONDARY_FIRMWARE" --targetname "abc/secondary.txt" --dname new-role --hwid secondary_hw
     uptane_gen --command addtarget --hwid primary_hw --serial CA:FE:A6:D2:84:9D --targetname primary.txt
-    uptane_gen --command addtarget --hwid secondary_hw --serial secondary_ecu_serial --targetname "abc/secondary.txt"
+    # TODO: implement delegation support in ManagedSecondary.
+    #uptane_gen --command addtarget --hwid secondary_hw --serial secondary_ecu_serial --targetname "abc/secondary.txt"
     uptane_gen --command signtargets
 fi

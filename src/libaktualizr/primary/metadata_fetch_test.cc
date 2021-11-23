@@ -5,9 +5,8 @@
 #include "httpfake.h"
 #include "libaktualizr/aktualizr.h"
 #include "test_utils.h"
+#include "uptane_repo.h"
 #include "uptane_test_common.h"
-
-boost::filesystem::path uptane_generator_path;
 
 class HttpFakeMetaCounter : public HttpFake {
  public:
@@ -70,8 +69,8 @@ TEST(Aktualizr, MetadataFetch) {
   aktualizr.Initialize();
 
   // No updates scheduled: only download Director Root and Targets metadata.
-  Process uptane_gen(uptane_generator_path.string());
-  uptane_gen.run({"generate", "--path", meta_dir.PathString()});
+  UptaneRepo uptane_repo_{meta_dir.PathString(), "", ""};
+  uptane_repo_.generateRepo(KeyType::kED25519);
 
   result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
   EXPECT_EQ(update_result.status, result::UpdateStatus::kNoUpdatesAvailable);
@@ -86,14 +85,12 @@ TEST(Aktualizr, MetadataFetch) {
 
   // Two images added, but only one update scheduled: all metadata objects
   // should be fetched once.
-  uptane_gen.run({"image", "--path", meta_dir.PathString(), "--filename", "tests/test_data/firmware.txt",
-                  "--targetname", "firmware.txt", "--hwid", "primary_hw"});
-  uptane_gen.run({"image", "--path", meta_dir.PathString(), "--filename", "tests/test_data/firmware_name.txt",
-                  "--targetname", "firmware_name.txt", "--hwid", "primary_hw"});
-  uptane_gen.run({"addtarget", "--path", meta_dir.PathString(), "--targetname", "firmware.txt", "--hwid", "primary_hw",
-                  "--serial", "CA:FE:A6:D2:84:9D"});
-  uptane_gen.run({"adddelegation", "--path", meta_dir.PathString(), "--dname", "role-abc", "--dpattern", "abc/*"});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
+  uptane_repo_.addImage("tests/test_data/firmware.txt", "firmware.txt", "primary_hw");
+  uptane_repo_.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "primary_hw");
+  uptane_repo_.addTarget("firmware.txt", "primary_hw", "CA:FE:A6:D2:84:9D", "");
+  uptane_repo_.addDelegation(Uptane::Role("role-abc", true), Uptane::Role("targets", false), "abc/*", false,
+                             KeyType::kED25519);
+  uptane_repo_.signTargets();
 
   update_result = aktualizr.CheckUpdates().get();
   EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
@@ -108,10 +105,9 @@ TEST(Aktualizr, MetadataFetch) {
 
   // Update scheduled with pre-existing image: no need to refetch Image repo
   // Snapshot or Targets metadata.
-  uptane_gen.run({"emptytargets", "--path", meta_dir.PathString()});
-  uptane_gen.run({"addtarget", "--path", meta_dir.PathString(), "--targetname", "firmware_name.txt", "--hwid",
-                  "primary_hw", "--serial", "CA:FE:A6:D2:84:9D"});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
+  uptane_repo_.emptyTargets();
+  uptane_repo_.addTarget("firmware_name.txt", "primary_hw", "CA:FE:A6:D2:84:9D", "");
+  uptane_repo_.signTargets();
 
   update_result = aktualizr.CheckUpdates().get();
   EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
@@ -126,12 +122,11 @@ TEST(Aktualizr, MetadataFetch) {
 
   // Delegation added to an existing delegation; update scheduled with
   // pre-existing image: Snapshot must be refetched, but Targets are unchanged.
-  uptane_gen.run({"emptytargets", "--path", meta_dir.PathString()});
-  uptane_gen.run({"addtarget", "--path", meta_dir.PathString(), "--targetname", "firmware.txt", "--hwid", "primary_hw",
-                  "--serial", "CA:FE:A6:D2:84:9D"});
-  uptane_gen.run({"adddelegation", "--path", meta_dir.PathString(), "--dname", "role-def", "--dpattern", "def/*",
-                  "--dparent", "role-abc"});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
+  uptane_repo_.emptyTargets();
+  uptane_repo_.addTarget("firmware.txt", "primary_hw", "CA:FE:A6:D2:84:9D", "");
+  uptane_repo_.addDelegation(Uptane::Role("role-def", true), Uptane::Role("role-abc", true), "def/*", false,
+                             KeyType::kED25519);
+  uptane_repo_.signTargets();
 
   update_result = aktualizr.CheckUpdates().get();
   EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
@@ -148,11 +143,6 @@ TEST(Aktualizr, MetadataFetch) {
 #ifndef __NO_MAIN__
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  if (argc != 2) {
-    std::cerr << "Error: " << argv[0] << " requires the path to the uptane-generator utility\n";
-    return EXIT_FAILURE;
-  }
-  uptane_generator_path = argv[1];
 
   logger_init();
   logger_set_threshold(boost::log::trivial::trace);

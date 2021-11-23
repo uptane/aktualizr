@@ -243,7 +243,7 @@ TEST(Aktualizr, EmptyTargetsAfterInstall) {
   }
 }
 
-#endif
+#endif  // FIU_ENABLE
 
 #ifndef __NO_MAIN__
 int main(int argc, char **argv) {

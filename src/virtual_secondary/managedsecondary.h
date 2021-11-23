@@ -11,10 +11,16 @@
 #include "libaktualizr/secondaryinterface.h"
 #include "libaktualizr/types.h"
 #include "primary/secondary_config.h"
+#include "uptane/secondary_metadata.h"
+
+namespace Uptane {
+class DirectorRepository;
+class ImageRepository;
+}  // namespace Uptane
+
+class INvStorage;
 
 namespace Primary {
-
-struct MetaPack;
 
 class ManagedSecondaryConfig : public SecondaryConfig {
  public:
@@ -42,12 +48,12 @@ class ManagedSecondaryConfig : public SecondaryConfig {
 class ManagedSecondary : public SecondaryInterface {
  public:
   explicit ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in);
+  // Prevent inlining to enable forward declarations.
   ~ManagedSecondary() override;
 
   void init(std::shared_ptr<SecondaryProvider> secondary_provider_in) override {
     secondary_provider_ = std::move(secondary_provider_in);
   }
-  void Initialize();
 
   Uptane::EcuSerial getSerial() const override {
     if (!sconfig.ecu_serial.empty()) {
@@ -77,16 +83,13 @@ class ManagedSecondary : public SecondaryInterface {
 
  private:
   void storeKeys(const std::string& pub_key, const std::string& priv_key);
-  void rawToMeta();
 
-  // TODO: implement persistent storage.
-  bool storeMetadata() { return true; }
-  bool loadMetadata() { return true; }
-
+  std::unique_ptr<Uptane::DirectorRepository> director_repo_;
+  std::unique_ptr<Uptane::ImageRepository> image_repo_;
   PublicKey public_key_;
   std::string private_key;
-  std::unique_ptr<MetaPack> current_meta;
-  std::unique_ptr<Uptane::MetaBundle> meta_bundle_;
+  StorageConfig storage_config_;
+  std::shared_ptr<INvStorage> storage_;
 };
 
 }  // namespace Primary

@@ -1,11 +1,11 @@
 [network]
 port = 9031
 
-[storage]
-type = "sqlite"
-
 [pacman]
 os = "testos"
 sysroot = "testsysroot"
 ostree_server = "test_server"
 packages_file = "/test_packages"
+
+[uptane]
+verification_type = "Full"

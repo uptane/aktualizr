@@ -45,6 +45,39 @@ jobs:
       - name: Test
         run: docker run -v "$PWD:$PWD" -w "$PWD" $DARGS -t "$DOCKER_TAG" ./scripts/test.sh
 
+  nop11:
+    name: Tests without p11 support on Ubuntu Bionic
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bionic-master
+      DOCKERFILE: docker/Dockerfile.ubuntu.bionic
+      DARGS: >-
+        -eCCACHE_DIR
+        -eTEST_CMAKE_BUILD_TYPE=Debug
+        -eTEST_WITH_P11=0
+        -eTEST_WITH_TESTSUITE=0
+    steps:
+      - uses: actions/checkout@master
+        with:
+          submodules: recursive
+      - run: git fetch --prune --unshallow
+      - name: Docker login
+        if: github.token
+        run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
+      - name: Docker build
+        run: |
+          docker pull "$DOCKER_TAG" || true
+          docker build --cache-from "$DOCKER_TAG" --pull -t "$DOCKER_TAG" -f "$DOCKERFILE" .
+      - uses: actions/cache@v1.1.0
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ubuntu-bionic-${{ github.run_id }}
+          restore-keys: |
+            ubuntu-bionic-${{ github.run_id }}
+            ubuntu-bionic-
+      - name: Test
+        run: docker run -v "$PWD:$PWD" -w "$PWD" $DARGS -t "$DOCKER_TAG" ./scripts/test.sh
+
   static-checks:
     name: Static checks on Ubuntu Focal
     runs-on: ubuntu-latest
@@ -54,7 +87,8 @@ jobs:
       DARGS: >-
         -eCCACHE_DIR
         -eTEST_CC=clang
-        -eTEST_WITH_TESTSUITE=0
+        -eTEST_CMAKE_BUILD_TYPE=Valgrind
+        -eTEST_TESTSUITE_ONLY=crypto
         -eTEST_WITH_STATICTESTS=1
         -eTEST_WITH_DOCS=1
     steps:

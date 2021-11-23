@@ -7,7 +7,7 @@ TEMP_DIR=/tmp/temp_aktualizr_expire_repo/$(mktemp -d)/$1
 
 cp ./tests/test_data/credentials.zip $TEMP_DIR
 
-PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 TREEHUB="{\
   \"oauth2\": {
     \"server\": \"http://localhost:$PORT\",\

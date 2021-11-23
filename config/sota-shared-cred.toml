@@ -1,5 +1,2 @@
 [provision]
 provision_path = "/var/sota/sota_provisioning_credentials.zip"
-
-[storage]
-type = "sqlite"

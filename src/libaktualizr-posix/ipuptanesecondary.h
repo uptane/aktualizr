@@ -2,6 +2,7 @@
 #define UPTANE_IPUPTANESECONDARY_H_
 
 #include "libaktualizr/secondaryinterface.h"
+#include "libaktualizr/types.h"
 
 struct AKMetaCollection;
 typedef struct AKMetaCollection AKMetaCollection_t;
@@ -10,14 +11,17 @@ namespace Uptane {
 
 class IpUptaneSecondary : public SecondaryInterface {
  public:
-  static SecondaryInterface::Ptr connectAndCreate(const std::string& address, unsigned short port);
-  static SecondaryInterface::Ptr create(const std::string& address, unsigned short port, int con_fd);
+  static SecondaryInterface::Ptr connectAndCreate(const std::string& address, unsigned short port,
+                                                  VerificationType verification_type);
+  static SecondaryInterface::Ptr create(const std::string& address, unsigned short port,
+                                        VerificationType verification_type, int con_fd);
 
-  static SecondaryInterface::Ptr connectAndCheck(const std::string& address, unsigned short port, EcuSerial serial,
+  static SecondaryInterface::Ptr connectAndCheck(const std::string& address, unsigned short port,
+                                                 VerificationType verification_type, EcuSerial serial,
                                                  HardwareIdentifier hw_id, PublicKey pub_key);
 
-  explicit IpUptaneSecondary(const std::string& address, unsigned short port, EcuSerial serial,
-                             HardwareIdentifier hw_id, PublicKey pub_key);
+  explicit IpUptaneSecondary(const std::string& address, unsigned short port, VerificationType verification_type,
+                             EcuSerial serial, HardwareIdentifier hw_id, PublicKey pub_key);
 
   std::string Type() const override { return "IP"; }
   EcuSerial getSerial() const override { return serial_; };
@@ -28,11 +32,8 @@ class IpUptaneSecondary : public SecondaryInterface {
     secondary_provider_ = std::move(secondary_provider_in);
   }
   data::InstallationResult putMetadata(const Target& target) override;
-  int32_t getRootVersion(bool /* director */) const override { return 0; }
-  // TODO(OTA-4552): Support multiple Root rotations.
-  data::InstallationResult putRoot(const std::string& /* root */, bool /* director */) override {
-    return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
-  }
+  int32_t getRootVersion(bool director) const override;
+  data::InstallationResult putRoot(const std::string& root, bool director) override;
   Manifest getManifest() const override;
   bool ping() const override;
   data::InstallationResult sendFirmware(const Uptane::Target& target) override;
@@ -55,7 +56,8 @@ class IpUptaneSecondary : public SecondaryInterface {
   data::InstallationResult uploadFirmwareData(const uint8_t* data, size_t size);
 
   std::shared_ptr<SecondaryProvider> secondary_provider_;
-  std::pair<std::string, uint16_t> addr_;
+  const std::pair<std::string, uint16_t> addr_;
+  const VerificationType verification_type_;
   const EcuSerial serial_;
   const HardwareIdentifier hw_id_;
   const PublicKey pub_key_;

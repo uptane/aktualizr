@@ -933,7 +933,7 @@ Socket::Socket() {
 
 Socket::~Socket() { ::close(socket_fd_); }
 
-std::string Socket::toString() const {
+std::string Socket::ToString() const {
   auto saddr = Utils::ipGetSockaddr(socket_fd_);
   return Utils::ipDisplayName(saddr) + ":" + std::to_string(Utils::ipPort(saddr));
 }

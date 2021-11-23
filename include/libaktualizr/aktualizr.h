@@ -35,6 +35,8 @@ class Aktualizr {
 
   Aktualizr(const Aktualizr&) = delete;
   Aktualizr& operator=(const Aktualizr&) = delete;
+  Aktualizr(const Aktualizr&&) = delete;
+  Aktualizr& operator=(const Aktualizr&&) = delete;
   ~Aktualizr();
 
   /**
@@ -57,7 +59,6 @@ class Aktualizr {
 
   /**
    * Asynchronously run aktualizr indefinitely until Shutdown is called.
-   * @param custom_hwinfo if not empty will be sent to the backend instead of `lshw` output
    * @return Empty std::future object
    *
    * @throw SQLException
@@ -68,7 +69,7 @@ class Aktualizr {
    *                            getting metadata from database or filesystem)
    * @throw std::system_error (failure to lock a mutex)
    */
-  std::future<void> RunForever(const Json::Value& custom_hwinfo = Json::nullValue);
+  std::future<void> RunForever();
 
   /**
    * Shuts down currently running `RunForever()` method
@@ -106,7 +107,6 @@ class Aktualizr {
   /**
    * Send local device data to the server.
    * This includes network status, installed packages, hardware etc.
-   * @param custom_hwinfo if not empty will be sent to the backend instead of `lshw` output
    * @return Empty std::future object
    *
    * @throw SQLException
@@ -115,7 +115,7 @@ class Aktualizr {
    * @throw std::runtime_error (curl and filesystem failures)
    * @throw std::system_error (failure to lock a mutex)
    */
-  std::future<void> SendDeviceData(const Json::Value& custom_hwinfo = Json::nullValue);
+  std::future<void> SendDeviceData();
 
   /**
    * Fetch Uptane metadata and check for updates.
@@ -323,6 +323,14 @@ class Aktualizr {
    * @throw std::bad_alloc (memory allocation failure)
    */
   std::vector<SecondaryInfo> GetSecondaries() const;
+
+  /**
+   * Override the contents of the report sent to the /system_info endpoint.
+   * If this isn't called (or if hwinfo.empty()) then the output of lshw is
+   * sent instead
+   * @param hwinfo The replacement for lshw -json
+   */
+  void SetCustomHardwareInfo(Json::Value hwinfo);
 
   // The type proxy is needed in doxygen 1.8.16 because of this bug
   // https://github.com/doxygen/doxygen/issues/7236

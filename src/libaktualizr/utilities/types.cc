@@ -23,6 +23,36 @@ std::ostream &operator<<(std::ostream &os, const StorageType stype) {
   return os;
 }
 
+std::ostream &Uptane::operator<<(std::ostream &os, const HardwareIdentifier &hwid) {
+  os << hwid.ToString();
+  return os;
+}
+
+std::ostream &Uptane::operator<<(std::ostream &os, const EcuSerial &ecu_serial) {
+  os << ecu_serial.ToString();
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const BootedType btype) {
+  std::string btype_str;
+  switch (btype) {
+    case BootedType::kStaged:
+      btype_str = "staged";
+      break;
+    default:
+      btype_str = "booted";
+      break;
+  }
+  os << '"' << btype_str << '"';
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
+  const std::string type_s = Uptane::VerificationTypeToString(vtype);
+  os << '"' << type_s << '"';
+  return os;
+}
+
 std::string TimeToString(struct tm time) {
   std::array<char, 22> formatted{};
   strftime(formatted.data(), 22, "%Y-%m-%dT%H:%M:%SZ", &time);
@@ -86,7 +116,7 @@ const std::map<data::ResultCode::Numeric, const char *> data::ResultCode::string
 };
 
 std::string data::ResultCode::toRepr() const {
-  std::string s = toString();
+  std::string s = ToString();
 
   if (s.find('\"') != std::string::npos) {
     throw std::runtime_error("Result code cannot contain double quotes");
@@ -122,7 +152,7 @@ ResultCode data::ResultCode::fromRepr(const std::string &repr) {
 Json::Value InstallationResult::toJson() const {
   Json::Value json;
   json["success"] = success;
-  json["code"] = result_code.toString();
+  json["code"] = result_code.ToString();
   json["description"] = description;
   return json;
 }
@@ -134,9 +164,9 @@ std::ostream &operator<<(std::ostream &os, const ResultCode &result_code) {
 
 }  // namespace data
 
-// vim: set tabstop=2 shiftwidth=2 expandtab:
-
 boost::filesystem::path utils::BasedPath::get(const boost::filesystem::path &base) const {
   // note: BasedPath(bp.get() == bp)
   return Utils::absolutePath(base, p_);
 }
+
+// vim: set tabstop=2 shiftwidth=2 expandtab:

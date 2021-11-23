@@ -4,7 +4,6 @@ set(AKTUALIZR_SECONDARY_LIB_SRC
     aktualizr_secondary.cc
     aktualizr_secondary_config.cc
     aktualizr_secondary_file.cc
-    aktualizr_secondary_metadata.cc
     msg_handler.cc
     secondary_tcp_server.cc
     update_agent_file.cc
@@ -41,7 +40,6 @@ set(ALL_AKTUALIZR_SECONDARY_HEADERS
     aktualizr_secondary.h
     aktualizr_secondary_config.h
     aktualizr_secondary_file.h
-    aktualizr_secondary_metadata.h
     msg_handler.h
     secondary_tcp_server.h
     update_agent.h

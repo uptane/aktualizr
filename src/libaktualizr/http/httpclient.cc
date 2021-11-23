@@ -63,6 +63,30 @@ HttpClient::HttpClient(const std::vector<std::string>* extra_headers) {
   curlEasySetoptWrapper(curl, CURLOPT_USERAGENT, Utils::getUserAgent());
 }
 
+HttpClient::HttpClient(const std::string& socket) {
+  curl = curl_easy_init();
+  if (curl == nullptr) {
+    throw std::runtime_error("Could not initialize curl");
+  }
+  headers = nullptr;
+
+  curlEasySetoptWrapper(curl, CURLOPT_NOSIGNAL, 1L);
+  curlEasySetoptWrapper(curl, CURLOPT_TIMEOUT, 60L);
+  curlEasySetoptWrapper(curl, CURLOPT_CONNECTTIMEOUT, 60L);
+  curlEasySetoptWrapper(curl, CURLOPT_CAPATH, Utils::getCaPath());
+
+  // let curl use our write function
+  curlEasySetoptWrapper(curl, CURLOPT_WRITEFUNCTION, writeString);
+  curlEasySetoptWrapper(curl, CURLOPT_WRITEDATA, NULL);
+
+  curlEasySetoptWrapper(curl, CURLOPT_VERBOSE, get_curlopt_verbose());
+
+  headers = curl_slist_append(headers, "Accept: */*");
+  curlEasySetoptWrapper(curl, CURLOPT_UNIX_SOCKET_PATH, socket.c_str());
+
+  curlEasySetoptWrapper(curl, CURLOPT_USERAGENT, Utils::getUserAgent());
+}
+
 HttpClient::HttpClient(const HttpClient& curl_in) : pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
   curl = curl_easy_duphandle(curl_in.curl);
   headers = curl_slist_dup(curl_in.headers);
@@ -223,6 +247,7 @@ std::future<HttpResponse> HttpClient::downloadAsync(const std::string& url, curl
     *easyp = curlp;
   }
 
+  curlEasySetoptWrapper(curl_download, CURLOPT_HTTPHEADER, headers);
   curlEasySetoptWrapper(curl_download, CURLOPT_URL, url.c_str());
   curlEasySetoptWrapper(curl_download, CURLOPT_HTTPGET, 1L);
   curlEasySetoptWrapper(curl_download, CURLOPT_FOLLOWLOCATION, 1L);

@@ -1591,7 +1591,7 @@ TEST(Aktualizr, TargetAutoremove) {
   UptaneRepo repo{local_metadir, "2025-07-04T16:33:27Z", "id0"};
   repo.generateRepo(KeyType::kED25519);
   const std::string hwid = "primary_hw";
-  repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid, "", {});
+  repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid);
   repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
   repo.signTargets();
 
@@ -1620,7 +1620,7 @@ TEST(Aktualizr, TargetAutoremove) {
 
   // second install
   repo.emptyTargets();
-  repo.addImage(fake_meta_dir / "fake_meta/dummy_firmware.txt", "dummy_firmware.txt", hwid, "", {});
+  repo.addImage(fake_meta_dir / "fake_meta/dummy_firmware.txt", "dummy_firmware.txt", hwid);
   repo.addTarget("dummy_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
   repo.signTargets();
 
@@ -1640,7 +1640,7 @@ TEST(Aktualizr, TargetAutoremove) {
 
   // third install (first firmware again)
   repo.emptyTargets();
-  repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid, "", {});
+  repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid);
   repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
   repo.signTargets();
 
@@ -1660,7 +1660,7 @@ TEST(Aktualizr, TargetAutoremove) {
 
   // fourth install (some new third firmware)
   repo.emptyTargets();
-  repo.addImage(fake_meta_dir / "fake_meta/secondary_firmware.txt", "secondary_firmware.txt", hwid, "", {});
+  repo.addImage(fake_meta_dir / "fake_meta/secondary_firmware.txt", "secondary_firmware.txt", hwid);
   repo.addTarget("secondary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
   repo.signTargets();
 
@@ -2082,7 +2082,7 @@ TEST(Aktualizr, ManifestCustom) {
 
 TEST(Aktualizr, CustomInstallationRawReport) {
   TemporaryDirectory temp_dir;
-  auto http = std::make_shared<HttpFake>(temp_dir.Path(), "hasupdate", fake_meta_dir);
+  auto http = std::make_shared<HttpFake>(temp_dir.Path(), "hasupdates", fake_meta_dir);
 
   Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http->tls_server);
   auto storage = INvStorage::newStorage(conf.storage);
@@ -2347,7 +2347,8 @@ TEST(Aktualizr, CustomHwInfo) {
   aktualizr.SendDeviceData().get();
 
   auto hwinfo = Utils::parseJSON(custom_hwinfo);
-  aktualizr.SendDeviceData(hwinfo).get();
+  aktualizr.SetCustomHardwareInfo(hwinfo);
+  aktualizr.SendDeviceData().get();
 }
 
 #ifndef __NO_MAIN__

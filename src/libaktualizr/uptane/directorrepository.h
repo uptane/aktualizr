@@ -25,7 +25,7 @@ class DirectorRepository : public RepositoryCommon {
   void dropTargets(INvStorage& storage);
 
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
-  bool matchTargetsWithImageTargets(const Uptane::Targets& image_targets) const;
+  bool matchTargetsWithImageTargets(const std::shared_ptr<const Uptane::Targets>& image_targets) const;
 
  private:
   void resetMeta();

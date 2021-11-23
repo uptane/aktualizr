@@ -22,6 +22,7 @@
 #include "bootloader/bootloader.h"
 #include "http/httpclient.h"
 #include "primary/secondary_provider_builder.h"
+#include "provisioner.h"
 #include "reportqueue.h"
 #include "uptane/directorrepository.h"
 #include "uptane/exceptions.h"
@@ -36,39 +37,24 @@ class SotaUptaneClient {
  public:
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
                    std::shared_ptr<event::Channel> events_channel_in,
-                   const Uptane::EcuSerial &primary_serial = Uptane::EcuSerial::Unknown(),
-                   const Uptane::HardwareIdentifier &hwid = Uptane::HardwareIdentifier::Unknown())
-      : config(config_in),
-        storage(std::move(storage_in)),
-        http(std::move(http_in)),
-        package_manager_(PackageManagerFactory::makePackageManager(config.pacman, config.bootloader, storage, http)),
-        uptane_fetcher(new Uptane::Fetcher(config, http)),
-        events_channel(std::move(events_channel_in)),
-        primary_ecu_serial_(primary_serial),
-        primary_ecu_hw_id_(hwid) {
-    report_queue = std_::make_unique<ReportQueue>(config, http, storage);
-    secondary_provider_ = SecondaryProviderBuilder::Build(config, storage, package_manager_);
-  }
-
-  SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in,
-                   std::shared_ptr<HttpInterface> http_in)
-      : SotaUptaneClient(config_in, storage_in, std::move(http_in), nullptr) {}
+                   Uptane::EcuSerial primary_serial = Uptane::EcuSerial::Unknown(),
+                   Uptane::HardwareIdentifier hwid = Uptane::HardwareIdentifier::Unknown());
 
   SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in)
-      : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>()) {}
+      : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr) {}
 
   void initialize();
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
   result::Download downloadImages(const std::vector<Uptane::Target> &targets,
                                   const api::FlowControlToken *token = nullptr);
-  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
-                                                const api::FlowControlToken *token = nullptr);
+
+  /** See Aktualizr::SetCustomHardwareInfo(Json::Value) */
+  void setCustomHardwareInfo(Json::Value hwinfo) { custom_hardware_info_ = std::move(hwinfo); }
   void reportPause();
   void reportResume();
-  void sendDeviceData(const Json::Value &custom_hwinfo = Json::nullValue);
+  void sendDeviceData();
   result::UpdateCheck fetchMeta();
   bool putManifest(const Json::Value &custom = Json::nullValue);
-  result::UpdateCheck checkUpdates();
   result::Install uptaneInstall(const std::vector<Uptane::Target> &updates);
   result::CampaignCheck campaignCheck();
   void campaignAccept(const std::string &campaign_id);
@@ -78,23 +64,9 @@ class SotaUptaneClient {
   bool hasPendingUpdates() const;
   bool isInstallCompletionRequired() const;
   void completeInstall() const;
-  Uptane::LazyTargetsList allTargets() const;
-  Uptane::Target getCurrent() const { return package_manager_->getCurrent(); }
   std::vector<Uptane::Target> getStoredTargets() const { return package_manager_->getTargetFiles(); }
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
-  std::ifstream openStoredTarget(const Uptane::Target &target) {
-    auto status = package_manager_->verifyTarget(target);
-    if (status == TargetStatus::kGood) {
-      return package_manager_->openTargetFile(target);
-    } else {
-      throw std::runtime_error("Failed to open Target");
-    }
-  }
-
-  void updateImageMeta();  // TODO: make private once aktualizr has a proper TUF API
-  void checkImageMetaOffline();
-  data::InstallationResult PackageInstall(const Uptane::Target &target);
-  TargetStatus VerifyTarget(const Uptane::Target &target) const { return package_manager_->verifyTarget(target); }
+  std::ifstream openStoredTarget(const Uptane::Target &target);
 
  private:
   FRIEND_TEST(Aktualizr, FullNoUpdates);
@@ -124,21 +96,35 @@ class SotaUptaneClient {
   FRIEND_TEST(UptaneNetwork, LogConnectivityRestored);
   FRIEND_TEST(UptaneVector, Test);
   FRIEND_TEST(aktualizr_secondary_uptane, credentialsPassing);
+  FRIEND_TEST(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeApplication);
+  FRIEND_TEST(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeReboot);
+  FRIEND_TEST(MetadataExpirationTest, MetadataExpirationBeforeInstallation);
+  FRIEND_TEST(Delegation, IterateAll);
   friend class CheckForUpdate;       // for load tests
   friend class ProvisionDeviceTask;  // for load tests
 
+  data::InstallationResult PackageInstall(const Uptane::Target &target);
+  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
+                                                const api::FlowControlToken *token = nullptr);
   void uptaneIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
   void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
+  result::UpdateCheck checkUpdates();
   result::UpdateStatus checkUpdatesOffline(const std::vector<Uptane::Target> &targets);
   Json::Value AssembleManifest();
   std::exception_ptr getLastException() const { return last_exception; }
+  Uptane::Target getCurrent() const { return package_manager_->getCurrent(); }
+
   static std::vector<Uptane::Target> findForEcu(const std::vector<Uptane::Target> &targets,
                                                 const Uptane::EcuSerial &ecu_id);
   data::InstallationResult PackageInstallSetResult(const Uptane::Target &target);
   void finalizeAfterReboot();
-  void reportHwInfo(const Json::Value &custom_hwinfo);
+  // Part of sendDeviceData()
+  void reportHwInfo();
+  // Part of sendDeviceData()
   void reportInstalledPackages();
+  // Called by sendDeviceData() and fetchMeta()
   void reportNetworkInfo();
+  // Part of sendDeviceData()
   void reportAktualizrConfiguration();
   bool waitSecondariesReachable(const std::vector<Uptane::Target> &updates);
   void storeInstallationFailure(const data::InstallationResult &result);
@@ -151,12 +137,16 @@ class SotaUptaneClient {
   bool putManifestSimple(const Json::Value &custom = Json::nullValue);
   void getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count = nullptr);
   void updateDirectorMeta();
+  void updateImageMeta();
   void checkDirectorMetaOffline();
+  void checkImageMetaOffline();
+
   void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report) const;
   std::unique_ptr<Uptane::Target> findTargetInDelegationTree(const Uptane::Target &target, bool offline);
   std::unique_ptr<Uptane::Target> findTargetHelper(const Uptane::Targets &cur_targets,
                                                    const Uptane::Target &queried_target, int level, bool terminating,
                                                    bool offline);
+  Uptane::LazyTargetsList allTargets() const;
   void checkAndUpdatePendingSecondaries();
   const Uptane::EcuSerial &primaryEcuSerial() const { return primary_ecu_serial_; }
   boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial) const;
@@ -178,6 +168,7 @@ class SotaUptaneClient {
   std::shared_ptr<INvStorage> storage;
   std::shared_ptr<HttpInterface> http;
   std::shared_ptr<PackageManagerInterface> package_manager_;
+  std::shared_ptr<KeyManager> key_manager_;
   std::shared_ptr<Uptane::Fetcher> uptane_fetcher;
   std::unique_ptr<ReportQueue> report_queue;
   std::shared_ptr<SecondaryProvider> secondary_provider_;
@@ -189,6 +180,8 @@ class SotaUptaneClient {
   std::mutex download_mutex;
   Uptane::EcuSerial primary_ecu_serial_;
   Uptane::HardwareIdentifier primary_ecu_hw_id_;
+  Provisioner provisioner_;
+  Json::Value custom_hardware_info_{Json::nullValue};
 };
 
 class TargetCompare {

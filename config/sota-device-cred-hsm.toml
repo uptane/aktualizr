@@ -13,9 +13,6 @@ tls_pkey_id = "02"
 [uptane]
 key_source = "pkcs11"
 
-[storage]
-type = "sqlite"
-
 [import]
 base_path = "/var/sota/import"
 tls_cacert_path = "root.crt"

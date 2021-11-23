@@ -2,6 +2,7 @@
 #define AKTUALIZR_SECONDARY_OSTREE_H
 
 #include "aktualizr_secondary.h"
+#include "storage/invstorage.h"
 
 class OstreeUpdateAgent;
 
@@ -21,7 +22,7 @@ class AktualizrSecondaryOstree : public AktualizrSecondary {
   void completeInstall() override;
 
  private:
-  bool hasPendingUpdate() { return storage().hasPendingInstall(); }
+  bool hasPendingUpdate() { return storage()->hasPendingInstall(); }
 
   ReturnCode downloadOstreeRev(Asn1Message& in_msg, Asn1Message& out_msg);
 

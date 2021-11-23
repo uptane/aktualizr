@@ -9,48 +9,19 @@
 
 #include "crypto/crypto.h"
 #include "logging/logging.h"
+#include "storage/invstorage.h"
+#include "uptane/directorrepository.h"
+#include "uptane/imagerepository.h"
 #include "uptane/manifest.h"
 #include "uptane/tuf.h"
-#include "uptane/uptanerepository.h"
 #include "utilities/exceptions.h"
 #include "utilities/fault_injection.h"
 #include "utilities/utils.h"
 
 namespace Primary {
 
-struct MetaPack {
-  Uptane::Root director_root;
-  Uptane::Targets director_targets;
-  Uptane::Root image_root;
-  Uptane::Targets image_targets;
-  Uptane::TimestampMeta image_timestamp;
-  Uptane::Snapshot image_snapshot;
-  bool isConsistent() const;
-};
-
-ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in)
-    : sconfig(std::move(sconfig_in)), current_meta(new MetaPack()), meta_bundle_(new Uptane::MetaBundle) {
-  loadMetadata();
-  std::string public_key_string;
-
-  if (!loadKeys(&public_key_string, &private_key)) {
-    if (!Crypto::generateKeyPair(sconfig.key_type, &public_key_string, &private_key)) {
-      LOG_ERROR << "Could not generate rsa keys for secondary " << ManagedSecondary::getSerial() << "@"
-                << sconfig.ecu_hardware_id;
-      throw std::runtime_error("Unable to generate secondary rsa keys");
-    }
-
-    // do not store keys yet, wait until SotaUptaneClient performed device initialization
-  }
-  public_key_ = PublicKey(public_key_string, sconfig.key_type);
-  Initialize();
-}
-
-ManagedSecondary::~ManagedSecondary() { current_meta.reset(nullptr); }
-
-void ManagedSecondary::Initialize() {
+ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) : sconfig(std::move(sconfig_in)) {
   struct stat st {};
-
   if (!boost::filesystem::is_directory(sconfig.metadata_path)) {
     Utils::createDirectories(sconfig.metadata_path, S_IRWXU);
   }
@@ -65,81 +36,122 @@ void ManagedSecondary::Initialize() {
     Utils::createDirectories(sconfig.full_client_dir, S_IRWXU);
   }
   if (stat(sconfig.full_client_dir.c_str(), &st) < 0) {
-    throw std::runtime_error(std::string("Could not check client directory permissions: ") + std::strerror(errno));
+    throw std::runtime_error(std::string("Could not check Secondary storage directory permissions: ") +
+                             std::strerror(errno));
   }
   if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
-    throw std::runtime_error("Secondary client directory has unsafe permissions");
+    throw std::runtime_error("Secondary storage directory has unsafe permissions");
   }
 
+  std::string public_key_string;
+  if (!loadKeys(&public_key_string, &private_key)) {
+    if (!Crypto::generateKeyPair(sconfig.key_type, &public_key_string, &private_key)) {
+      LOG_ERROR << "Could not generate RSA keys for secondary " << ManagedSecondary::getSerial() << "@"
+                << sconfig.ecu_hardware_id;
+      throw std::runtime_error("Unable to generate secondary RSA keys");
+    }
+  }
+  public_key_ = PublicKey(public_key_string, sconfig.key_type);
+
   storeKeys(public_key_.Value(), private_key);
+
+  storage_config_.path = sconfig.full_client_dir;
+  storage_ = INvStorage::newStorage(storage_config_);
+
+  director_repo_ = std_::make_unique<Uptane::DirectorRepository>();
+  image_repo_ = std_::make_unique<Uptane::ImageRepository>();
+
+  try {
+    director_repo_->checkMetaOffline(*storage_);
+    image_repo_->checkMetaOffline(*storage_);
+  } catch (const std::exception &e) {
+    LOG_INFO << "No valid metadata found in storage.";
+  }
 }
 
-void ManagedSecondary::rawToMeta() {
-  // Raw metadata is trusted.
-  current_meta->director_root =
-      Uptane::Root(Uptane::RepositoryType::Director(),
-                   Utils::parseJSON(Uptane::getMetaFromBundle(*meta_bundle_, Uptane::RepositoryType::Director(),
-                                                              Uptane::Role::Root())));
-  current_meta->director_targets = Uptane::Targets(Utils::parseJSON(
-      Uptane::getMetaFromBundle(*meta_bundle_, Uptane::RepositoryType::Director(), Uptane::Role::Targets())));
-  current_meta->image_root = Uptane::Root(Uptane::RepositoryType::Image(),
-                                          Utils::parseJSON(Uptane::getMetaFromBundle(
-                                              *meta_bundle_, Uptane::RepositoryType::Image(), Uptane::Role::Root())));
-  current_meta->image_timestamp = Uptane::TimestampMeta(Utils::parseJSON(
-      Uptane::getMetaFromBundle(*meta_bundle_, Uptane::RepositoryType::Image(), Uptane::Role::Timestamp())));
-  current_meta->image_snapshot = Uptane::Snapshot(Utils::parseJSON(
-      Uptane::getMetaFromBundle(*meta_bundle_, Uptane::RepositoryType::Image(), Uptane::Role::Snapshot())));
-  current_meta->image_targets = Uptane::Targets(Utils::parseJSON(
-      Uptane::getMetaFromBundle(*meta_bundle_, Uptane::RepositoryType::Image(), Uptane::Role::Targets())));
-}
+ManagedSecondary::~ManagedSecondary() {}  // NOLINT(modernize-use-equals-default, hicpp-use-equals-default)
 
 data::InstallationResult ManagedSecondary::putMetadata(const Uptane::Target &target) {
-  Uptane::MetaBundle temp_bundle;
-  if (!secondary_provider_->getMetadata(&temp_bundle, target)) {
+  detected_attack = "";
+
+  Uptane::MetaBundle bundle;
+  if (!secondary_provider_->getMetadata(&bundle, target)) {
     return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
                                     "Unable to load stored metadata from Primary");
   }
+  Uptane::SecondaryMetadata metadata(bundle);
 
-  // No verification is currently performed, we can add verification in future for testing purposes
-  detected_attack = "";
-
-  meta_bundle_.reset(new Uptane::MetaBundle(std::move(temp_bundle)));
-  rawToMeta();  // meta_bundle_ -> current_meta
-  if (!current_meta->isConsistent()) {
-    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed,
-                                    "Error verifying metadata received from Primary");
+  // 2. Download and check the Root metadata file from the Director repository.
+  // 3. NOT SUPPORTED: Download and check the Timestamp metadata file from the Director repository.
+  // 4. NOT SUPPORTED: Download and check the Snapshot metadata file from the Director repository.
+  // 5. Download and check the Targets metadata file from the Director repository.
+  try {
+    director_repo_->updateMeta(*storage_, metadata);
+  } catch (const std::exception &e) {
+    detected_attack = std::string("Failed to update Director metadata: ") + e.what();
+    LOG_ERROR << detected_attack;
+    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
   }
-  storeMetadata();
+
+  // 6. Download and check the Root metadata file from the Image repository.
+  // 7. Download and check the Timestamp metadata file from the Image repository.
+  // 8. Download and check the Snapshot metadata file from the Image repository.
+  // 9. Download and check the top-level Targets metadata file from the Image repository.
+  try {
+    image_repo_->updateMeta(*storage_, metadata);
+  } catch (const std::exception &e) {
+    detected_attack = std::string("Failed to update Image repo metadata: ") + e.what();
+    LOG_ERROR << detected_attack;
+    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+  }
+
+  // 10. Verify that Targets metadata from the Director and Image repositories match.
+  if (!director_repo_->matchTargetsWithImageTargets(image_repo_->getTargets())) {
+    detected_attack = "Targets metadata from the Director and Image repositories do not match";
+    LOG_ERROR << detected_attack;
+    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+  }
 
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
 int ManagedSecondary::getRootVersion(const bool director) const {
   if (director) {
-    return current_meta->director_root.version();
+    return director_repo_->rootVersion();
   }
-  return current_meta->image_root.version();
+  return image_repo_->rootVersion();
 }
 
 data::InstallationResult ManagedSecondary::putRoot(const std::string &root, const bool director) {
-  const Uptane::RepositoryType repo = (director) ? Uptane::RepositoryType::Director() : Uptane::RepositoryType::Image();
-  Uptane::Root &prev_root = (director) ? current_meta->director_root : current_meta->image_root;
-  const std::string prev_raw_root = Uptane::getMetaFromBundle(*meta_bundle_, repo, Uptane::Role::Root());
-  Uptane::Root new_root = Uptane::Root(repo, Utils::parseJSON(root));
+  const Uptane::RepositoryType repo_type =
+      (director) ? Uptane::RepositoryType::Director() : Uptane::RepositoryType::Image();
+  const int prev_version = getRootVersion(director);
 
-  // No verification is currently performed, we can add verification in future for testing purposes
-  if (new_root.version() == prev_root.version() + 1) {
-    prev_root = new_root;
-    meta_bundle_->insert({std::make_pair(repo, Uptane::Role::Root()), root});
+  LOG_DEBUG << "Updating " << repo_type << " Root with current version " << std::to_string(prev_version) << ": "
+            << root;
+
+  if (director) {
+    try {
+      director_repo_->verifyRoot(root);
+    } catch (const std::exception &e) {
+      detected_attack = "Failed to update Director Root from version " + std::to_string(prev_version) + ": " + e.what();
+      LOG_ERROR << detected_attack;
+      return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+    }
+    storage_->storeRoot(root, repo_type, Uptane::Version(director_repo_->rootVersion()));
+    storage_->clearNonRootMeta(repo_type);
   } else {
-    detected_attack = "Tried to update Root version " + std::to_string(prev_root.version()) + " with version " +
-                      std::to_string(new_root.version());
+    try {
+      image_repo_->verifyRoot(root);
+    } catch (const std::exception &e) {
+      detected_attack = "Failed to update Image Root from version " + std::to_string(prev_version) + ": " + e.what();
+      LOG_ERROR << detected_attack;
+      return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+    }
+    storage_->storeRoot(root, repo_type, Uptane::Version(image_repo_->rootVersion()));
+    storage_->clearNonRootMeta(repo_type);
   }
 
-  if (!current_meta->isConsistent()) {
-    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Error verifying metadata");
-  }
-  storeMetadata();
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
@@ -149,6 +161,7 @@ data::InstallationResult ManagedSecondary::sendFirmware(const Uptane::Target &ta
 }
 
 data::InstallationResult ManagedSecondary::install(const Uptane::Target &target) {
+  // TODO: check that the target is actually valid.
   auto str = secondary_provider_->getTargetFileHandle(target);
   std::ofstream out_file(sconfig.firmware_path.string(), std::ios::binary);
   out_file << str.rdbuf();
@@ -217,24 +230,6 @@ bool ManagedSecondary::loadKeys(std::string *pub_key, std::string *priv_key) {
 
   *priv_key = Utils::readFile(private_key_path.string());
   *pub_key = Utils::readFile(public_key_path.string());
-  return true;
-}
-
-bool MetaPack::isConsistent() const {
-  TimeStamp now(TimeStamp::Now());
-  try {
-    if (!director_root.original().empty()) {
-      Uptane::Root original_root(director_root);
-      Uptane::Root new_root(Uptane::RepositoryType::Director(), director_root.original(), new_root);
-      if (!director_targets.original().empty()) {
-        Uptane::Targets(Uptane::RepositoryType::Director(), Uptane::Role::Targets(), director_targets.original(),
-                        std::make_shared<Uptane::MetaWithKeys>(original_root));
-      }
-    }
-  } catch (const std::logic_error &exc) {
-    LOG_WARNING << "Inconsistent metadata: " << exc.what();
-    return false;
-  }
   return true;
 }
 

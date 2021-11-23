@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
+
 char* DequeueBuffer::Head() {
   assert(sentinel_ == kSentinel);
   return buffer_.data();

@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
                                           "oldtargets: \tfill the staged Director Targets metadata with what is currently signed\n"
                                           "sign: \tsign arbitrary metadata with repo keys\n"
                                           "addcampaigns: \tgenerate campaigns json\n"
-                                          "refresh: \trefresh a metadata object (bump the version)")
+                                          "refresh: \trefresh a metadata object (bump the version)\n"
+                                          "rotate: \trotate a Root metadata key")
     ("path", po::value<boost::filesystem::path>(), "path to the repository")
     ("filename", po::value<boost::filesystem::path>(), "path to the image")
     ("hwid", po::value<std::string>(), "target hardware identifier")
@@ -67,8 +68,8 @@ int main(int argc, char **argv) {
     ("dterm", po::bool_switch(), "if the created delegated role is terminating")
     ("dparent", po::value<std::string>()->default_value("targets"), "delegated role parent name")
     ("dpattern", po::value<std::string>(), "delegated file path pattern")
-    ("url", po::value<std::string>(), "custom download URL");
-
+    ("url", po::value<std::string>(), "custom download URL")
+    ("customversion", po::value<int32_t>(), "custom version");
   // clang-format on
 
   po::positional_options_description positionalOptions;
@@ -132,8 +133,13 @@ int main(int argc, char **argv) {
         if (vm.count("url") != 0) {
           url = vm["url"].as<std::string>();
         }
+        int32_t custom_version{0};
+        if (vm.count("customversion") != 0) {
+          custom_version = vm["customversion"].as<int32_t>();
+        }
         if (vm.count("filename") > 0) {
-          repo.addImage(vm["filename"].as<boost::filesystem::path>(), targetname, hwid, url, delegation);
+          repo.addImage(vm["filename"].as<boost::filesystem::path>(), targetname, hwid, url, custom_version,
+                        delegation);
           std::cout << "Added a target " << targetname << " to the Image repo metadata" << std::endl;
         } else {
           if ((vm.count("targetsha256") == 0 && vm.count("targetsha512") == 0) || vm.count("targetlength") == 0) {
@@ -159,8 +165,8 @@ int main(int argc, char **argv) {
             custom = Json::Value();
             custom["targetFormat"] = vm["targetformat"].as<std::string>();
           }
-          repo.addCustomImage(targetname.string(), *hash, vm["targetlength"].as<uint64_t>(), hwid, url, delegation,
-                              custom);
+          repo.addCustomImage(targetname.string(), *hash, vm["targetlength"].as<uint64_t>(), hwid, url, custom_version,
+                              delegation, custom);
           std::cout << "Added a custom image target " << targetname.string() << std::endl;
         }
       } else if (command == "addtarget") {
@@ -186,8 +192,8 @@ int main(int argc, char **argv) {
         std::string dparent = vm["dparent"].as<std::string>();
         std::string dpattern = vm["dpattern"].as<std::string>();
         KeyType key_type = parseKeyType(vm);
-        repo.addDelegation(Uptane::Role(dname, true), Uptane::Role(dparent, dparent != "targets"),
-                           vm["dpattern"].as<std::string>(), vm["dterm"].as<bool>(), key_type);
+        repo.addDelegation(Uptane::Role(dname, true), Uptane::Role(dparent, dparent != "targets"), dpattern,
+                           vm["dterm"].as<bool>(), key_type);
         std::cout << "Added a delegated role " << dname << " with dpattern " << dpattern
                   << " to the Image repo metadata" << std::endl;
       } else if (command == "revokedelegation") {
@@ -237,6 +243,13 @@ int main(int argc, char **argv) {
         }
         repo.refresh(Uptane::RepositoryType(vm["repotype"].as<std::string>()),
                      Uptane::Role(vm["keyname"].as<std::string>()));
+      } else if (command == "rotate") {
+        if (vm.count("repotype") == 0) {
+          std::cerr << "refresh command requires --repotype\n";
+          exit(EXIT_FAILURE);
+        }
+        KeyType key_type = parseKeyType(vm);
+        repo.rotate(Uptane::RepositoryType(vm["repotype"].as<std::string>()), Uptane::Role::Root(), key_type);
       } else {
         std::cout << desc << std::endl;
         exit(EXIT_FAILURE);

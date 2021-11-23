@@ -79,12 +79,16 @@ TEST(Delegation, Basic) {
       EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
 
       result::Install install_result = aktualizr.Install(download_result.updates).get();
+      EXPECT_TRUE(install_result.dev_report.success);
       for (const auto& r : install_result.ecu_reports) {
         EXPECT_EQ(r.install_res.result_code.num_code, data::ResultCode::Numeric::kOk);
       }
     }
 
-    EXPECT_EQ(http->events_seen, 8);
+    // TODO: implement delegation support in ManagedSecondary and restore the
+    // Secondary target in the metadata generation scripts; then there should
+    // be 8 events.
+    EXPECT_EQ(http->events_seen, 4);
   }
 }
 
@@ -103,7 +107,10 @@ TEST(Delegation, RevokeAfterCheckUpdates) {
 
       result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
       EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
-      EXPECT_EQ(update_result.updates.size(), 2);
+      // TODO: implement delegation support in ManagedSecondary and restore the
+      // Secondary target in the metadata generation scripts; then there should
+      // be 2 updates.
+      EXPECT_EQ(update_result.updates.size(), 1);
     }
     // Revoke delegation after CheckUpdates() and test if we can properly handle it.
     {
@@ -119,6 +126,7 @@ TEST(Delegation, RevokeAfterCheckUpdates) {
       EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
 
       result::Install install_result = aktualizr.Install(download_result.updates).get();
+      EXPECT_TRUE(install_result.dev_report.success);
       for (const auto& r : install_result.ecu_reports) {
         EXPECT_EQ(r.install_res.result_code.num_code, data::ResultCode::Numeric::kOk);
       }

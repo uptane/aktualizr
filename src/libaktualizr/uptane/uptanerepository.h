@@ -13,8 +13,8 @@ class RepositoryCommon {
   virtual ~RepositoryCommon() = default;
   void initRoot(RepositoryType repo_type, const std::string &root_raw);
   void verifyRoot(const std::string &root_raw);
-  int rootVersion() { return root.version(); }
-  bool rootExpired() { return root.isExpired(TimeStamp::Now()); }
+  int rootVersion() const { return root.version(); }
+  bool rootExpired() const { return root.isExpired(TimeStamp::Now()); }
   virtual void updateMeta(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
 
  protected:

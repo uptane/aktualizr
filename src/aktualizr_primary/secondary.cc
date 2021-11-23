@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "ipuptanesecondary.h"
 #include "logging/logging.h"
@@ -77,7 +76,9 @@ class SecondaryWaiter {
         timer_{io_context_},
         connected_secondaries_{secondaries} {}
 
-  void addSecondary(const std::string& ip, uint16_t port) { secondaries_to_wait_for_.insert(key(ip, port)); }
+  void addSecondary(const std::string& ip, uint16_t port, VerificationType verification_type) {
+    secondaries_to_wait_for_.insert({key(ip, port), verification_type});
+  }
 
   void wait() {
     if (secondaries_to_wait_for_.empty()) {
@@ -110,16 +111,22 @@ class SecondaryWaiter {
     if (!error_code) {
       auto sec_ip = con_socket_.remote_endpoint().address().to_string();
       auto sec_port = con_socket_.remote_endpoint().port();
+      auto it = secondaries_to_wait_for_.find(key(sec_ip, sec_port));
+      if (it == secondaries_to_wait_for_.end()) {
+        LOG_INFO << "Unexpected connection from a Secondary: (" << sec_ip << ":" << sec_port << ")";
+        return;
+      }
 
       LOG_INFO << "Accepted connection from a Secondary: (" << sec_ip << ":" << sec_port << ")";
       try {
-        auto secondary = Uptane::IpUptaneSecondary::create(sec_ip, sec_port, con_socket_.native_handle());
+        auto secondary = Uptane::IpUptaneSecondary::create(sec_ip, sec_port, it->second, con_socket_.native_handle());
         if (secondary) {
           connected_secondaries_.push_back(secondary);
           // set ip/port in the db so that we can match everything later
           Json::Value d;
           d["ip"] = sec_ip;
           d["port"] = sec_port;
+          d["verification_type"] = Uptane::VerificationTypeToString(it->second);
           aktualizr_.SetSecondaryData(secondary->getSerial(), Utils::jsonToCanonicalStr(d));
         }
       } catch (const std::exception& exc) {
@@ -128,7 +135,7 @@ class SecondaryWaiter {
       con_socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
       con_socket_.close();
 
-      secondaries_to_wait_for_.erase(key(sec_ip, sec_port));
+      secondaries_to_wait_for_.erase(it);
       if (!secondaries_to_wait_for_.empty()) {
         accept();
       } else {
@@ -151,7 +158,7 @@ class SecondaryWaiter {
   boost::asio::deadline_timer timer_;
 
   Secondaries& connected_secondaries_;
-  std::unordered_set<std::string> secondaries_to_wait_for_;
+  std::unordered_map<std::string, VerificationType> secondaries_to_wait_for_;
 };
 
 // Four options for each Secondary:
@@ -172,6 +179,8 @@ static Secondaries createIPSecondaries(const IPSecondariesConfig& config, Aktual
     // Try to match the configured Secondaries to stored Secondaries.
     auto f = std::find_if(secondaries_info.cbegin(), secondaries_info.cend(), [&cfg](const SecondaryInfo& i) {
       Json::Value d = Utils::parseJSON(i.extra);
+      // Don't match on verification_type; it wasn't there originally and is
+      // allowed to change.
       return d["ip"] == cfg.ip && d["port"] == cfg.port;
     });
 
@@ -184,21 +193,23 @@ static Secondaries createIPSecondaries(const IPSecondariesConfig& config, Aktual
       Json::Value d;
       d["ip"] = cfg.ip;
       d["port"] = cfg.port;
+      d["verification_type"] = Uptane::VerificationTypeToString(cfg.verification_type);
       aktualizr.SetSecondaryData(info->serial, Utils::jsonToCanonicalStr(d));
       LOG_INFO << "Migrated a single IP Secondary to new storage format.";
     } else if (f == secondaries_info.cend()) {
       // Secondary was not found in storage; it must be new.
-      secondary = Uptane::IpUptaneSecondary::connectAndCreate(cfg.ip, cfg.port);
+      secondary = Uptane::IpUptaneSecondary::connectAndCreate(cfg.ip, cfg.port, cfg.verification_type);
       if (secondary == nullptr) {
         LOG_DEBUG << "Could not connect to IP Secondary at " << cfg.ip << ":" << cfg.port
                   << "; now trying to wait for it.";
-        sec_waiter.addSecondary(cfg.ip, cfg.port);
+        sec_waiter.addSecondary(cfg.ip, cfg.port, cfg.verification_type);
       } else {
         result.push_back(secondary);
         // set ip/port in the db so that we can match everything later
         Json::Value d;
         d["ip"] = cfg.ip;
         d["port"] = cfg.port;
+        d["verification_type"] = Uptane::VerificationTypeToString(cfg.verification_type);
         aktualizr.SetSecondaryData(secondary->getSerial(), Utils::jsonToCanonicalStr(d));
       }
       continue;
@@ -208,8 +219,8 @@ static Secondaries createIPSecondaries(const IPSecondariesConfig& config, Aktual
     }
 
     if (secondary == nullptr) {
-      secondary =
-          Uptane::IpUptaneSecondary::connectAndCheck(cfg.ip, cfg.port, info->serial, info->hw_id, info->pub_key);
+      secondary = Uptane::IpUptaneSecondary::connectAndCheck(cfg.ip, cfg.port, cfg.verification_type, info->serial,
+                                                             info->hw_id, info->pub_key);
       if (secondary == nullptr) {
         throw std::runtime_error("Unable to connect to or verify IP Secondary at " + cfg.ip + ":" +
                                  std::to_string(cfg.port));

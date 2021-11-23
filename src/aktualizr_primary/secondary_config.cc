@@ -37,8 +37,8 @@ config file example
                 "secondaries_wait_port": 9040,
                 "secondaries_wait_timeout": 20,
                 "secondaries": [
-                        {"addr": "127.0.0.1:9031"}
-                        {"addr": "127.0.0.1:9032"}
+                        {"addr": "127.0.0.1:9031", "verification_type": "Full"}
+                        {"addr": "127.0.0.1:9032", "verification_type": "Tuf"}
                 ]
   },
   "socketcan": {
@@ -101,7 +101,12 @@ void JsonConfigParser::createIPSecondariesCfg(Configs& configs, const Json::Valu
 
   for (const auto& secondary : secondaries) {
     auto addr = getIPAndPort(secondary[IPSecondaryConfig::AddrField].asString());
-    IPSecondaryConfig sec_cfg{addr.first, addr.second};
+    // Backwards compatibility: assume full verification if not specified.
+    VerificationType vtype = VerificationType::kFull;
+    if (secondary.isMember(IPSecondaryConfig::VerificationField)) {
+      vtype = Uptane::VerificationTypeFromString(secondary[IPSecondaryConfig::VerificationField].asString());
+    }
+    IPSecondaryConfig sec_cfg{addr.first, addr.second, vtype};
 
     LOG_INFO << "   found IP secondary config: " << sec_cfg;
     resultant_cfg->secondaries_cfg.push_back(sec_cfg);

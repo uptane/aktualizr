@@ -1,24 +1,26 @@
 set(SOURCES
+    directorrepository.cc
     fetcher.cc
+    imagerepository.cc
     iterator.cc
+    manifest.cc
     metawithkeys.cc
     role.cc
     root.cc
+    secondary_metadata.cc
     tuf.cc
-    uptanerepository.cc
-    directorrepository.cc
-    imagerepository.cc
-    manifest.cc)
+    uptanerepository.cc)
 
 set(HEADERS
+    directorrepository.h
     exceptions.h
     fetcher.h
-    iterator.h
-    tuf.h
-    uptanerepository.h
-    directorrepository.h
     imagerepository.h
-    manifest.h)
+    iterator.h
+    manifest.h
+    secondary_metadata.h
+    tuf.h
+    uptanerepository.h)
 
 
 add_library(uptane OBJECT ${SOURCES})
@@ -35,10 +37,14 @@ else(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
 endif(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
 
 
-add_aktualizr_test(NAME uptane SOURCES uptane_test.cc PROJECT_WORKING_DIRECTORY LIBRARIES uptane_generator_lib)
-set_property(SOURCE uptane_test.cc PROPERTY COMPILE_DEFINITIONS TEST_PKCS11_MODULE_PATH="${TEST_PKCS11_MODULE_PATH}")
+add_aktualizr_test(NAME uptane
+                   SOURCES uptane_test.cc
+                   PROJECT_WORKING_DIRECTORY
+                   LIBRARIES uptane_generator_lib provisioner_test_utils virtual_secondary)
+set_property(SOURCE uptane_test.cc
+             PROPERTY COMPILE_DEFINITIONS
+             TEST_PKCS11_MODULE_PATH="${TEST_PKCS11_MODULE_PATH}")
 set_tests_properties(test_uptane PROPERTIES LABELS "crypto")
-target_link_libraries(t_uptane virtual_secondary)
 
 add_aktualizr_test(NAME uptane_delegation SOURCES uptane_delegation_test.cc PROJECT_WORKING_DIRECTORY
                    ARGS "$<TARGET_FILE:uptane-generator>" LIBRARIES uptane_generator_lib)

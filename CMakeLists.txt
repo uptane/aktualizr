@@ -387,7 +387,7 @@ execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/amalgamate-jsoncpp.s
 include_directories(${PROJECT_BINARY_DIR}/jsoncpp)
 # jsoncpp triggers a number of warnings that are turned on by default in our build
 set_source_files_properties(${PROJECT_BINARY_DIR}/jsoncpp/jsoncpp.cc PROPERTIES
-    COMPILE_FLAGS "-Wno-error -Wno-float-equal -Wno-switch-default")
+    COMPILE_FLAGS "-Wno-error -Wno-float-equal -Wno-switch-default -Wno-deprecated-declarations")
 add_library(jsoncpp OBJECT ${PROJECT_BINARY_DIR}/jsoncpp/jsoncpp.cc)
 
 add_subdirectory("config")

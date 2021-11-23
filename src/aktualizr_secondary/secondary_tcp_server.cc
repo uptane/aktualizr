@@ -33,7 +33,7 @@ void SecondaryTcpServer::run() {
   if (listen(*listen_socket_, SOMAXCONN) < 0) {
     throw std::system_error(errno, std::system_category(), "listen");
   }
-  LOG_INFO << "Secondary TCP server listening on " << listen_socket_.toString();
+  LOG_INFO << "Secondary TCP server listening on " << listen_socket_.ToString();
 
   {
     std::unique_lock<std::mutex> lock(running_condition_mutex_);
