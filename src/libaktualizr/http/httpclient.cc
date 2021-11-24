@@ -93,8 +93,7 @@ HttpClient::HttpClient(const HttpClient& curl_in)
   headers = curl_slist_dup(curl_in.headers);
 }
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-CurlGlobalInitWrapper HttpClient::manageCurlGlobalInit_{};
+const CurlGlobalInitWrapper HttpClient::manageCurlGlobalInit_{};
 
 HttpClient::~HttpClient() {
   curl_slist_free_all(headers);
@@ -202,6 +201,7 @@ HttpResponse HttpClient::put(const std::string& url, const Json::Value& data) {
   return put(url, "application/json", data_str);
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 HttpResponse HttpClient::perform(CURL* curl_handler, int retry_times, int64_t size_limit) {
   if (size_limit >= 0) {
     // it will only take effect if the server declares the size in advance,

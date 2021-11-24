@@ -114,6 +114,7 @@ void ImageRepo::addDelegation(const Uptane::Role &name, const Uptane::Role &pare
   updateRepo();
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 void ImageRepo::removeDelegationRecursive(const Uptane::Role &name, const Uptane::Role &parent_name) {
   boost::filesystem::path repo_dir(path_ / ImageRepo::dir);
   if (parent_name.IsDelegation()) {

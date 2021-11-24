@@ -15,8 +15,8 @@
 #include "utilities/config_utils.h"
 #include "utilities/utils.h"
 
-P11Engine* P11EngineGuard::instance = nullptr;
-int P11EngineGuard::ref_counter = 0;
+P11Engine* P11EngineGuard::instance = nullptr;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+int P11EngineGuard::ref_counter = 0;            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 P11ContextWrapper::P11ContextWrapper(const boost::filesystem::path& module) {
   if (module.empty()) {

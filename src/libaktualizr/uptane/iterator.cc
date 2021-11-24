@@ -120,6 +120,7 @@ const Target &LazyTargetsList::DelegationIterator::operator*() {
   return cur_targets_->targets[target_idx_];
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 LazyTargetsList::DelegationIterator LazyTargetsList::DelegationIterator::operator++() {
   if (is_end_) {
     return *this;

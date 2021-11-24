@@ -5,6 +5,7 @@
 #include "storage/invstorage.h"
 #include "utilities/fault_injection.h"
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 AUTO_REGISTER_PACKAGE_MANAGER(PACKAGE_MANAGER_NONE, PackageManagerFake);
 
 Json::Value PackageManagerFake::getInstalledPackages() const {

@@ -20,7 +20,7 @@ class SQLStorage;
 using store_data_t = void (INvStorage::*)(const std::string&);
 using load_data_t = bool (INvStorage::*)(std::string*) const;
 
-typedef std::vector<std::pair<Uptane::EcuSerial, Uptane::HardwareIdentifier>> EcuSerials;
+using EcuSerials = std::vector<std::pair<Uptane::EcuSerial, Uptane::HardwareIdentifier>>;
 
 // kUnused was previously kNotRegistered, but re-registration is now possible so
 // that is no longer a misconfiguration.

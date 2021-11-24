@@ -53,7 +53,7 @@ class HttpClient : public HttpInterface {
  private:
   FRIEND_TEST(GetTest, download_speed_limit);
 
-  static CurlGlobalInitWrapper manageCurlGlobalInit_;
+  static const CurlGlobalInitWrapper manageCurlGlobalInit_;
   CURL *curl;
   curl_slist *headers;
   HttpResponse perform(CURL *curl_handler, int retry_times, int64_t size_limit);

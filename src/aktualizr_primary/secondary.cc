@@ -21,7 +21,7 @@ using SecondaryFactoryRegistry =
 
 static Secondaries createIPSecondaries(const IPSecondariesConfig& config, Aktualizr& aktualizr);
 
-// NOLINTNEXTLINE(cppcoreguidelines-interfaces-global-init)
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static SecondaryFactoryRegistry sec_factory_registry = {
     {IPSecondariesConfig::Type,
      [](const SecondaryConfig& config, Aktualizr& aktualizr) {

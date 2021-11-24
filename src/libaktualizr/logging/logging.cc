@@ -3,7 +3,7 @@
 
 using boost::log::trivial::severity_level;
 
-static severity_level gLoggingThreshold;
+static severity_level gLoggingThreshold;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 extern void logger_init_sink(bool use_colors = false);
 

@@ -57,9 +57,9 @@ struct Utils {
   static const char *getCaPath();
 
  private:
-  static std::string storage_root_path_;
-  static std::string user_agent_;
-  static boost::filesystem::path ca_path_;
+  static std::string storage_root_path_;    // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::string user_agent_;           // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static boost::filesystem::path ca_path_;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 };
 
 /**
@@ -175,18 +175,21 @@ static void curlEasySetoptWrapper(CURL *curl_handle, CURLoption option, T &&... 
 // this is reference implementation of make_unique which is not yet included to C++11
 namespace std_ {
 template <class T>
-struct _Unique_if {
-  using _Single_object = std::unique_ptr<T>;
+struct _Unique_if {                           // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
+  using _Single_object = std::unique_ptr<T>;  // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 };
 
 template <class T>
-struct _Unique_if<T[]> {                        // NOLINT: modernize-avoid-c-arrays
-  using _Unknown_bound = std::unique_ptr<T[]>;  // NOLINT: modernize-avoid-c-arrays
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays,bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
+struct _Unique_if<T[]> {
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays,bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
+  using _Unknown_bound = std::unique_ptr<T[]>;
 };
 
 template <class T, size_t N>
-struct _Unique_if<T[N]> {  // NOLINT: modernize-avoid-c-arrays
-  using _Known_bound = void;
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays,bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
+struct _Unique_if<T[N]> {
+  using _Known_bound = void;  // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 };
 
 template <class T, class... Args>

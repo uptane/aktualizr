@@ -5,9 +5,9 @@
 #include "test_utils.h"
 #include "utilities/utils.h"
 
-std::string serverAddress;
-std::unique_ptr<boost::process::child> server;
-std::unique_ptr<TemporaryDirectory> temp_dir;
+std::string serverAddress;                      // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::unique_ptr<boost::process::child> server;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::unique_ptr<TemporaryDirectory> temp_dir;   // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 void Run_fake_http_server(const char *serverPath, const char *metaPath) {
   std::string port = TestUtils::getFreePort();
