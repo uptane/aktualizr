@@ -4,12 +4,12 @@ Checks:          >-
   bugprone-*,
   cert-*,-cert-err58-cpp,-cert-env33-c,-cert-err60-cpp,
   clang-analyzer-*,
-  cppcoreguidelines-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-init-variables,-cppcoreguidelines-owning-memory,
+  cppcoreguidelines-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-init-variables,-cppcoreguidelines-owning-memory,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-macro-usage,
   cppcoreguidelines-pro-*,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-type-vararg,-cppcoreguidelines-pro-type-const-cast,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,
   google-*,-google-runtime-references,-google-readability-todo,
   hicpp-*,-hicpp-no-array-decay,-hicpp-no-assembler,-hicpp-signed-bitwise,-hicpp-vararg,
   llvm-namespace-comment,
-  misc-*,
+  misc-*,-misc-non-private-member-variables-in-classes,
   modernize-*,-modernize-avoid-bind,-modernize-loop-convert,-modernize-use-trailing-return-type,
   performance-*,
   readability-*,-readability-else-after-return,-readability-identifier-naming,-readability-magic-numbers,
@@ -17,8 +17,6 @@ Checks:          >-
 WarningsAsErrors: '*'
 AnalyzeTemporaryDtors: false
 CheckOptions:
-  - key:             cppcoreguidelines-non-private-member-variables-in-classes.IgnorePublicMemberVariables
-    value:           '1'
   - key:             cert-dcl59-cpp.HeaderFileExtensions
     value:           h
   - key:             cert-err09-cpp.CheckThrowTemporaries
@@ -52,8 +50,6 @@ CheckOptions:
   - key:             misc-definitions-in-headers.HeaderFileExtensions
     value:           h
   - key:             misc-definitions-in-headers.UseHeaderFileExtension
-    value:           '1'
-  - key:             misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value:           '1'
   - key:             misc-throw-by-value-catch-by-reference.CheckThrowTemporaries
     value:           '1'

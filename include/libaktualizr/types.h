@@ -38,6 +38,7 @@ namespace utils {
  */
 class BasedPath {
  public:
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   BasedPath(boost::filesystem::path p) : p_(std::move(p)) {}
   boost::filesystem::path get(const boost::filesystem::path &base) const;
   bool empty() const { return p_.empty(); }
@@ -154,7 +155,7 @@ class PublicKey {
  private:
   // std::string can be implicitly converted to a Json::Value. Make sure that
   // the Json::Value constructor is not called accidentally.
-  PublicKey(std::string);
+  PublicKey(std::string);  // NOLINT(google-explicit-constructor, hicpp-explicit-conversions)
   std::string value_;
   KeyType type_{KeyType::kUnknown};
 };
@@ -198,7 +199,7 @@ class TimeStamp {
   static TimeStamp Now();
   static struct tm CurrentTime();
   /** An invalid TimeStamp */
-  TimeStamp() {}
+  TimeStamp() = default;
   explicit TimeStamp(std::string rfc3339);
   explicit TimeStamp(struct tm time);
   bool IsExpiredAt(const TimeStamp &now) const;
@@ -211,8 +212,12 @@ class TimeStamp {
 
   class InvalidTimeStamp : public std::domain_error {
    public:
-    InvalidTimeStamp() : std::domain_error("invalid timestamp") {}
+    InvalidTimeStamp() : std::domain_error("invalid timestamp"){};
     ~InvalidTimeStamp() noexcept override = default;
+    InvalidTimeStamp(const InvalidTimeStamp &) noexcept = default;
+    InvalidTimeStamp(InvalidTimeStamp &&) noexcept = default;
+    InvalidTimeStamp &operator=(const InvalidTimeStamp &) noexcept = default;
+    InvalidTimeStamp &operator=(InvalidTimeStamp &&) noexcept = default;
   };
 
  private:
@@ -249,6 +254,7 @@ struct ResultCode {
   };
 
   // note: intentionally *not* explicit, to make the common case easier
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   ResultCode(ResultCode::Numeric in_num_code) : num_code(in_num_code) {}
   ResultCode(ResultCode::Numeric in_num_code, std::string text_code_in)
       : num_code(in_num_code), text_code(std::move(text_code_in)) {}
@@ -265,7 +271,7 @@ struct ResultCode {
   // analysis, because the device installation report concatenates the
   // individual ECU ResultCodes.
   std::string ToString() const {
-    if (text_code != "") {
+    if (!text_code.empty()) {
       return text_code;
     }
 
@@ -455,9 +461,9 @@ std::ostream &operator<<(std::ostream &os, const Target &t);
 
 class Manifest : public Json::Value {
  public:
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   Manifest(const Json::Value &value = Json::Value()) : Json::Value(value) {}
 
- public:
   std::string filepath() const;
   Hash installedImageHash() const;
   std::string signature() const;
@@ -465,6 +471,7 @@ class Manifest : public Json::Value {
   bool verifySignature(const PublicKey &pub_key) const;
 };
 
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline VerificationType VerificationTypeFromString(std::string vt_str) {
   std::transform(vt_str.begin(), vt_str.end(), vt_str.begin(), ::tolower);
   if (vt_str == "tuf") {
@@ -474,6 +481,7 @@ static inline VerificationType VerificationTypeFromString(std::string vt_str) {
   }
 }
 
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline std::string VerificationTypeToString(const VerificationType vtype) {
   std::string type_s;
   switch (vtype) {

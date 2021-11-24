@@ -113,7 +113,7 @@ class UptaneRepoWrapper {
       broken_image.close();
     }
 
-    return getCurrentMetadata();
+    return Uptane::SecondaryMetadata(getCurrentMetadata());
   }
 
   void addCustomImageMetadata(const std::string& targetname, const std::string& hardware_id,

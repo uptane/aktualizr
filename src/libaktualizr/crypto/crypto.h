@@ -18,13 +18,20 @@
 #include "libaktualizr/types.h"
 #include "utilities/utils.h"
 
-// some older versions of openssl have BIO_new_mem_buf defined with fisrt parameter of type (void*)
+// some older versions of openssl have BIO_new_mem_buf defined with first parameter of type (void*)
 //   which is not true and breaks our build
 #undef BIO_new_mem_buf
-BIO *BIO_new_mem_buf(const void *, int);
+BIO *BIO_new_mem_buf(const void *, int);  // NOLINT(readability-redundant-declaration)
 
 class MultiPartHasher {
  public:
+  MultiPartHasher() = default;
+  virtual ~MultiPartHasher() = default;
+  MultiPartHasher(const MultiPartHasher &) = delete;
+  MultiPartHasher(MultiPartHasher &&) = delete;
+  MultiPartHasher &operator=(const MultiPartHasher &) = delete;
+  MultiPartHasher &operator=(MultiPartHasher &&) = delete;
+
   using Ptr = std::shared_ptr<MultiPartHasher>;
   static Ptr create(Hash::Type hash_type);
 
@@ -32,13 +39,16 @@ class MultiPartHasher {
   virtual void reset() = 0;
   virtual std::string getHexDigest() = 0;
   virtual Hash getHash() = 0;
-  virtual ~MultiPartHasher() = default;
 };
 
 class MultiPartSHA512Hasher : public MultiPartHasher {
  public:
   MultiPartSHA512Hasher() { crypto_hash_sha512_init(&state_); }
   ~MultiPartSHA512Hasher() override = default;
+  MultiPartSHA512Hasher(const MultiPartSHA512Hasher &) = delete;
+  MultiPartSHA512Hasher(MultiPartSHA512Hasher &&) = delete;
+  MultiPartSHA512Hasher &operator=(const MultiPartSHA512Hasher &) = delete;
+  MultiPartSHA512Hasher &operator=(MultiPartSHA512Hasher &&) = delete;
   void update(const unsigned char *part, uint64_t size) override { crypto_hash_sha512_update(&state_, part, size); }
   void reset() override { crypto_hash_sha512_init(&state_); }
   std::string getHexDigest() override {
@@ -57,6 +67,10 @@ class MultiPartSHA256Hasher : public MultiPartHasher {
  public:
   MultiPartSHA256Hasher() { crypto_hash_sha256_init(&state_); }
   ~MultiPartSHA256Hasher() override = default;
+  MultiPartSHA256Hasher(const MultiPartSHA256Hasher &) = delete;
+  MultiPartSHA256Hasher(MultiPartSHA256Hasher &&) = delete;
+  MultiPartSHA256Hasher &operator=(const MultiPartSHA256Hasher &) = delete;
+  MultiPartSHA256Hasher &operator=(MultiPartSHA256Hasher &&) = delete;
   void update(const unsigned char *part, uint64_t size) override { crypto_hash_sha256_update(&state_, part, size); }
   void reset() override { crypto_hash_sha256_init(&state_); }
   std::string getHexDigest() override {
@@ -82,7 +96,7 @@ class Crypto {
                        std::string *out_ca);
   static std::string extractSubjectCN(const std::string &cert);
   static StructGuard<EVP_PKEY> generateRSAKeyPairEVP(KeyType key_type);
-  static StructGuard<EVP_PKEY> generateRSAKeyPairEVP(const int bits);
+  static StructGuard<EVP_PKEY> generateRSAKeyPairEVP(int bits);
   static bool generateRSAKeyPair(KeyType key_type, std::string *public_key, std::string *private_key);
   static bool generateEDKeyPair(std::string *public_key, std::string *private_key);
   static bool generateKeyPair(KeyType key_type, std::string *public_key, std::string *private_key);
@@ -93,11 +107,11 @@ class Crypto {
   static bool IsRsaKeyType(KeyType type);
   static KeyType IdentifyRSAKeyType(const std::string &public_key_pem);
 
-  static StructGuard<X509> generateCert(const int rsa_bits, const int cert_days, const std::string &cert_c,
+  static StructGuard<X509> generateCert(int rsa_bits, int cert_days, const std::string &cert_c,
                                         const std::string &cert_st, const std::string &cert_o,
                                         const std::string &cert_cn, bool self_sign = false);
-  static void signCert(const std::string &cacert_path, const std::string &capkey_path, X509 *const certificate);
-  static void serializeCert(std::string *pkey, std::string *cert, X509 *const certificate);
+  static void signCert(const std::string &cacert_path, const std::string &capkey_path, X509 *certificate);
+  static void serializeCert(std::string *pkey, std::string *cert, X509 *certificate);
 };
 
 #endif  // CRYPTO_H_

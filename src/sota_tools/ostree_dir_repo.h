@@ -13,7 +13,7 @@ class OSTreeDirRepo : public OSTreeRepo {
   OSTreeDirRepo(const OSTreeDirRepo&) = delete;
   OSTreeDirRepo(OSTreeDirRepo&&) = delete;
   OSTreeDirRepo& operator=(const OSTreeDirRepo&) = delete;
-  OSTreeDirRepo& operator=(const OSTreeDirRepo&&) = delete;
+  OSTreeDirRepo& operator=(OSTreeDirRepo&&) = delete;
   ~OSTreeDirRepo() override = default;
 
   bool LooksValid() const override;

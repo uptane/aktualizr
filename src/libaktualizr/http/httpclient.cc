@@ -87,7 +87,8 @@ HttpClient::HttpClient(const std::string& socket) {
   curlEasySetoptWrapper(curl, CURLOPT_USERAGENT, Utils::getUserAgent());
 }
 
-HttpClient::HttpClient(const HttpClient& curl_in) : pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
+HttpClient::HttpClient(const HttpClient& curl_in)
+    : HttpInterface(curl_in), pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
   curl = curl_easy_duphandle(curl_in.curl);
   headers = curl_slist_dup(curl_in.headers);
 }
@@ -301,7 +302,7 @@ void HttpClient::timeout(int64_t ms) {
   // curl_easy_setopt() takes a 'long' be very sure that we are passing
   // whatever the platform ABI thinks is a long, while keeping the external
   // interface a clang-tidy preferred int64
-  auto ms_long = static_cast<long>(ms);  // NOLINT
+  auto ms_long = static_cast<long>(ms);  // NOLINT(google-runtime-int)
   curlEasySetoptWrapper(curl, CURLOPT_TIMEOUT_MS, ms_long);
   curlEasySetoptWrapper(curl, CURLOPT_CONNECTTIMEOUT_MS, ms_long);
 }

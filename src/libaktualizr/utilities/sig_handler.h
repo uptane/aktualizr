@@ -15,7 +15,9 @@ class SigHandler {
   static SigHandler& get();
 
   SigHandler(const SigHandler&) = delete;
+  SigHandler(SigHandler&&) = delete;
   SigHandler& operator=(const SigHandler&) = delete;
+  SigHandler& operator=(SigHandler&&) = delete;
 
   // set an handler for signals and start the handling thread
   void start(const std::function<void()>& on_signal);

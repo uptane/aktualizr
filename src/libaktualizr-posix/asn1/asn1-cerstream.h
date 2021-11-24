@@ -14,13 +14,16 @@ class Token {
   enum TokType { seq_tok, endseq_tok, restseq_tok, expl_tok, peekexpl_tok, endexpl_tok, opt_tok, endopt_tok };
   explicit Token(TokType t) { type = t; }
   virtual ~Token() = default;
+  Token(const Token&) = default;
+  Token(Token&&) = default;
+  Token& operator=(const Token&) = default;
+  Token& operator=(Token&&) = default;
   TokType type;
 };
 
 class EndoptToken : public Token {
  public:
   explicit EndoptToken(bool* result = nullptr) : Token(endopt_tok), result_p(result) {}
-  ~EndoptToken() override = default;
   bool* result_p;
 };
 
@@ -28,7 +31,6 @@ class ExplicitToken : public Token {
  public:
   explicit ExplicitToken(uint8_t token_tag, ASN1_Class token_tag_class = kAsn1Context)
       : Token(expl_tok), tag(token_tag), tag_class(token_tag_class) {}
-  ~ExplicitToken() override = default;
   uint8_t tag;
   ASN1_Class tag_class;
 };
@@ -37,7 +39,6 @@ class PeekExplicitToken : public Token {
  public:
   explicit PeekExplicitToken(uint8_t* token_tag = nullptr, ASN1_Class* token_tag_class = nullptr)
       : Token(peekexpl_tok), tag(token_tag), tag_class(token_tag_class) {}
-  ~PeekExplicitToken() override = default;
   uint8_t* tag;
   ASN1_Class* tag_class;
 };

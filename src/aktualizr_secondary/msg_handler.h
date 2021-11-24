@@ -11,15 +11,13 @@ class MsgHandler {
  public:
   enum ReturnCode { kUnkownMsg = -1, kOk, kRebootRequired };
 
- public:
   MsgHandler() = default;
   virtual ~MsgHandler() = default;
   MsgHandler(const MsgHandler&) = delete;
-  MsgHandler(const MsgHandler&&) = delete;
+  MsgHandler(MsgHandler&&) = delete;
   MsgHandler& operator=(const MsgHandler&) = delete;
-  MsgHandler& operator=(const MsgHandler&&) = delete;
+  MsgHandler& operator=(MsgHandler&&) = delete;
 
- public:
   virtual ReturnCode handleMsg(const Asn1Message::Ptr& in_msg, Asn1Message::Ptr& out_msg) = 0;
 };
 

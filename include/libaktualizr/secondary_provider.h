@@ -22,9 +22,9 @@ class SecondaryProvider {
   std::ifstream getTargetFileHandle(const Uptane::Target& target) const;
 
  private:
-  SecondaryProvider(Config& config_in, const std::shared_ptr<const INvStorage>& storage_in,
-                    const std::shared_ptr<const PackageManagerInterface>& package_manager_in)
-      : config_(config_in), storage_(storage_in), package_manager_(package_manager_in) {}
+  SecondaryProvider(Config& config_in, std::shared_ptr<const INvStorage> storage_in,
+                    std::shared_ptr<const PackageManagerInterface> package_manager_in)
+      : config_(config_in), storage_(std::move(storage_in)), package_manager_(std::move(package_manager_in)) {}
 
   Config& config_;
   const std::shared_ptr<const INvStorage> storage_;

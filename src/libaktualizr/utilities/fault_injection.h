@@ -18,6 +18,8 @@
 #ifndef _FAULT_INJECTION_H
 #define _FAULT_INJECTION_H
 
+#include <string>
+
 /* Only define the stubs when fiu is disabled, otherwise use the real fiu.h
  * header */
 #ifndef FIU_ENABLE
@@ -30,16 +32,17 @@
 #define fiu_return_on(name, retval)
 
 // Note: was `#define fault_injection_last_info() ""` but it triggers
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline std::string fault_injection_last_info() { return ""; }
 
 #else
 
-#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <cstdlib>
 #include <fstream>
 #include <mutex>
-#include <string>
 
 #include <fiu-control.h>
 #include <fiu.h>
@@ -61,6 +64,7 @@ static inline const char *fault_injection_info_fn() {
   return info_fn.data();
 }
 
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline std::string fault_injection_last_info() {
   auto info_id = reinterpret_cast<uint64_t>(fiu_failinfo());
 
@@ -90,6 +94,7 @@ static inline std::string fault_injection_last_info() {
 }
 
 // proxy for fiu_enable, with persisted failinfo (through a file)
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline int fault_injection_enable(const char *name, int failnum, const std::string &failinfo,
                                          unsigned int flags) {
   std::array<char, fault_injection_info_bs> arr{};
@@ -97,7 +102,7 @@ static inline int fault_injection_enable(const char *name, int failnum, const st
 
   size_t failinfo_id = 0;
 
-  if (failinfo != "") {
+  if (!failinfo.empty()) {
     std::ofstream f;
     f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
@@ -115,6 +120,7 @@ static inline int fault_injection_enable(const char *name, int failnum, const st
 
 // proxy for fiu_init, but also explicitly clears the persisted failinfo, in
 // case it is lingering from a previous test case.
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline void fault_injection_init() {
   fiu_init(0);
   std::ofstream f;

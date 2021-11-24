@@ -24,12 +24,8 @@ namespace Primary {
 
 class ManagedSecondaryConfig : public SecondaryConfig {
  public:
-  ManagedSecondaryConfig(const char* type = Type) : SecondaryConfig(type) {}
+  explicit ManagedSecondaryConfig(const std::string& type = "managed") : SecondaryConfig(type) {}
 
- public:
-  constexpr static const char* const Type = "managed";
-
- public:
   bool partial_verifying{false};
   std::string ecu_serial;
   std::string ecu_hardware_id;
@@ -50,6 +46,8 @@ class ManagedSecondary : public SecondaryInterface {
   explicit ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in);
   // Prevent inlining to enable forward declarations.
   ~ManagedSecondary() override;
+  ManagedSecondary(const ManagedSecondary&) = delete;
+  ManagedSecondary& operator=(const ManagedSecondary&) = delete;
 
   void init(std::shared_ptr<SecondaryProvider> secondary_provider_in) override {
     secondary_provider_ = std::move(secondary_provider_in);
@@ -75,6 +73,9 @@ class ManagedSecondary : public SecondaryInterface {
   bool loadKeys(std::string* pub_key, std::string* priv_key);
 
  protected:
+  ManagedSecondary(ManagedSecondary&&) = default;
+  ManagedSecondary& operator=(ManagedSecondary&&) = default;
+
   virtual bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const;
 
   std::shared_ptr<SecondaryProvider> secondary_provider_;

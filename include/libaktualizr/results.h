@@ -68,6 +68,7 @@ enum class PauseStatus {
 class Pause {
  public:
   Pause() = default;
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   Pause(PauseStatus status_in) : status(status_in) {}
 
   PauseStatus status{PauseStatus::kSuccess};

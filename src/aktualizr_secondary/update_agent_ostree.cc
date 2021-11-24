@@ -24,7 +24,6 @@ bool OstreeUpdateAgent::getInstalledImageInfo(Uptane::InstalledImageInfo& instal
     if (!currently_installed_target.IsValid()) {
       // This is the policy on a target image name in case of OSTree
       // The policy in followed and implied in meta-updater (garage-sign/push) and the backend
-      // installed_image_info.name = _targetname_prefix + "-" + installed_image_info.hash;
       installed_image_info.name = targetname_prefix_ + "-" + installed_image_info.hash;
     } else {
       installed_image_info.name = currently_installed_target.filename();

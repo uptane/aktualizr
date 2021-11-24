@@ -1,3 +1,5 @@
+#include "ipuptanesecondary.h"
+
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
@@ -6,9 +8,9 @@
 
 #include "asn1/asn1_message.h"
 #include "der_encoder.h"
-#include "ipuptanesecondary.h"
 #include "logging/logging.h"
-#include "storage/invstorage.h"
+#include "uptane/tuf.h"
+#include "utilities/utils.h"
 
 namespace Uptane {
 
@@ -338,7 +340,7 @@ Manifest IpUptaneSecondary::getManifest() const {
     LOG_ERROR << "Manifest wasn't in json format";
     return Json::Value();
   }
-  std::string manifest = ToString(r->manifest.choice.json);  // NOLINT
+  std::string manifest = ToString(r->manifest.choice.json);  // NOLINT(cppcoreguidelines-pro-type-union-access)
   return Utils::parseJSON(manifest);
 }
 

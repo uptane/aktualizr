@@ -1,8 +1,7 @@
+#include "provisioner_test_utils.h"
 
 #include <gtest/gtest.h>
-#include "primary/provisioner.h"
 
-// Test utility to run provisioning to completion and check the result
 void ExpectProvisionOK(Provisioner&& provisioner) {
   int attempts = 0;
   bool last_attempt = false;
@@ -17,7 +16,7 @@ void ExpectProvisionOK(Provisioner&& provisioner) {
   EXPECT_EQ(provisioner.CurrentState(), Provisioner::State::kOk);
 }
 
-void ExpectProvisionError(Provisioner&& provisioner, const std::string& match = "") {
+void ExpectProvisionError(Provisioner&& provisioner, const std::string& match) {
   bool last_attempt;
   for (int attempt = 0; attempt < 3; attempt++) {
     EXPECT_TRUE(provisioner.ShouldAttemptAgain());

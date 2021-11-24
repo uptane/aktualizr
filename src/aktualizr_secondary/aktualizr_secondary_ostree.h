@@ -8,7 +8,7 @@ class OstreeUpdateAgent;
 
 class AktualizrSecondaryOstree : public AktualizrSecondary {
  public:
-  AktualizrSecondaryOstree(const AktualizrSecondaryConfig& config);
+  explicit AktualizrSecondaryOstree(const AktualizrSecondaryConfig& config);
   AktualizrSecondaryOstree(const AktualizrSecondaryConfig& config, const std::shared_ptr<INvStorage>& storage);
 
   void initialize() override;

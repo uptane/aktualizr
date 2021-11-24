@@ -127,14 +127,13 @@ if(BUILD_P11)
                 message(STATUS "Detected pkcs11 engine path: ${engine}")
                 set(PKCS11_ENGINE_PATH ${engine})
             endif()
-
         endforeach()
 
         if (NOT PKCS11_ENGINE_PATH)
             message(FATAL_ERROR "Could not auto-detect path of PKCS11 engine, please specify PKCS11_ENGINE_PATH")
         endif()
 
-        set(PKCS11_ENGINE_PATH "${PKCS11_ENGINE_PATH}" CACHE STRING "Credentials.zip for tests involving the server")
+        set(PKCS11_ENGINE_PATH "${PKCS11_ENGINE_PATH}" CACHE STRING "Path to PKCS#11 engine library")
     endif()
 endif(BUILD_P11)
 
@@ -255,11 +254,6 @@ if(CLANG_TIDY)
     function(aktualizr_clang_tidy)
         file(RELATIVE_PATH SUBDIR ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
         foreach(FILE ${ARGN})
-            # Skip header files, since they are ignored. Headers are checked if
-            # they are included by a checked source file.
-            if(${FILE} MATCHES "\\.h")
-                continue()
-            endif()
             string(REPLACE "/" "_" TARGETNAME "aktualizr_clang_tidy-${SUBDIR}-${FILE}")
             add_custom_target(${TARGETNAME}
                 COMMAND ${PROJECT_SOURCE_DIR}/scripts/clang-tidy-wrapper.sh ${CLANG_TIDY} ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR} ${FILE}

@@ -168,7 +168,7 @@ class UptaneRepoWrapper {
     uptane_repo_.addTarget(rev, hardware_id, serial, "");
     uptane_repo_.signTargets();
 
-    return getCurrentMetadata();
+    return Uptane::SecondaryMetadata(getCurrentMetadata());
   }
 
   Uptane::MetaBundle getCurrentMetadata() const {
