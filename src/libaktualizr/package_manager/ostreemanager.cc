@@ -70,7 +70,12 @@ static void aktualizr_progress_cb(OstreeAsyncProgress *progress, gpointer data) 
 data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysroot_path,
                                              const std::string &ostree_server, const KeyManager &keys,
                                              const Uptane::Target &target, const api::FlowControlToken *token,
-                                             OstreeProgressCb progress_cb) {
+                                             OstreeProgressCb progress_cb, const char *alt_remote,
+                                             boost::optional<std::unordered_map<std::string, std::string>> headers) {
+  if (!target.IsOstree()) {
+    throw std::logic_error("Invalid type of Target, got " + target.type() + ", expected OSTREE");
+  }
+
   const std::string refhash = target.sha256Hash();
   // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
   const char *const commit_ids[] = {refhash.c_str()};
@@ -102,8 +107,9 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
     error = nullptr;
   }
 
-  if (!OstreeManager::addRemote(repo.get(), ostree_server, keys)) {
-    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Error adding OSTree remote");
+  if (alt_remote == nullptr && !OstreeManager::addRemote(repo.get(), ostree_server, keys)) {
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
+                                    std::string("Error adding a default OSTree remote: ") + remote);
   }
 
   g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
@@ -111,11 +117,23 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
 
   g_variant_builder_add(&builder, "{s@v}", "refs", g_variant_new_variant(g_variant_new_strv(commit_ids, 1)));
 
+  if (!!headers && !(*headers).empty()) {
+    GVariantBuilder hdr_builder;
+    g_variant_builder_init(&hdr_builder, G_VARIANT_TYPE("a(ss)"));
+
+    for (const auto &kv : *headers) {
+      g_variant_builder_add(&hdr_builder, "(ss)", kv.first.c_str(), kv.second.c_str());
+    }
+    g_variant_builder_add(&builder, "{s@v}", "http-headers",
+                          g_variant_new_variant(g_variant_builder_end(&hdr_builder)));
+  }
+
   options = g_variant_builder_end(&builder);
 
   PullMetaStruct mt(target, token, g_cancellable_new(), std::move(progress_cb));
   progress.reset(ostree_async_progress_new_and_connect(aktualizr_progress_cb, &mt));
-  if (ostree_repo_pull_with_options(repo.get(), remote, options, progress.get(), mt.cancellable.get(), &error) == 0) {
+  if (ostree_repo_pull_with_options(repo.get(), alt_remote == nullptr ? remote : alt_remote, options, progress.get(),
+                                    mt.cancellable.get(), &error) == 0) {
     LOG_ERROR << "Error while pulling image: " << error->code << " " << error->message;
     data::InstallationResult install_res(data::ResultCode::Numeric::kInstallFailed, error->message);
     g_error_free(error);
@@ -242,8 +260,10 @@ data::InstallationResult OstreeManager::finalizeInstall(const Uptane::Target &ta
 void OstreeManager::updateNotify() { bootloader_->updateNotify(); }
 
 OstreeManager::OstreeManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
-                             const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http)
-    : PackageManagerInterface(pconfig, bconfig, storage, http), bootloader_{new Bootloader(bconfig, *storage)} {
+                             const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
+                             Bootloader *bootloader)
+    : PackageManagerInterface(pconfig, BootloaderConfig(), storage, http),
+      bootloader_(bootloader == nullptr ? new Bootloader(bconfig, *storage) : bootloader) {
   GObjectUniquePtr<OstreeSysroot> sysroot_smart = OstreeManager::LoadSysroot(config.sysroot);
   if (sysroot_smart == nullptr) {
     throw std::runtime_error("Could not find OSTree sysroot at: " + config.sysroot.string());
@@ -330,12 +350,23 @@ Json::Value OstreeManager::getInstalledPackages() const {
 }
 
 std::string OstreeManager::getCurrentHash() const {
+  OstreeDeployment *deployment = nullptr;
   GObjectUniquePtr<OstreeSysroot> sysroot_smart = OstreeManager::LoadSysroot(config.sysroot);
-  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment(sysroot_smart.get());
-  if (booted_deployment == nullptr) {
-    throw std::runtime_error("Could not get booted deployment in " + config.sysroot.string());
+  if (config.booted == BootedType::kBooted) {
+    deployment = ostree_sysroot_get_booted_deployment(sysroot_smart.get());
+  } else {
+    g_autoptr(GPtrArray) deployments = ostree_sysroot_get_deployments(sysroot_smart.get());
+    if (deployments != nullptr && deployments->len > 0) {
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+      deployment = static_cast<OstreeDeployment *>(deployments->pdata[0]);
+    }
   }
-  return ostree_deployment_get_csum(booted_deployment);
+  if (deployment == nullptr) {
+    std::stringstream text;
+    text << "Could not get " << config.booted << " deployment in " << config.sysroot.string();
+    throw std::runtime_error(text.str());
+  }
+  return ostree_deployment_get_csum(deployment);
 }
 
 Uptane::Target OstreeManager::getCurrent() const {
@@ -424,10 +455,11 @@ GObjectUniquePtr<OstreeSysroot> OstreeManager::LoadSysroot(const boost::filesyst
   }
   GError *error = nullptr;
   if (ostree_sysroot_load(sysroot.get(), nullptr, &error) == 0) {
+    const std::string msg = error->message;
     if (error != nullptr) {
       g_error_free(error);
     }
-    throw std::runtime_error("could not load sysroot");
+    throw std::runtime_error("could not load sysroot at " + path.string() + ": " + msg);
   }
   return sysroot;
 }

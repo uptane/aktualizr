@@ -18,6 +18,16 @@ std::ostream &operator<<(std::ostream &os, ProvisionMode mode);
 enum class StorageType { kFileSystem = 0, kSqlite };
 std::ostream &operator<<(std::ostream &os, StorageType stype);
 
+enum class BootedType { kBooted = 0, kStaged };
+std::ostream &operator<<(std::ostream &os, BootedType btype);
+
+enum class VerificationType {
+  kFull = 0,
+  kTuf
+  // TODO: kPartial
+};
+std::ostream &operator<<(std::ostream &os, VerificationType vtype);
+
 namespace utils {
 /**
  * @brief The BasedPath class
@@ -25,8 +35,6 @@ namespace utils {
  *
  * The intent is to avoid unintentional use of the "naked" relative path by
  * mandating a base directory for each instantiation.
- *
- * TODO has to be moved into Utils namespace
  */
 class BasedPath {
  public:
@@ -245,7 +253,7 @@ struct ResultCode {
   ResultCode(ResultCode::Numeric in_num_code, std::string text_code_in)
       : num_code(in_num_code), text_code(std::move(text_code_in)) {}
 
-  bool operator==(const ResultCode &rhs) const { return num_code == rhs.num_code && toString() == rhs.toString(); }
+  bool operator==(const ResultCode &rhs) const { return num_code == rhs.num_code && ToString() == rhs.ToString(); }
   bool operator!=(const ResultCode &rhs) const { return !(*this == rhs); }
   friend std::ostream &operator<<(std::ostream &os, const ResultCode &result_code);
 
@@ -256,7 +264,7 @@ struct ResultCode {
   // any string representation. This is specifically useful for campaign success
   // analysis, because the device installation report concatenates the
   // individual ECU ResultCodes.
-  std::string toString() const {
+  std::string ToString() const {
     if (text_code != "") {
       return text_code;
     }
@@ -456,6 +464,29 @@ class Manifest : public Json::Value {
   std::string signedBody() const;
   bool verifySignature(const PublicKey &pub_key) const;
 };
+
+static inline VerificationType VerificationTypeFromString(std::string vt_str) {
+  std::transform(vt_str.begin(), vt_str.end(), vt_str.begin(), ::tolower);
+  if (vt_str == "tuf") {
+    return VerificationType::kTuf;
+  } else {
+    return VerificationType::kFull;
+  }
+}
+
+static inline std::string VerificationTypeToString(const VerificationType vtype) {
+  std::string type_s;
+  switch (vtype) {
+    case VerificationType::kFull:
+    default:
+      type_s = "Full";
+      break;
+    case VerificationType::kTuf:
+      type_s = "Tuf";
+      break;
+  }
+  return type_s;
+}
 
 }  // namespace Uptane
 

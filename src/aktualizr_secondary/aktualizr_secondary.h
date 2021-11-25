@@ -2,12 +2,11 @@
 #define AKTUALIZR_SECONDARY_H
 
 #include "aktualizr_secondary_config.h"
-#include "aktualizr_secondary_metadata.h"
 #include "msg_handler.h"
-#include "storage/invstorage.h"
 #include "uptane/directorrepository.h"
 #include "uptane/imagerepository.h"
 #include "uptane/manifest.h"
+#include "uptane/secondary_metadata.h"
 
 class UpdateAgent;
 class INvStorage;
@@ -22,10 +21,11 @@ class AktualizrSecondary : public MsgDispatcher {
   const Uptane::HardwareIdentifier& hwID() const { return hardware_id_; }
   PublicKey publicKey() const;
   Uptane::Manifest getManifest() const;
+  const Uptane::Target& getPendingTarget() const { return pending_target_; }
 
-  virtual data::InstallationResult putMetadata(const Metadata& metadata);
+  virtual data::InstallationResult putMetadata(const Uptane::SecondaryMetadata& metadata);
   virtual data::InstallationResult putMetadata(const Uptane::MetaBundle& meta_bundle) {
-    return putMetadata(Metadata(meta_bundle));
+    return putMetadata(Uptane::SecondaryMetadata(meta_bundle));
   }
 
   virtual data::InstallationResult install();
@@ -41,9 +41,7 @@ class AktualizrSecondary : public MsgDispatcher {
   virtual data::InstallationResult applyPendingInstall(const Uptane::Target& target) = 0;
 
   // protected interface to be used by child classes
-  Uptane::Target& pendingTarget() { return pending_target_; }
-  INvStorage& storage() { return *storage_; }
-  std::shared_ptr<INvStorage>& storagePtr() { return storage_; }
+  std::shared_ptr<INvStorage>& storage() { return storage_; }
   Uptane::DirectorRepository& directorRepo() { return director_repo_; }
   std::shared_ptr<KeyManager>& keyMngr() { return keys_; }
 
@@ -52,7 +50,8 @@ class AktualizrSecondary : public MsgDispatcher {
  private:
   static void copyMetadata(Uptane::MetaBundle& meta_bundle, Uptane::RepositoryType repo, const Uptane::Role& role,
                            std::string& json);
-  data::InstallationResult doFullVerification(const Metadata& metadata);
+  data::InstallationResult verifyMetadata(const Uptane::SecondaryMetadata& metadata);
+  data::InstallationResult findTargets();
   void uptaneInitialize();
   void registerHandlers();
 
@@ -60,6 +59,8 @@ class AktualizrSecondary : public MsgDispatcher {
   ReturnCode getInfoHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const;
   static ReturnCode versionHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
   ReturnCode getManifestHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const;
+  ReturnCode getRootVerHdlr(Asn1Message& in_msg, Asn1Message& out_msg) const;
+  ReturnCode putRootHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
   ReturnCode putMetaHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
   ReturnCode installHdlr(Asn1Message& in_msg, Asn1Message& out_msg);
 

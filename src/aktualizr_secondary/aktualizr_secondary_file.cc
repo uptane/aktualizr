@@ -20,7 +20,7 @@ AktualizrSecondaryFile::AktualizrSecondaryFile(const AktualizrSecondaryConfig& c
     boost::optional<Uptane::Target> current_version;
     boost::optional<Uptane::Target> pending_version;
     auto installed_version_res =
-        AktualizrSecondary::storage().loadInstalledVersions("", &current_version, &pending_version);
+        AktualizrSecondary::storage()->loadInstalledVersions("", &current_version, &pending_version);
 
     if (installed_version_res && !!current_version) {
       current_target_name = current_version->filename();
@@ -35,13 +35,13 @@ AktualizrSecondaryFile::AktualizrSecondaryFile(const AktualizrSecondaryConfig& c
 void AktualizrSecondaryFile::initialize() { initPendingTargetIfAny(); }
 
 data::InstallationResult AktualizrSecondaryFile::receiveData(const uint8_t* data, size_t size) {
-  if (!pendingTarget().IsValid()) {
+  if (!getPendingTarget().IsValid()) {
     LOG_ERROR << "Aborting image download; no valid target found.";
     return data::InstallationResult(data::ResultCode::Numeric::kGeneralError,
                                     "Aborting image download; no valid target found.");
   }
 
-  return update_agent_->receiveData(pendingTarget(), data, size);
+  return update_agent_->receiveData(getPendingTarget(), data, size);
 }
 
 bool AktualizrSecondaryFile::isTargetSupported(const Uptane::Target& target) const {

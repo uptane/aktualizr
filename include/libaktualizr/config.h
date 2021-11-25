@@ -97,8 +97,9 @@ struct PackageConfig {
   boost::filesystem::path images_path{"/var/sota/images"};
   boost::filesystem::path packages_file{"/usr/package.manifest"};
 
-  // Options for simulation (to be used with "none")
+  // Options for simulation
   bool fake_need_reboot{false};
+  BootedType booted{BootedType::kBooted};
 
   // for specialized configuration
   std::map<std::string, std::string> extra;

@@ -46,6 +46,6 @@ std::string Version::RoleFileName(const Role &role) const {
   if (version_ != Version::ANY_VERSION) {
     ss << version_ << ".";
   }
-  ss << role.ToString() << ".json";
+  ss << role << ".json";
   return ss.str();
 }

@@ -92,6 +92,11 @@ class Asn1Message {
   ASN1_MESSAGE_DEFINE_ACCESSOR(AKVersionReqMes_t, versionReq);
   ASN1_MESSAGE_DEFINE_ACCESSOR(AKVersionRespMes_t, versionResp);
 
+  ASN1_MESSAGE_DEFINE_ACCESSOR(AKRootVerReqMes_t, rootVerReq);
+  ASN1_MESSAGE_DEFINE_ACCESSOR(AKRootVerRespMes_t, rootVerResp);
+  ASN1_MESSAGE_DEFINE_ACCESSOR(AKPutRootReqMes_t, putRootReq);
+  ASN1_MESSAGE_DEFINE_ACCESSOR(AKPutRootRespMes_t, putRootResp);
+
 #define ASN1_MESSAGE_DEFINE_STR_NAME(MessageID) \
   case MessageID:                               \
     return #MessageID;
@@ -120,6 +125,11 @@ class Asn1Message {
         ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_installResp2);
         ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_versionReq);
         ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_versionResp);
+
+        ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_rootVerReq);
+        ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_rootVerResp);
+        ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_putRootReq);
+        ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_putRootResp);
     }
     return "Unknown";
   };

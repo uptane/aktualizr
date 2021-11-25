@@ -85,7 +85,7 @@ data::InstallationResult OstreeUpdateAgent::downloadTargetRev(const Uptane::Targ
     }
     default: {
       LOG_ERROR << "Failed to download the target commit: " << target.sha256Hash() << " ( "
-                << result.result_code.toString() << " ): " << result.description;
+                << result.result_code.ToString() << " ): " << result.description;
     }
   }
 

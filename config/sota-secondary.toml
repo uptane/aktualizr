@@ -1,3 +1,2 @@
 [storage]
-type = "sqlite"
 sqldb_path = "/var/sota/secondary.db"

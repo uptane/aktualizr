@@ -24,7 +24,7 @@ void ImageRepository::verifyTimestamp(const std::string& timestamp_raw) {
 
 void ImageRepository::checkTimestampExpired() {
   if (timestamp.isExpired(TimeStamp::Now())) {
-    throw Uptane::ExpiredMetadata(type.toString(), Role::TIMESTAMP);
+    throw Uptane::ExpiredMetadata(type.ToString(), Role::TIMESTAMP);
   }
 }
 
@@ -97,7 +97,7 @@ void ImageRepository::verifySnapshot(const std::string& snapshot_raw, bool prefe
 
 void ImageRepository::checkSnapshotExpired() {
   if (snapshot.isExpired(TimeStamp::Now())) {
-    throw Uptane::ExpiredMetadata(type.toString(), Role::SNAPSHOT);
+    throw Uptane::ExpiredMetadata(type.ToString(), Role::SNAPSHOT);
   }
 }
 
@@ -132,7 +132,7 @@ void ImageRepository::verifyRoleHashes(const std::string& role_data, const Uptan
       case Hash::Type::kSha256:
         if (Hash(Hash::Type::kSha256, boost::algorithm::hex(Crypto::sha256digest(canonical))) != it) {
           if (!prefetch) {
-            LOG_ERROR << "Hash verification for " << role.ToString() << " metadata failed";
+            LOG_ERROR << "Hash verification for " << role << " metadata failed";
           }
           throw Uptane::SecurityException(RepositoryType::IMAGE, "Hash metadata mismatch");
         }
@@ -140,7 +140,7 @@ void ImageRepository::verifyRoleHashes(const std::string& role_data, const Uptan
       case Hash::Type::kSha512:
         if (Hash(Hash::Type::kSha512, boost::algorithm::hex(Crypto::sha512digest(canonical))) != it) {
           if (!prefetch) {
-            LOG_ERROR << "Hash verification for " << role.ToString() << " metadata failed";
+            LOG_ERROR << "Hash verification for " << role << " metadata failed";
           }
           throw Uptane::SecurityException(RepositoryType::IMAGE, "Hash metadata mismatch");
         }
@@ -195,7 +195,7 @@ std::shared_ptr<Uptane::Targets> ImageRepository::verifyDelegation(const std::st
 
 void ImageRepository::checkTargetsExpired() {
   if (targets->isExpired(TimeStamp::Now())) {
-    throw Uptane::ExpiredMetadata(type.toString(), Role::TARGETS);
+    throw Uptane::ExpiredMetadata(type.ToString(), Role::TARGETS);
   }
 }
 

@@ -1,18 +1,15 @@
 #include "sotauptaneclient.h"
 
 #include <fnmatch.h>
-#include <unistd.h>
 #include <memory>
 #include <utility>
 
 #include "crypto/crypto.h"
 #include "crypto/keymanager.h"
-#include "initializer.h"
 #include "libaktualizr/campaign.h"
 #include "logging/logging.h"
+#include "provisioner.h"
 #include "uptane/exceptions.h"
-
-#include "utilities/fault_injection.h"
 #include "utilities/utils.h"
 
 static void report_progress_cb(event::Channel *channel, const Uptane::Target &target, const std::string &description,
@@ -24,6 +21,24 @@ static void report_progress_cb(event::Channel *channel, const Uptane::Target &ta
   (*channel)(event);
 }
 
+SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in,
+                                   std::shared_ptr<HttpInterface> http_in,
+                                   std::shared_ptr<event::Channel> events_channel_in, Uptane::EcuSerial primary_serial,
+                                   Uptane::HardwareIdentifier hwid)
+    : config(config_in),
+      storage(std::move(storage_in)),
+      http(std::move(http_in)),
+      package_manager_(PackageManagerFactory::makePackageManager(config.pacman, config.bootloader, storage, http)),
+      key_manager_(std::make_shared<KeyManager>(storage, config.keymanagerConfig())),
+      uptane_fetcher(new Uptane::Fetcher(config, http)),
+      events_channel(std::move(events_channel_in)),
+      primary_ecu_serial_(std::move(primary_serial)),
+      primary_ecu_hw_id_(std::move(hwid)),
+      provisioner_(config.provision, storage, http, key_manager_, secondaries) {
+  report_queue = std_::make_unique<ReportQueue>(config, http, storage);
+  secondary_provider_ = SecondaryProviderBuilder::Build(config, storage, package_manager_);
+}
+
 void SotaUptaneClient::addSecondary(const std::shared_ptr<SecondaryInterface> &sec) {
   Uptane::EcuSerial serial = sec->getSerial();
 
@@ -33,6 +48,8 @@ void SotaUptaneClient::addSecondary(const std::shared_ptr<SecondaryInterface> &s
   }
 
   secondaries.emplace(serial, sec);
+  sec->init(secondary_provider_);
+  provisioner_.SecondariesWereChanged();
 }
 
 std::vector<Uptane::Target> SotaUptaneClient::findForEcu(const std::vector<Uptane::Target> &targets,
@@ -138,27 +155,28 @@ data::InstallationResult SotaUptaneClient::PackageInstallSetResult(const Uptane:
  * changes. (Unfortunately, it can change often due to CPU frequency scaling.)
  * However, users can provide custom info via the API, and that will be sent if
  * it has changed. */
-void SotaUptaneClient::reportHwInfo(const Json::Value &custom_hwinfo) {
-  Json::Value system_info;
+void SotaUptaneClient::reportHwInfo() {
+  Json::Value hw_info;
   std::string stored_hash;
   storage->loadDeviceDataHash("hardware_info", &stored_hash);
 
-  if (custom_hwinfo.empty()) {
+  if (custom_hardware_info_.empty()) {
     if (!stored_hash.empty()) {
       LOG_TRACE << "Not reporting default hardware information because it has already been reported";
       return;
     }
-    system_info = Utils::getHardwareInfo();
-    if (system_info.empty()) {
+    hw_info = Utils::getHardwareInfo();
+    if (hw_info.empty()) {
       LOG_WARNING << "Unable to fetch hardware information from host system.";
       return;
     }
+  } else {
+    hw_info = custom_hardware_info_;
   }
 
-  const Json::Value &hw_info = custom_hwinfo.empty() ? system_info : custom_hwinfo;
   const Hash new_hash = Hash::generate(Hash::Type::kSha256, Utils::jsonToCanonicalStr(hw_info));
   if (new_hash != Hash(Hash::Type::kSha256, stored_hash)) {
-    if (custom_hwinfo.empty()) {
+    if (custom_hardware_info_.empty()) {
       LOG_DEBUG << "Reporting default hardware information";
     } else {
       LOG_DEBUG << "Reporting custom hardware information";
@@ -344,28 +362,29 @@ bool SotaUptaneClient::hasPendingUpdates() const { return storage->hasPendingIns
 
 void SotaUptaneClient::initialize() {
   LOG_DEBUG << "Checking if device is provisioned...";
-  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-  Initializer initializer(config.provision, storage, http, *keys, secondaries);
+  bool provisioned = false;
+  for (int i = 0; i < 3 && !provisioned; i++) {
+    provisioned = provisioner_.Attempt();
+  }
+
+  // This is temporary. For offline updates it will be necessary to
+  // run updates before provisioning has completed.
+  if (!provisioned) {
+    throw std::runtime_error("Initialization failed after 3 attempts");
+  }
 
   EcuSerials serials;
-  /* unlikely, post-condition of Initializer::Initializer() */
+  /* unlikely, post-condition of Provisioner::Attempt() returning true */
   if (!storage->loadEcuSerials(&serials) || serials.empty()) {
     throw std::runtime_error("Unable to load ECU serials after device registration.");
   }
 
-  uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(keys, serials[0].first);
+  uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, serials[0].first);
+  // TODO: Move this debug logging out to somewhere else
   primary_ecu_serial_ = serials[0].first;
   primary_ecu_hw_id_ = serials[0].second;
   LOG_INFO << "Primary ECU serial: " << primary_ecu_serial_ << " with hardware ID: " << primary_ecu_hw_id_;
-
-  for (auto it = secondaries.begin(); it != secondaries.end(); ++it) {
-    try {
-      it->second->init(secondary_provider_);
-    } catch (const std::exception &ex) {
-      LOG_ERROR << "Failed to initialize Secondary with serial " << it->first << ": " << ex.what();
-    }
-  }
 
   std::string device_id;
   if (!storage->loadDeviceId(&device_id)) {
@@ -378,7 +397,7 @@ void SotaUptaneClient::initialize() {
   std::string issuer;
   std::string not_before;
   std::string not_after;
-  keys->getCertInfo(&subject, &issuer, &not_before, &not_after);
+  key_manager_->getCertInfo(&subject, &issuer, &not_before, &not_after);
   LOG_INFO << "Certificate subject: " << subject;
   LOG_INFO << "Certificate issuer: " << issuer;
   LOG_INFO << "Certificate valid from: " << not_before << " until: " << not_after;
@@ -468,7 +487,7 @@ void SotaUptaneClient::computeDeviceInstallationResult(data::InstallationResult 
       // format:
       // ecu1_hwid:failure1|ecu2_hwid:failure2
       if (!installation_res.isSuccess()) {
-        const std::string ecu_code_str = (*hw_id).ToString() + ":" + installation_res.result_code.toString();
+        const std::string ecu_code_str = (*hw_id).ToString() + ":" + installation_res.result_code.ToString();
         result_code_err_str += (!result_code_err_str.empty() ? "|" : "") + ecu_code_str;
       }
     }
@@ -515,23 +534,23 @@ void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, u
         // This is triggered if a Secondary is removed after an update was
         // installed on it because of the empty targets optimization.
         // Thankfully if the Director issues new Targets, it fixes itself.
-        LOG_ERROR << "Unknown ECU ID in Director Targets metadata: " << ecu_serial.ToString();
+        LOG_ERROR << "Unknown ECU ID in Director Targets metadata: " << ecu_serial;
         throw Uptane::BadEcuId(target.filename());
       }
 
       if (*hw_id_known != hw_id) {
-        LOG_ERROR << "Wrong hardware identifier for ECU " << ecu_serial.ToString();
+        LOG_ERROR << "Wrong hardware identifier for ECU " << ecu_serial;
         throw Uptane::BadHardwareId(target.filename());
       }
 
       boost::optional<Uptane::Target> current_version;
       if (!storage->loadInstalledVersions(ecu_serial.ToString(), &current_version, nullptr)) {
-        LOG_WARNING << "Could not load currently installed version for ECU ID: " << ecu_serial.ToString();
+        LOG_WARNING << "Could not load currently installed version for ECU ID: " << ecu_serial;
         break;
       }
 
       if (!current_version) {
-        LOG_WARNING << "Current version for ECU ID: " << ecu_serial.ToString() << " is unknown";
+        LOG_WARNING << "Current version for ECU ID: " << ecu_serial << " is unknown";
         is_new = true;
       } else if (current_version->MatchTarget(target)) {
         // Do nothing; target is already installed.
@@ -805,8 +824,8 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
   }
 }
 
-void SotaUptaneClient::sendDeviceData(const Json::Value &custom_hwinfo) {
-  reportHwInfo(custom_hwinfo);
+void SotaUptaneClient::sendDeviceData() {
+  reportHwInfo();
   reportInstalledPackages();
   reportNetworkInfo();
   reportAktualizrConfiguration();
@@ -1229,18 +1248,28 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
   data::InstallationResult result{data::ResultCode::Numeric::kOk, ""};
   const int last_root_version = Uptane::extractVersionUntrusted(latest_root);
   const int sec_root_version = secondary.getRootVersion((repo == Uptane::RepositoryType::Director()));
-  if (sec_root_version > 0 && last_root_version - sec_root_version > 1) {
-    for (int v = sec_root_version + 1; v <= last_root_version; v++) {
+  if (sec_root_version < 0) {
+    LOG_WARNING << "Secondary with serial " << secondary.getSerial() << " reported an invalid " << repo
+                << " repo Root version: " << sec_root_version;
+    result =
+        data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                 "Secondary with serial " + secondary.getSerial().ToString() + " reported an invalid " +
+                                     repo.ToString() + " repo Root version: " + std::to_string(sec_root_version));
+  } else if (sec_root_version > 0 && last_root_version - sec_root_version > 1) {
+    // Only send intermediate Roots that would otherwise be skipped. The latest
+    // will be sent with the complete set of the latest metadata.
+    for (int v = sec_root_version + 1; v < last_root_version; v++) {
       std::string root;
       if (!storage->loadRoot(&root, repo, Uptane::Version(v))) {
         LOG_WARNING << "Couldn't find Root metadata in the storage, trying remote repo";
         try {
           uptane_fetcher->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(), Uptane::Version(v));
         } catch (const std::exception &e) {
-          // TODO(OTA-4552): looks problematic, robust procedure needs to be defined
-          LOG_ERROR << "Root metadata could not be fetched, skipping to the next Secondary";
+          LOG_ERROR << "Root metadata could not be fetched for Secondary with serial " << secondary.getSerial()
+                    << ", skipping to the next Secondary";
           result = data::InstallationResult(data::ResultCode::Numeric::kInternalError,
-                                            "Root metadata could not be fetched, skipping to the next Secondary");
+                                            "Root metadata could not be fetched for Secondary with serial " +
+                                                secondary.getSerial().ToString() + ", skipping to the next Secondary");
           break;
         }
       }
@@ -1250,8 +1279,8 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
         result = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
       }
       if (!result.isSuccess()) {
-        LOG_ERROR << "Sending metadata to " << secondary.getSerial() << " failed: " << result.result_code << " "
-                  << result.description;
+        LOG_ERROR << "Sending Root metadata to Secondary with serial " << secondary.getSerial()
+                  << " failed: " << result.result_code << " " << result.description;
         break;
       }
     }
@@ -1295,7 +1324,7 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
       if (!local_result.isSuccess()) {
         LOG_ERROR << "Sending metadata to " << sec->first << " failed: " << local_result.result_code << " "
                   << local_result.description;
-        const std::string ecu_code_str = hw_id.ToString() + ":" + local_result.result_code.toString();
+        const std::string ecu_code_str = hw_id.ToString() + ":" + local_result.result_code.ToString();
         result_code_err_str += (!result_code_err_str.empty() ? "|" : "") + ecu_code_str;
       }
     }
@@ -1463,4 +1492,13 @@ boost::optional<Uptane::HardwareIdentifier> SotaUptaneClient::getEcuHwId(const U
   }
 
   return boost::none;
+}
+
+std::ifstream SotaUptaneClient::openStoredTarget(const Uptane::Target &target) {
+  auto status = package_manager_->verifyTarget(target);
+  if (status == TargetStatus::kGood) {
+    return package_manager_->openTargetFile(target);
+  } else {
+    throw std::runtime_error("Failed to open Target");
+  }
 }

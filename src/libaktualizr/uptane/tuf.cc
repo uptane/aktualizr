@@ -16,22 +16,17 @@
 using Uptane::Target;
 using Uptane::Version;
 
+std::ostream &Uptane::operator<<(std::ostream &os, const RepositoryType &repo_type) {
+  os << repo_type.ToString();
+  return os;
+}
+
 std::ostream &Uptane::operator<<(std::ostream &os, const Version &v) {
   if (v.version_ == Version::ANY_VERSION) {
     os << "vANY";
   } else {
     os << "v" << v.version_;
   }
-  return os;
-}
-
-std::ostream &Uptane::operator<<(std::ostream &os, const HardwareIdentifier &hwid) {
-  os << hwid.hwid_;
-  return os;
-}
-
-std::ostream &Uptane::operator<<(std::ostream &os, const EcuSerial &ecu_serial) {
-  os << ecu_serial.ecu_serial_;
   return os;
 }
 
@@ -482,7 +477,7 @@ int Uptane::extractVersionUntrusted(const std::string &meta) {
 std::string Uptane::getMetaFromBundle(const MetaBundle &bundle, const RepositoryType repo, const Role &role) {
   auto it = bundle.find(std::make_pair(repo, role));
   if (it == bundle.end()) {
-    throw std::runtime_error("Metadata not found for " + role.ToString() + " role from the " + repo.toString() +
+    throw std::runtime_error("Metadata not found for " + role.ToString() + " role from the " + repo.ToString() +
                              " repository.");
   }
   return it->second;

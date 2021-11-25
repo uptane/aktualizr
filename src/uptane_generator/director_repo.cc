@@ -25,6 +25,7 @@ void DirectorRepo::addTarget(const std::string &target_name, const Json::Value &
   } else {
     director_targets["targets"][target_name]["custom"].removeMember("uri");
   }
+  director_targets["targets"][target_name]["custom"].removeMember("version");
   director_targets["version"] = (Utils::parseJSONFile(current)["signed"]["version"].asUInt()) + 1;
   Utils::writeFile(staging, Utils::jsonToCanonicalStr(director_targets));
   updateRepo();

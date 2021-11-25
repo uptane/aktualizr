@@ -30,26 +30,33 @@ void UptaneRepo::revokeDelegation(const Uptane::Role &name) {
 }
 
 void UptaneRepo::addImage(const boost::filesystem::path &image_path, const boost::filesystem::path &targetname,
-                          const std::string &hardware_id, const std::string &url, const Delegation &delegation) {
-  image_repo_.addBinaryImage(image_path, targetname, hardware_id, url, delegation);
+                          const std::string &hardware_id, const std::string &url, const int32_t custom_version,
+                          const Delegation &delegation) {
+  image_repo_.addBinaryImage(image_path, targetname, hardware_id, url, custom_version, delegation);
 }
 void UptaneRepo::addCustomImage(const std::string &name, const Hash &hash, uint64_t length,
-                                const std::string &hardware_id, const std::string &url, const Delegation &delegation,
-                                const Json::Value &custom) {
-  image_repo_.addCustomImage(name, hash, length, hardware_id, url, delegation, custom);
+                                const std::string &hardware_id, const std::string &url, const int32_t custom_version,
+                                const Delegation &delegation, const Json::Value &custom) {
+  image_repo_.addCustomImage(name, hash, length, hardware_id, url, custom_version, delegation, custom);
 }
 
 void UptaneRepo::signTargets() { director_repo_.signTargets(); }
-
 void UptaneRepo::emptyTargets() { director_repo_.emptyTargets(); }
 void UptaneRepo::oldTargets() { director_repo_.oldTargets(); }
-
 void UptaneRepo::generateCampaigns() { director_repo_.generateCampaigns(); }
 
 void UptaneRepo::refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role) {
-  if (repo_type == Uptane::RepositoryType(Uptane::RepositoryType::Director())) {
+  if (repo_type == Uptane::RepositoryType::Director()) {
     director_repo_.refresh(role);
-  } else if (repo_type == Uptane::RepositoryType(Uptane::RepositoryType::Image())) {
+  } else if (repo_type == Uptane::RepositoryType::Image()) {
     image_repo_.refresh(role);
+  }
+}
+
+void UptaneRepo::rotate(Uptane::RepositoryType repo_type, const Uptane::Role &role, KeyType key_type) {
+  if (repo_type == Uptane::RepositoryType::Director()) {
+    director_repo_.rotate(role, key_type);
+  } else if (repo_type == Uptane::RepositoryType::Image()) {
+    image_repo_.rotate(role, key_type);
   }
 }

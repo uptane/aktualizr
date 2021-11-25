@@ -112,7 +112,7 @@ class Socket {
   Socket &operator=(const Socket &) = delete;
 
   int &operator*() { return socket_fd_; }
-  std::string toString() const;
+  std::string ToString() const;
 
  protected:
   void bind(in_port_t port, bool reuse = true) const;

@@ -22,6 +22,7 @@ TEST(aktualizr_secondary_config, config_toml_parsing) {
   EXPECT_EQ(conf.pacman.sysroot, boost::filesystem::path("testsysroot"));
   EXPECT_EQ(conf.pacman.ostree_server, std::string("test_server"));
   EXPECT_EQ(conf.pacman.packages_file, boost::filesystem::path("/test_packages"));
+  EXPECT_EQ(conf.uptane.verification_type, VerificationType::kFull);
 }
 
 /* We don't normally dump the config to file, but we do write it to the log. */

@@ -77,8 +77,21 @@ void Repo::updateRepo() {
 
 Json::Value Repo::signTuf(const Uptane::Role &role, const Json::Value &json) {
   auto key = keys_[role];
-  std::string b64sig =
-      Utils::toBase64(Crypto::Sign(key.public_key.Type(), nullptr, key.private_key, Utils::jsonToCanonicalStr(json)));
+  return signTuf(key, json);
+}
+
+Json::Value Repo::signTuf(const KeyPair &key, const Json::Value &json) {
+  bool append = json.isMember("signed") && json.isMember("signatures");
+  Json::Value json_to_sign;
+  Json::Value json_signed;
+  if (append) {
+    json_to_sign = json["signed"];
+    json_signed = json;
+  } else {
+    json_to_sign = json;
+  }
+  std::string b64sig = Utils::toBase64(
+      Crypto::Sign(key.public_key.Type(), nullptr, key.private_key, Utils::jsonToCanonicalStr(json_to_sign)));
   Json::Value signature;
   switch (key.public_key.Type()) {
     case KeyType::kRSA2048:
@@ -93,13 +106,13 @@ Json::Value Repo::signTuf(const Uptane::Role &role, const Json::Value &json) {
       throw std::runtime_error("Unknown key type");
   }
   signature["sig"] = b64sig;
-
-  Json::Value signed_data;
   signature["keyid"] = key.public_key.KeyId();
 
-  signed_data["signed"] = json;
-  signed_data["signatures"].append(signature);
-  return signed_data;
+  if (!append) {
+    json_signed["signed"] = json_to_sign;
+  }
+  json_signed["signatures"].append(signature);
+  return json_signed;
 }
 
 std::string Repo::getExpirationTime(const std::string &expires) {
@@ -122,7 +135,7 @@ std::string Repo::getExpirationTime(const std::string &expires) {
   }
 }
 void Repo::generateKeyPair(KeyType key_type, const Uptane::Role &key_name) {
-  boost::filesystem::path keys_dir = path_ / ("keys/" + repo_type_.toString() + "/" + key_name.ToString());
+  boost::filesystem::path keys_dir = path_ / ("keys/" + repo_type_.ToString() + "/" + key_name.ToString());
   boost::filesystem::create_directories(keys_dir);
 
   std::string public_key_string;
@@ -266,7 +279,7 @@ Json::Value Repo::getTarget(const std::string &target_name) {
 }
 
 void Repo::readKeys() {
-  auto keys_path = path_ / "keys" / repo_type_.toString();
+  auto keys_path = path_ / "keys" / repo_type_.ToString();
   for (auto &p : boost::filesystem::directory_iterator(keys_path)) {
     std::string public_key_string = Utils::readFile(p / "public.key");
     std::istringstream key_type_str(Utils::readFile(p / "key_type"));
@@ -280,13 +293,12 @@ void Repo::readKeys() {
 }
 
 void Repo::refresh(const Uptane::Role &role) {
-  boost::filesystem::path meta_path = repo_dir_;
-
   if (repo_type_ == Uptane::RepositoryType::Director() &&
       (role == Uptane::Role::Timestamp() || role == Uptane::Role::Snapshot())) {
     throw std::runtime_error("The " + role.ToString() + " in the Director repo is not currently supported.");
   }
 
+  boost::filesystem::path meta_path = repo_dir_;
   if (role == Uptane::Role::Root()) {
     meta_path /= "root.json";
   } else if (role == Uptane::Role::Timestamp()) {
@@ -325,6 +337,49 @@ void Repo::refresh(const Uptane::Role &role) {
     root_name << version << ".root.json";
     Utils::writeFile(repo_dir_ / root_name.str(), signed_meta);
   }
+
+  updateRepo();
+}
+
+void Repo::rotate(const Uptane::Role &role, KeyType key_type) {
+  if (role != Uptane::Role::Root()) {
+    throw std::runtime_error("Rotating the " + role.ToString() + " is not currently supported.");
+  }
+
+  boost::filesystem::path meta_path = repo_dir_ / "root.json";
+  Json::Value meta_raw = Utils::parseJSONFile(meta_path)["signed"];
+  const unsigned version = meta_raw["version"].asUInt() + 1;
+
+  auto current_expire_time = TimeStamp(meta_raw["expires"].asString());
+
+  if (current_expire_time.IsExpiredAt(TimeStamp::Now())) {
+    time_t new_expiration_time;
+    std::time(&new_expiration_time);
+    new_expiration_time += 60 * 60;  // make it valid for the next hour
+    struct tm new_expiration_time_str {};
+    gmtime_r(&new_expiration_time, &new_expiration_time_str);
+
+    meta_raw["expires"] = TimeStamp(new_expiration_time_str).ToString();
+  }
+  meta_raw["version"] = version;
+
+  KeyPair old_key = keys_[role];
+  generateKeyPair(key_type, role);
+  KeyPair new_key = keys_[role];
+  meta_raw["keys"][new_key.public_key.KeyId()] = new_key.public_key.ToUptane();
+  meta_raw["keys"].removeMember(old_key.public_key.KeyId());
+
+  meta_raw["roles"]["root"]["keyids"].clear();
+  meta_raw["roles"]["root"]["keyids"].append(new_key.public_key.KeyId());
+
+  // Sign Root with old and new key
+  auto intermediate_meta = signTuf(role, meta_raw);
+  const std::string signed_meta = Utils::jsonToCanonicalStr(signTuf(old_key, intermediate_meta));
+  Utils::writeFile(meta_path, signed_meta);
+
+  std::stringstream root_name;
+  root_name << version << ".root.json";
+  Utils::writeFile(repo_dir_ / root_name.str(), signed_meta);
 
   updateRepo();
 }

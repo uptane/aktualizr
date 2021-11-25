@@ -17,7 +17,7 @@
 #include "http/httpclient.h"
 #include "httpfake.h"
 #include "logging/logging.h"
-#include "primary/initializer.h"
+#include "primary/provisioner.h"
 #include "primary/sotauptaneclient.h"
 #include "storage/invstorage.h"
 #include "test_utils.h"
@@ -45,13 +45,9 @@ bool doTestInit(const std::string &device_register_state, const std::string &ecu
   http->timeout(1000);
   auto store = INvStorage::newStorage(conf.storage);
   {
-    KeyManager keys(store, conf.keymanagerConfig());
-    try {
-      Initializer initializer(conf.provision, store, http, keys, {});
-      result = true;
-    } catch (const std::exception &e) {
-      result = false;
-    }
+    auto keys = std::make_shared<KeyManager>(store, conf.keymanagerConfig());
+    Provisioner provisioner(conf.provision, store, http, keys, {});
+    result = provisioner.Attempt();
   }
   if (device_register_state != "noerrors" || ecu_register_state != "noerrors") {
     EXPECT_FALSE(result);
@@ -60,13 +56,9 @@ bool doTestInit(const std::string &device_register_state, const std::string &ecu
     conf.provision.expiry_days = "noerrors";
     conf.provision.primary_ecu_serial = "noerrors";
 
-    KeyManager keys(store, conf.keymanagerConfig());
-    try {
-      Initializer initializer(conf.provision, store, http, keys, {});
-      result = true;
-    } catch (const std::exception &e) {
-      result = false;
-    }
+    auto keys = std::make_shared<KeyManager>(store, conf.keymanagerConfig());
+    Provisioner provisioner(conf.provision, store, http, keys, {});
+    result = provisioner.Attempt();
   }
 
   return result;

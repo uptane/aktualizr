@@ -25,7 +25,7 @@ void Uptane::MetaWithKeys::ParseRole(const RepositoryType repo, const Json::Valu
                                      const std::string &meta_role) {
   if (role == Role::InvalidRole()) {
     LOG_WARNING << "Invalid role in " << meta_role << ".json";
-    LOG_TRACE << "Role name:" << role.ToString();
+    LOG_TRACE << "Role name:" << role;
     return;
   }
   // Threshold
@@ -96,7 +96,7 @@ void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const R
     }
 
     if (keys_for_role_.count(std::make_pair(role, keyid)) == 0U) {
-      LOG_WARNING << "KeyId " << keyid << " is not valid to sign for this role (" << role.ToString() << ").";
+      LOG_WARNING << "KeyId " << keyid << " is not valid to sign for this role (" << role << ").";
       continue;
     }
     const std::string signature = (*sig)["sig"].asString();

@@ -2,6 +2,6 @@
   "IP": {
     "secondaries_wait_port": 9040,
     "secondaries_wait_timeout": 120,
-    "secondaries": [{"addr": "127.0.0.1:9050"}]
+    "secondaries": [{"addr": "127.0.0.1:9050", "verification_type": "Full"}]
   }
 }

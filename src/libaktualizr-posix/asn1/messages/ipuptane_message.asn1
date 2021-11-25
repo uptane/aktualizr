@@ -31,6 +31,12 @@ IpUptane DEFINITIONS ::= BEGIN
     ...
   }
 
+  AKRepoType ::= ENUMERATED {
+    director,
+    image,
+    ...
+  }
+
   -- Json format Image repository metadata. Deprecated (v1).
   AKImageMetaJson ::= SEQUENCE {
     root OCTET STRING,
@@ -175,6 +181,28 @@ IpUptane DEFINITIONS ::= BEGIN
     ...
   }
 
+  AKRootVerReqMes ::= SEQUENCE {
+    repotype AKRepoType,
+    ...
+  }
+
+  AKRootVerRespMes ::= SEQUENCE {
+    version INTEGER,
+    ...
+  }
+
+  AKPutRootReqMes ::= SEQUENCE {
+    repotype AKRepoType,
+    json OCTET STRING,
+    ...
+  }
+
+  AKPutRootRespMes ::= SEQUENCE {
+    result AKInstallationResultCode,
+    description OCTET STRING,
+    ...
+  }
+
 
   AKIpUptaneMes ::= CHOICE {
     getInfoReq [0] AKGetInfoReqMes,
@@ -197,6 +225,11 @@ IpUptane DEFINITIONS ::= BEGIN
     installResp2 [16] AKInstallResp2Mes,
     versionReq [17] AKVersionReqMes,
     versionResp [18] AKVersionRespMes,
+
+    rootVerReq [19] AKRootVerReqMes,
+    rootVerResp [20] AKRootVerRespMes,
+    putRootReq [21] AKPutRootReqMes,
+    putRootResp [22] AKPutRootRespMes,
     ...
   }
 

@@ -92,7 +92,6 @@ class Aktualizr:
 
     [storage]
     path = "{storage_dir}"
-    type = "sqlite"
     sqldb_path = "{db_path}"
 
     [pacman]
@@ -135,17 +134,19 @@ class Aktualizr:
     def add_secondary(self, secondary):
         with open(self._secondary_config_file, "r+") as config_file:
             sec_cfg = json.load(config_file)
-            sec_cfg["IP"]["secondaries"].append({"addr": "127.0.0.1:{}".format(secondary.port)})
+            sec_cfg["IP"]["secondaries"].append({"addr": "127.0.0.1:{}".format(secondary.port), "verification_type": "{}".format(secondary.verification_type)})
             config_file.seek(0)
             json.dump(sec_cfg, config_file)
+            logger.debug("IP Secondary {} has been added with port {} and verification type {}".format(secondary.id, secondary.port, secondary.verification_type))
 
     def remove_secondary(self, secondary):
         with open(self._secondary_config_file, "r+") as config_file:
             sec_cfg = json.load(config_file)
-            sec_cfg["IP"]["secondaries"].remove({"addr": "127.0.0.1:{}".format(secondary.port)})
+            sec_cfg["IP"]["secondaries"].remove({"addr": "127.0.0.1:{}".format(secondary.port), "verification_type": "{}".format(secondary.verification_type)})
             config_file.seek(0)
             json.dump(sec_cfg, config_file)
             config_file.truncate()
+            logger.debug("IP Secondary {} has been removed with port {} and verification type {}".format(secondary.id, secondary.port, secondary.verification_type))
 
     def update_wait_timeout(self, timeout):
         with open(self._secondary_config_file, "r+") as config_file:
@@ -159,7 +160,7 @@ class Aktualizr:
                        check=True, env=self._run_env)
 
     # another ugly stuff that could be replaced with something more reliable if Aktualizr had exposed API
-    # to check status or aktializr-info had output status/info in a structured way (e.g. json)
+    # to check status or aktualizr-info had output status/info in a structured way (e.g. json)
     def get_info(self, retry=30):
         info_exe_res = None
         for ii in range(0, retry):
@@ -173,7 +174,7 @@ class Aktualizr:
         if info_exe_res and info_exe_res.returncode == 0:
             return str(info_exe_res.stdout)
         else:
-            logger.error('Failed to get an aktualizr\'s status info, stdout: {}, stderr: {}'.
+            logger.error('Failed to get aktualizr status info, stdout: {}, stderr: {}'.
                          format(str(info_exe_res.stdout), str(info_exe_res.stderr)))
             return None
 
@@ -199,7 +200,7 @@ class Aktualizr:
     # applicable only to Secondary ECUs due to inconsistency in presenting information
     # about Primary and Secondary ECUs
     # ugly stuff that could be removed if aktualizr had exposed API to check status
-    # or aktializr-info had output status/info in a structured way (e.g. json)
+    # or aktualizr-info had output status/info in a structured way (e.g. json)
     def _get_current_image_info(self, ecu_id, secondary_image_hash_field='installed image hash: '):
         #secondary_image_filename_field = 'installed image filename: '
         aktualizr_status = self.get_info()
@@ -219,7 +220,7 @@ class Aktualizr:
         return hash_val
 
     # ugly stuff that could be removed if Aktualizr had exposed API to check status
-    # or aktializr-info had output status/info in a structured way (e.g. json)
+    # or aktualizr-info had output status/info in a structured way (e.g. json)
     def get_current_primary_image_info(self):
         primary_hash_field = 'Current Primary ECU running version: '
         aktualizr_status = self.get_info()
@@ -232,7 +233,7 @@ class Aktualizr:
             return ""
 
     # ugly stuff that could be removed if Aktualizr had exposed API to check status
-    # or aktializr-info had output status/info in a structured way (e.g. json)
+    # or aktualizr-info had output status/info in a structured way (e.g. json)
     def get_primary_pending_version(self):
         primary_hash_field = 'Pending Primary ECU version: '
         aktualizr_status = self.get_info()
@@ -303,7 +304,7 @@ class IPSecondary:
 
     def __init__(self, id, aktualizr_secondary_exe='src/aktualizr_secondary/aktualizr-secondary', port=None, primary_port=None,
                  sysroot=None, treehub=None, output_logs=True, force_reboot=False,
-                 ostree_mock_path=None, **kwargs):
+                 ostree_mock_path=None, verification_type="Full", **kwargs):
         self.id = id
 
         self._aktualizr_secondary_exe = aktualizr_secondary_exe
@@ -313,6 +314,7 @@ class IPSecondary:
         self._sentinel_file = 'need_reboot'
         self._output_logs = output_logs
         self.reboot_sentinel_file = os.path.join(self.storage_dir.name, self._sentinel_file)
+        self.verification_type = verification_type
 
         if force_reboot:
             reboot_command = "rm {}".format(self.reboot_sentinel_file)
@@ -330,7 +332,8 @@ class IPSecondary:
                                                                  ostree_sysroot=sysroot.path if sysroot else '',
                                                                  treehub_server=treehub.base_url if treehub else '',
                                                                  sentinel_dir=self.storage_dir.name,
-                                                                 sentinel_name=self._sentinel_file
+                                                                 sentinel_name=self._sentinel_file,
+                                                                 verification_type=self.verification_type
                                                                  ))
             self._config_file = config_file.name
 
@@ -345,6 +348,7 @@ class IPSecondary:
     ecu_serial = "{serial}"
     ecu_hardware_id = "{hw_ID}"
     force_install_completion = {force_reboot}
+    verification_type = "{verification_type}"
 
     [network]
     port = {port}
@@ -352,7 +356,6 @@ class IPSecondary:
     primary_port = {primary_port}
 
     [storage]
-    type = "sqlite"
     path = "{storage_dir}"
     sqldb_path = "{db_path}"
 
@@ -385,13 +388,13 @@ class IPSecondary:
                                          stderr=None if self._output_logs else subprocess.STDOUT,
                                          close_fds=True,
                                          env=self._run_env)
-        logger.debug("IP Secondary {} has been started: {}".format(self.id, self.port))
+        logger.debug("IP Secondary {} has been started with port {} and verification type {}".format(self.id, self.port, self.verification_type))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._process.terminate()
         self._process.wait(timeout=60)
-        logger.debug("IP Secondary {} has been stopped".format(self.id))
+        logger.debug("IP Secondary {} has been stopped with port {} and verification type {}".format(self.id, self.port, self.verification_type))
 
     def wait_for_completion(self, timeout=120):
         self._process.wait(timeout)
@@ -745,8 +748,7 @@ class UptaneTestRepo:
     def target_file(self):
         return path.join(self.image_dir, 'targets.json')
 
-    def add_image(self, id, image_filename, target_name=None, image_size=1024, custom_url=''):
-
+    def add_image(self, id, image_filename, target_name=None, image_size=1024, custom_url='', custom_version=''):
         targetname = target_name if target_name else image_filename
 
         with open(path.join(self.image_dir, image_filename), 'wb') as image_file:
@@ -758,6 +760,10 @@ class UptaneTestRepo:
         if custom_url:
             image_creation_cmdline.append('--url')
             image_creation_cmdline.append(custom_url)
+
+        if custom_version:
+            image_creation_cmdline.append('--customversion')
+            image_creation_cmdline.append(custom_version)
 
         subprocess.run(image_creation_cmdline, cwd=self.image_dir, check=True)
 
@@ -803,6 +809,16 @@ class UptaneTestRepo:
         subprocess.run([self._repo_manager_exe, '--path', self.root_dir, '--command', 'signtargets'], check=True)
 
         return target_name
+
+    def clear_targets(self):
+        subprocess.run([self._repo_manager_exe, '--path', self.root_dir, '--command', 'emptytargets'], check=True)
+
+    def rotate_root(self, is_director):
+        if is_director:
+            repo_type = 'director'
+        else:
+            repo_type = 'image'
+        subprocess.run([self._repo_manager_exe, '--path', self.root_dir, '--command', 'rotate', '--repotype', repo_type, '--keytype', 'ED25519'], check=True)
 
     def __enter__(self):
         self._generate_repo()
@@ -909,14 +925,16 @@ def with_imagerepo(start=True, handlers=[]):
 
 def with_secondary(start=True, output_logs=False, id=('secondary-hw-ID-001', None),
                    force_reboot=False, arg_name='secondary',
-                   aktualizr_secondary_exe='src/aktualizr_secondary/aktualizr-secondary'):
+                   aktualizr_secondary_exe='src/aktualizr_secondary/aktualizr-secondary',
+                   verification_type="Full"):
     def decorator(test):
         @wraps(test)
         def wrapper(*args, **kwargs):
             id1 = id
             if id1[1] is None:
                 id1 = (id1[0], str(uuid4()))
-            secondary = IPSecondary(aktualizr_secondary_exe=aktualizr_secondary_exe, output_logs=output_logs, id=id1, force_reboot=force_reboot, **kwargs)
+            secondary = IPSecondary(aktualizr_secondary_exe=aktualizr_secondary_exe, output_logs=output_logs,
+                                    id=id1, force_reboot=force_reboot, verification_type=verification_type, **kwargs)
             sl = kwargs.get("secondaries", []) + [secondary]
             kwargs.update({arg_name: secondary, "secondaries": sl})
             if "primary_port" not in kwargs:
@@ -1117,7 +1135,10 @@ class TestRunner:
     def test_runner(test):
         logger.info('>>> Running {}...'.format(test.__name__))
         test_run_result = test()
-        logger.info('>>> {}: {}\n'.format('OK' if test_run_result else 'FAILED', test.__name__))
+        if test_run_result:
+            logger.info('\033[32m>>> OK: {}\033[0m\n'.format(test.__name__))
+        else:
+            logger.info('\033[31m>>> FAILED: {}\033[0m\n'.format(test.__name__))
         return test_run_result
 
     def run(self):

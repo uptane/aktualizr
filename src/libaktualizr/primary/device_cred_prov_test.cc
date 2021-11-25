@@ -9,7 +9,8 @@
 
 #include "httpfake.h"
 #include "logging/logging.h"
-#include "primary/initializer.h"
+#include "primary/provisioner.h"
+#include "primary/provisioner_test_utils.h"
 #include "primary/sotauptaneclient.h"
 #include "storage/invstorage.h"
 #include "uptane/uptanerepository.h"
@@ -28,10 +29,10 @@ TEST(DeviceCredProv, DeviceIdFailure) {
 
   auto storage = INvStorage::newStorage(config.storage);
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
-  KeyManager keys(storage, config.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
   // Expect failure when trying to read the certificate to get the device ID.
-  EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), std::exception);
+  ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
 }
 
 /**
@@ -49,10 +50,10 @@ TEST(DeviceCredProv, TlsFailure) {
 
   auto storage = INvStorage::newStorage(config.storage);
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
-  KeyManager keys(storage, config.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
   // Expect failure when trying to read the TLS credentials.
-  EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+  ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
 }
 
 /**
@@ -79,9 +80,9 @@ TEST(DeviceCredProv, Incomplete) {
     boost::filesystem::copy_file("tests/test_data/device_cred_prov/ca.pem", temp_dir / "import/ca.pem");
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-    EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
   }
 
   {
@@ -93,9 +94,9 @@ TEST(DeviceCredProv, Incomplete) {
     boost::filesystem::copy_file("tests/test_data/device_cred_prov/client.pem", temp_dir / "import/client.pem");
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-    EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
   }
 
   {
@@ -107,9 +108,9 @@ TEST(DeviceCredProv, Incomplete) {
     boost::filesystem::copy_file("tests/test_data/device_cred_prov/pkey.pem", temp_dir / "import/pkey.pem");
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-    EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
   }
 
   {
@@ -122,9 +123,9 @@ TEST(DeviceCredProv, Incomplete) {
     boost::filesystem::copy_file("tests/test_data/device_cred_prov/client.pem", temp_dir / "import/client.pem");
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-    EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
   }
 
   {
@@ -137,9 +138,9 @@ TEST(DeviceCredProv, Incomplete) {
     boost::filesystem::copy_file("tests/test_data/device_cred_prov/pkey.pem", temp_dir / "import/pkey.pem");
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-    EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
   }
 
   {
@@ -152,9 +153,9 @@ TEST(DeviceCredProv, Incomplete) {
     boost::filesystem::copy_file("tests/test_data/device_cred_prov/pkey.pem", temp_dir / "import/pkey.pem");
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-    EXPECT_THROW(Initializer(config.provision, storage, http, keys, {}), Initializer::Error);
+    ExpectProvisionError(Provisioner(config.provision, storage, http, keys, {}));
   }
 
   // Do one last round with all three files to make sure it actually works as
@@ -169,9 +170,9 @@ TEST(DeviceCredProv, Incomplete) {
   boost::filesystem::copy_file("tests/test_data/device_cred_prov/pkey.pem", temp_dir / "import/pkey.pem");
   auto storage = INvStorage::newStorage(config.storage);
   storage->importData(config.import);
-  KeyManager keys(storage, config.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-  EXPECT_NO_THROW(Initializer(config.provision, storage, http, keys, {}));
+  ExpectProvisionOK(Provisioner(config.provision, storage, http, keys, {}));
 }
 
 /**
@@ -195,9 +196,9 @@ TEST(DeviceCredProv, Success) {
   auto storage = INvStorage::newStorage(config.storage);
   storage->importData(config.import);
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
-  KeyManager keys(storage, config.keymanagerConfig());
+  auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
 
-  EXPECT_NO_THROW(Initializer(config.provision, storage, http, keys, {}));
+  ExpectProvisionOK(Provisioner(config.provision, storage, http, keys, {}));
 }
 
 /**
@@ -226,8 +227,8 @@ TEST(DeviceCredProv, ReImportCert) {
     /* prepare storage initialized with device_id from config where cert CN and device id are differen*/
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
-    KeyManager keys(storage, config.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(config.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(config.provision, storage, http, keys, {}));
     std::string device_id;
     EXPECT_TRUE(storage->loadDeviceId(&device_id));
     EXPECT_EQ(device_id, "AnYsTrInG");
@@ -237,8 +238,8 @@ TEST(DeviceCredProv, ReImportCert) {
     config.import.tls_clientcert_path = utils::BasedPath("newcert.pem");
     auto storage = INvStorage::newStorage(config.storage);
     EXPECT_NO_THROW(storage->importData(config.import));
-    KeyManager keys(storage, config.keymanagerConfig());
-    EXPECT_NO_THROW(Initializer(config.provision, storage, http, keys, {}));
+    auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());
+    ExpectProvisionOK(Provisioner(config.provision, storage, http, keys, {}));
     std::string device_id;
     EXPECT_TRUE(storage->loadDeviceId(&device_id));
     EXPECT_EQ(device_id, "AnYsTrInG");

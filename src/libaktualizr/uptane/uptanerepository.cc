@@ -27,7 +27,7 @@ void RepositoryCommon::initRoot(RepositoryType repo_type, const std::string& roo
     root = Root(type, Utils::parseJSON(root_raw));        // initialization and format check
     root = Root(type, Utils::parseJSON(root_raw), root);  // signature verification against itself
   } catch (const std::exception& e) {
-    LOG_ERROR << "Loading initial " << repo_type.toString() << " Root metadata failed: " << e.what();
+    LOG_ERROR << "Loading initial " << repo_type << " Root metadata failed: " << e.what();
     throw;
   }
 }
@@ -47,7 +47,7 @@ void RepositoryCommon::verifyRoot(const std::string& root_raw) {
     if (root.version() != prev_version + 1) {
       LOG_ERROR << "Version " << root.version() << " in Root metadata doesn't match the expected value "
                 << prev_version + 1;
-      throw Uptane::RootRotationError(type.toString());
+      throw Uptane::RootRotationError(type.ToString());
     }
   } catch (const std::exception& e) {
     LOG_ERROR << "Signature verification for Root metadata failed: " << e.what();
@@ -93,7 +93,7 @@ void RepositoryCommon::updateRoot(INvStorage& storage, const IMetadataFetcher& f
   // lower than the expiration timestamp in the latest Root metadata file.
   // (Checks for a freeze attack.)
   if (rootExpired()) {
-    throw Uptane::ExpiredMetadata(repo_type.toString(), Role::ROOT);
+    throw Uptane::ExpiredMetadata(repo_type.ToString(), Role::ROOT);
   }
 }
 
