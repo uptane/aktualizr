@@ -125,6 +125,30 @@ TEST(OstreeManager, ParseInstalledPackages) {
   EXPECT_EQ(packages[2]["version"].asString(), "1.1");
 }
 
+/**
+ * Check that OstreeManager::getCurrent() returns a sensible result, even if it
+ * can't match the currently booted OSTree commit against a known target.
+ * See: https://github.com/uptane/aktualizr/issues/1
+ */
+TEST(OstreeManager, GetCurrentTarget) {
+  TemporaryDirectory temp_dir;
+  Config config;
+  config.pacman.type = PACKAGE_MANAGER_OSTREE;
+  config.pacman.sysroot = test_sysroot;
+  config.storage.path = temp_dir.Path();
+  config.pacman.booted = BootedType::kStaged;
+  auto storage = INvStorage::newStorage(config.storage);
+  OstreeManager dut(config.pacman, config.bootloader, storage, nullptr);
+  auto current_target = dut.getCurrent();
+
+  EXPECT_TRUE(current_target.IsValid()) << "shouldn't be Uptane::Target::Unknown()";
+
+  EXPECT_TRUE(current_target.IsOstree()) << "should be an OSTree target";
+  // This is a slightly circular test, but OstreeManager::getCurrentHash()
+  // fetches the hash straight from libostree.
+  EXPECT_EQ(dut.getCurrentHash(), current_target.sha256Hash()) << "hash should match";
+}
+
 /* Communicate with a remote OSTree server without credentials. */
 TEST(OstreeManager, AddRemoteNoCreds) {
   TemporaryDirectory temp_dir;
