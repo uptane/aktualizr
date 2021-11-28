@@ -1,11 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/filesystem.hpp>
 
 #include "libaktualizr/config.h"
