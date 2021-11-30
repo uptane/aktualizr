@@ -396,7 +396,8 @@ class Target {
   Target(std::string filename, const Json::Value &content);
   // Internal use only. Only used for reading installed_versions list and by
   // various tests.
-  Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint64_t length, std::string correlation_id = "");
+  Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint64_t length, std::string correlation_id = "",
+         std::string type = "UNKNOWN");
 
   static Target Unknown();
 

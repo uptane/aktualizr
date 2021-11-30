@@ -398,8 +398,17 @@ Uptane::Target OstreeManager::getCurrent() const {
       return *it;
     }
   }
-
-  return Uptane::Target::Unknown();
+  // We haven't found a matching target. This can occur when a device is
+  // freshly manufactured and the factory image is in a delegated target.
+  // Aktualizr will have had no reason to fetch the relevant delegation, and it
+  // doesn't know where in the delegation tree on the server it might be.
+  // See https://github.com/uptane/aktualizr/issues/1 for more details. In this
+  // case attempt to construct an approximate Uptane target. By getting the
+  // hash correct the server has a chance to figure out what is running on the
+  // device.
+  Uptane::EcuMap ecus;
+  std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
+  return {"unknown", ecus, hashes, 0, "", "OSTREE"};
 }
 
 // used for bootloader rollback
