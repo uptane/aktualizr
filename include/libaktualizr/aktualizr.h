@@ -215,16 +215,34 @@ class Aktualizr {
   std::future<result::Install> Install(const std::vector<Uptane::Target>& updates);
 
   /**
-   * TODO: [OFFUPD] Explain.
-   * Counterpart of UptaneCycle() for the offline-update case.
-   */
-  bool OfflineCheckAndInstall(const boost::filesystem::path &source_path);
-
-  /**
    * TODO: [OFFUPD] Remove after MVP.
    * Check if an offline-update is available.
    */
   bool OfflineUpdateAvailable();
+
+  /**
+   * TODO: [OFFUPD] Remove after MVP.
+   * Counterpart of CheckUpdates() for the offline-update case.
+   */
+  std::future<result::UpdateCheck> CheckUpdatesOffline(const boost::filesystem::path &source_path);
+
+  /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of Download() for the offline-update case.
+   */
+  std::future<result::Download> OfflineFetchImages(const std::vector<Uptane::Target> &updates);
+
+  /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of Install() for the offline-update case.
+   */
+  std::future<result::Install> OfflineInstall(const std::vector<Uptane::Target>& updates);
+
+  /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of UptaneCycle() for the offline-update case.
+   */
+  bool CheckAndInstallOffline(const boost::filesystem::path &source_path);
 
   /**
    * SetInstallationRawReport allows setting a custom raw report field in the device installation result.

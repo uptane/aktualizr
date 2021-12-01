@@ -21,6 +21,7 @@ class RepositoryCommon {
   int rootVersion() const { return root.version(); }
   bool rootExpired() const { return root.isExpired(TimeStamp::Now()); }
   virtual void updateMeta(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
+  virtual void updateMetaOffUpd(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
 
  protected:
   void resetRoot();

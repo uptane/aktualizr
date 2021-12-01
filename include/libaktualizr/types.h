@@ -28,6 +28,10 @@ enum class VerificationType {
 };
 std::ostream &operator<<(std::ostream &os, VerificationType vtype);
 
+// TODO: [OFFUPD] Should this be inside a namespace?
+enum class UpdateType { kOnline = 0, kOffline };
+std::ostream &operator<<(std::ostream &os, UpdateType utype);
+
 namespace utils {
 /**
  * @brief The BasedPath class

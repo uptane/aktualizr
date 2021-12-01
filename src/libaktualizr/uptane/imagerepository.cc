@@ -287,6 +287,12 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
   }
 }
 
+void ImageRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+  (void)fetcher;
+}
+
 void ImageRepository::checkMetaOffline(INvStorage& storage) {
   resetMeta();
   // Load Image repo Root metadata

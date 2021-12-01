@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <boost/filesystem.hpp>
 #include <boost/signals2.hpp>
 #include "gtest/gtest_prod.h"
 #include "json/json.h"
@@ -68,6 +69,10 @@ class SotaUptaneClient {
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
   std::ifstream openStoredTarget(const Uptane::Target &target);
 
+#ifdef BUILD_OFFLINE_UPDATES
+  result::UpdateCheck fetchMetaOffUpd(const boost::filesystem::path &source_path);
+#endif
+
  private:
   FRIEND_TEST(Aktualizr, FullNoUpdates);
   FRIEND_TEST(Aktualizr, DeviceInstallationResult);
@@ -107,13 +112,23 @@ class SotaUptaneClient {
   data::InstallationResult PackageInstall(const Uptane::Target &target);
   std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
                                                 const api::FlowControlToken *token = nullptr);
-  void uptaneIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
+  void uptaneIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
+                       UpdateType utype = UpdateType::kOnline);
   void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
-  result::UpdateCheck checkUpdates();
+  result::UpdateCheck checkUpdates(UpdateType utype = UpdateType::kOnline);
   result::UpdateStatus checkUpdatesOffline(const std::vector<Uptane::Target> &targets);
   Json::Value AssembleManifest();
   std::exception_ptr getLastException() const { return last_exception; }
   Uptane::Target getCurrent() const { return package_manager_->getCurrent(); }
+
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  std::pair<bool, Uptane::Target> fetchImageOffUpd(const Uptane::Target &target,
+                                                   const api::FlowControlToken *token = nullptr);
+#endif
 
   static std::vector<Uptane::Target> findForEcu(const std::vector<Uptane::Target> &targets,
                                                 const Uptane::EcuSerial &ecu_id);
@@ -137,16 +152,17 @@ class SotaUptaneClient {
 
   bool putManifestSimple(const Json::Value &custom = Json::nullValue);
   void getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count = nullptr);
-  void updateDirectorMeta();
-  void updateImageMeta();
+  void updateDirectorMeta(UpdateType utype = UpdateType::kOnline);
+  void updateImageMeta(UpdateType utype = UpdateType::kOnline);
   void checkDirectorMetaOffline();
   void checkImageMetaOffline();
 
   void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report) const;
-  std::unique_ptr<Uptane::Target> findTargetInDelegationTree(const Uptane::Target &target, bool offline);
+  std::unique_ptr<Uptane::Target> findTargetInDelegationTree(const Uptane::Target &target, bool offline,
+                                                             UpdateType utype = UpdateType::kOnline);
   std::unique_ptr<Uptane::Target> findTargetHelper(const Uptane::Targets &cur_targets,
                                                    const Uptane::Target &queried_target, int level, bool terminating,
-                                                   bool offline);
+                                                   bool offline, UpdateType utype);
   Uptane::LazyTargetsList allTargets() const;
   void checkAndUpdatePendingSecondaries();
   const Uptane::EcuSerial &primaryEcuSerial() const { return primary_ecu_serial_; }
@@ -171,6 +187,7 @@ class SotaUptaneClient {
   std::shared_ptr<PackageManagerInterface> package_manager_;
   std::shared_ptr<KeyManager> key_manager_;
   std::shared_ptr<Uptane::Fetcher> uptane_fetcher;
+  std::shared_ptr<Uptane::OfflineUpdateFetcher> uptane_fetcher_offupd;
   std::unique_ptr<ReportQueue> report_queue;
   std::shared_ptr<SecondaryProvider> secondary_provider_;
   std::shared_ptr<event::Channel> events_channel;

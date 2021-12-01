@@ -32,6 +32,7 @@ class ImageRepository : public RepositoryCommon {
 
   void checkMetaOffline(INvStorage& storage);
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+  void updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) override;
 
  private:
   void checkTimestampExpired();
