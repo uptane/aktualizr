@@ -1592,7 +1592,7 @@ TEST(Aktualizr, TargetAutoremove) {
   repo.generateRepo(KeyType::kED25519);
   const std::string hwid = "primary_hw";
   repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid);
-  repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
+  repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D");
   repo.signTargets();
 
   Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http->tls_server);
@@ -1621,7 +1621,7 @@ TEST(Aktualizr, TargetAutoremove) {
   // second install
   repo.emptyTargets();
   repo.addImage(fake_meta_dir / "fake_meta/dummy_firmware.txt", "dummy_firmware.txt", hwid);
-  repo.addTarget("dummy_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
+  repo.addTarget("dummy_firmware.txt", hwid, "CA:FE:A6:D2:84:9D");
   repo.signTargets();
 
   {
@@ -1641,7 +1641,7 @@ TEST(Aktualizr, TargetAutoremove) {
   // third install (first firmware again)
   repo.emptyTargets();
   repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid);
-  repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
+  repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D");
   repo.signTargets();
 
   {
@@ -1661,7 +1661,7 @@ TEST(Aktualizr, TargetAutoremove) {
   // fourth install (some new third firmware)
   repo.emptyTargets();
   repo.addImage(fake_meta_dir / "fake_meta/secondary_firmware.txt", "secondary_firmware.txt", hwid);
-  repo.addTarget("secondary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D", "");
+  repo.addTarget("secondary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D");
   repo.signTargets();
 
   {

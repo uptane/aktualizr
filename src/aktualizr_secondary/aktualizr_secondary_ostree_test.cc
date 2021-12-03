@@ -161,7 +161,7 @@ class UptaneRepoWrapper {
   Uptane::SecondaryMetadata addOstreeRev(const std::string& rev, const std::string& hardware_id,
                                          const std::string& serial) {
     uptane_repo_.addCustomImage(rev, Hash(Hash::Type::kSha256, rev), 0, hardware_id);
-    uptane_repo_.addTarget(rev, hardware_id, serial, "");
+    uptane_repo_.addTarget(rev, hardware_id, serial);
     uptane_repo_.signTargets();
 
     return Uptane::SecondaryMetadata(getCurrentMetadata());
