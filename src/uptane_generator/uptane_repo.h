@@ -12,7 +12,7 @@ class UptaneRepo {
                  const std::string &url, const std::string &expires = "");
   void addImage(const boost::filesystem::path &image_path, const boost::filesystem::path &targetname,
                 const std::string &hardware_id, const std::string &url = "", int32_t custom_version = 0,
-                const Delegation &delegation = {});
+                const Delegation &delegation = {}, const Json::Value &custom = {});
   void addCustomImage(const std::string &name, const Hash &hash, uint64_t length, const std::string &hardware_id,
                       const std::string &url = "", int32_t custom_version = 0, const Delegation &delegation = {},
                       const Json::Value &custom = {});

@@ -822,7 +822,6 @@ class UptaneTestRepo:
                                   '--targetname', target_name,
                                   '--targetsha256', rev_hash,
                                   '--targetlength', '0',
-                                  '--targetformat', 'OSTREE',
                                   '--hwid', id[0]]
         subprocess.run(image_creation_cmdline, check=True)
 

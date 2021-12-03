@@ -160,11 +160,7 @@ class UptaneRepoWrapper {
 
   Uptane::SecondaryMetadata addOstreeRev(const std::string& rev, const std::string& hardware_id,
                                          const std::string& serial) {
-    // it makes sense to add 'addOstreeImage' to UptaneRepo interface/class uptane_repo.h
-    auto custom = Json::Value();
-    custom["targetFormat"] = "OSTREE";
-    uptane_repo_.addCustomImage(rev, Hash(Hash::Type::kSha256, rev), 0, hardware_id, "", 0, Delegation(), custom);
-
+    uptane_repo_.addCustomImage(rev, Hash(Hash::Type::kSha256, rev), 0, hardware_id);
     uptane_repo_.addTarget(rev, hardware_id, serial, "");
     uptane_repo_.signTargets();
 
