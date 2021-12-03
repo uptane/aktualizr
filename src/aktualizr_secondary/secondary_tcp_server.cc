@@ -160,7 +160,7 @@ bool SecondaryTcpServer::HandleOneConnection(int socket) {
       default: {
         // TODO: consider sending NOT_SUPPORTED/Unknown message and closing connection socket
         keep_running_current_session = false;
-        LOG_INFO << "Unknown message received from Primary!";
+        LOG_INFO << "Unsupported message received from Primary: " << request_msg->toStr();
       }
     }  // switch
 
