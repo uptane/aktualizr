@@ -460,8 +460,7 @@ data::InstallationResult IpUptaneSecondary::install_v2(const Uptane::Target& tar
 }
 
 data::InstallationResult IpUptaneSecondary::downloadOstreeRev(const Uptane::Target& target) {
-  LOG_INFO << "Instructing Secondary ( " << getSerial() << " ) to download OSTree commit ( " << target.sha256Hash()
-           << " )";
+  LOG_INFO << "Instructing Secondary " << getSerial() << " to download OSTree commit " << target.sha256Hash();
   const std::string tls_creds = secondary_provider_->getTreehubCredentials();
   Asn1Message::Ptr req(Asn1Message::Empty());
   req->present(static_cast<AKIpUptaneMes_PR>(AKIpUptaneMes_PR_downloadOstreeRevReq));
