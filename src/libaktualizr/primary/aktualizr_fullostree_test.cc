@@ -7,16 +7,15 @@
 
 #include <boost/process.hpp>
 
-#include "uptane_test_common.h"
-
 #include "libaktualizr/aktualizr.h"
 #include "libaktualizr/config.h"
 #include "logging/logging.h"
 #include "package_manager/ostreemanager.h"
 #include "storage/sqlstorage.h"
 #include "test_utils.h"
+#include "uptane_repo.h"
+#include "uptane_test_common.h"
 
-boost::filesystem::path uptane_generator_path;
 static std::string server = "http://127.0.0.1:";
 static std::string treehub_server = "http://127.0.0.1:";
 static boost::filesystem::path sysroot;
@@ -113,12 +112,10 @@ int main(int argc, char **argv) {
 
   logger_init();
 
-  if (argc != 3) {
-    std::cerr << "Error: " << argv[0] << " requires the path to the uptane-generator utility "
-              << "and an OSTree sysroot\n";
+  if (argc != 2) {
+    std::cerr << "Error: " << argv[0] << " requires the path to an OSTree sysroot\n";
     return EXIT_FAILURE;
   }
-  uptane_generator_path = argv[1];
 
   Process ostree("ostree");
 
@@ -126,7 +123,7 @@ int main(int argc, char **argv) {
   TemporaryDirectory temp_sysroot;
   sysroot = temp_sysroot / "sysroot";
   // uses cp, as boost doesn't like to copy bad symlinks
-  int res = system((std::string("cp -r ") + argv[2] + std::string(" ") + sysroot.string()).c_str());
+  int res = system((std::string("cp -r ") + argv[1] + std::string(" ") + sysroot.string()).c_str());
   if (res != 0) {
     return -1;
   }
@@ -160,14 +157,13 @@ int main(int argc, char **argv) {
   boost::trim_if(new_rev, boost::is_any_of(" \t\r\n"));
   LOG_INFO << "DEST: " << new_rev;
 
-  Process uptane_gen(uptane_generator_path.string());
-  uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
-  uptane_gen.run({"image", "--path", meta_dir.PathString(), "--targetname", "update_1.0", "--targetsha256", new_rev,
-                  "--targetlength", "0", "--targetformat", "OSTREE", "--hwid", "primary_hw"});
-  uptane_gen.run({"addtarget", "--path", meta_dir.PathString(), "--targetname", "update_1.0", "--hwid", "primary_hw",
-                  "--serial", "CA:FE:A6:D2:84:9D"});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
-  LOG_INFO << uptane_gen.lastStdOut();
+  const std::string hwid{"primary_hw"};
+  const std::string target_name{"update_1.0"};
+  UptaneRepo uptane_repo{meta_dir.PathString(), "", "abc123"};
+  uptane_repo.generateRepo(KeyType::kED25519);
+  uptane_repo.addCustomImage(target_name, Hash(Hash::Type::kSha256, new_rev), 0, hwid);
+  uptane_repo.addTarget(target_name, hwid, "CA:FE:A6:D2:84:9D");
+  uptane_repo.signTargets();
 
   return RUN_ALL_TESTS();
 }
