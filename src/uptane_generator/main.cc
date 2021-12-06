@@ -137,9 +137,21 @@ int main(int argc, char **argv) {
         if (vm.count("customversion") != 0) {
           custom_version = vm["customversion"].as<int32_t>();
         }
+        Json::Value custom;
+        if (vm.count("targetcustom") > 0 && vm.count("targetformat") > 0) {
+          std::cerr << "--targetcustom and --targetformat cannot be used together";
+          exit(EXIT_FAILURE);
+        }
+        if (vm.count("targetcustom") > 0) {
+          std::ifstream custom_file(vm["targetcustom"].as<boost::filesystem::path>().c_str());
+          custom_file >> custom;
+        } else if (vm.count("targetformat") > 0) {
+          custom = Json::Value();
+          custom["targetFormat"] = vm["targetformat"].as<std::string>();
+        }
         if (vm.count("filename") > 0) {
-          repo.addImage(vm["filename"].as<boost::filesystem::path>(), targetname, hwid, url, custom_version,
-                        delegation);
+          repo.addImage(vm["filename"].as<boost::filesystem::path>(), targetname, hwid, url, custom_version, delegation,
+                        custom);
           std::cout << "Added a target " << targetname << " to the Image repo metadata" << std::endl;
         } else {
           if ((vm.count("targetsha256") == 0 && vm.count("targetsha512") == 0) || vm.count("targetlength") == 0) {
@@ -152,18 +164,6 @@ int main(int argc, char **argv) {
             hash = std_::make_unique<Hash>(Hash::Type::kSha256, vm["targetsha256"].as<std::string>());
           } else {
             hash = std_::make_unique<Hash>(Hash::Type::kSha512, vm["targetsha512"].as<std::string>());
-          }
-          Json::Value custom;
-          if (vm.count("targetcustom") > 0 && vm.count("targetformat") > 0) {
-            std::cerr << "--targetcustom and --targetformat cannot be used together";
-            exit(EXIT_FAILURE);
-          }
-          if (vm.count("targetcustom") > 0) {
-            std::ifstream custom_file(vm["targetcustom"].as<boost::filesystem::path>().c_str());
-            custom_file >> custom;
-          } else if (vm.count("targetformat") > 0) {
-            custom = Json::Value();
-            custom["targetFormat"] = vm["targetformat"].as<std::string>();
           }
           repo.addCustomImage(targetname.string(), *hash, vm["targetlength"].as<uint64_t>(), hwid, url, custom_version,
                               delegation, custom);

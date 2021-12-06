@@ -9,10 +9,10 @@ class UptaneRepo {
   UptaneRepo(const boost::filesystem::path &path, const std::string &expires, const std::string &correlation_id);
   void generateRepo(KeyType key_type = KeyType::kRSA2048);
   void addTarget(const std::string &target_name, const std::string &hardware_id, const std::string &ecu_serial,
-                 const std::string &url, const std::string &expires = "");
+                 const std::string &url = "", const std::string &expires = "");
   void addImage(const boost::filesystem::path &image_path, const boost::filesystem::path &targetname,
                 const std::string &hardware_id, const std::string &url = "", int32_t custom_version = 0,
-                const Delegation &delegation = {});
+                const Delegation &delegation = {}, const Json::Value &custom = {});
   void addCustomImage(const std::string &name, const Hash &hash, uint64_t length, const std::string &hardware_id,
                       const std::string &url = "", int32_t custom_version = 0, const Delegation &delegation = {},
                       const Json::Value &custom = {});

@@ -36,12 +36,12 @@ class MetaFake {
     file_name = "primary_firmware.txt";
     hwid = "primary_hw";
     repo.addImage(work_dir / file_name, file_name, hwid);
-    repo.addTarget(file_name.string(), hwid, "CA:FE:A6:D2:84:9D", "");
+    repo.addTarget(file_name.string(), hwid, "CA:FE:A6:D2:84:9D");
 
     file_name = "secondary_firmware.txt";
     hwid = "secondary_hw";
     repo.addImage(work_dir / file_name, file_name, hwid);
-    repo.addTarget(file_name.string(), hwid, "secondary_ecu_serial", "");
+    repo.addTarget(file_name.string(), hwid, "secondary_ecu_serial");
 
     repo.signTargets();
     rename("_hasupdates");
@@ -64,12 +64,12 @@ class MetaFake {
     file_name = "secondary_firmware.txt";
     hwid = "sec_hw1";
     repo.addImage(work_dir / file_name, file_name, hwid);
-    repo.addTarget(file_name.string(), hwid, "sec_serial1", "");
+    repo.addTarget(file_name.string(), hwid, "sec_serial1");
 
     file_name = "secondary_firmware2.txt";
     hwid = "sec_hw2";
     repo.addImage(work_dir / file_name, file_name, hwid);
-    repo.addTarget(file_name.string(), hwid, "sec_serial2", "");
+    repo.addTarget(file_name.string(), hwid, "sec_serial2");
 
     repo.signTargets();
     rename("_multisec");

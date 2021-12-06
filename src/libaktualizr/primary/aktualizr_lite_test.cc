@@ -36,16 +36,12 @@ class TufRepoMock {
   const std::string& url() { return url_; }
 
   Uptane::Target add_target(const std::string& target_name, const std::string& hash, const std::string& hardware_id) {
-    Json::Value custom_json;
-    custom_json["targetFormat"] = "OSTREE";
-    repo_.addCustomImage(target_name, Hash(Hash::Type::kSha256, hash), 0, hardware_id, "", 0, Delegation(),
-                         custom_json);
+    repo_.addCustomImage(target_name, Hash(Hash::Type::kSha256, hash), 0, hardware_id);
 
     Json::Value target;
     target["length"] = 0;
     target["hashes"]["sha256"] = hash;
-    target["custom"] = custom_json;
-
+    target["custom"]["targetFormat"] = "OSTREE";
     return Uptane::Target(target_name, target);
   }
 

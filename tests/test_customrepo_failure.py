@@ -47,8 +47,6 @@ def test_customrepo_update_after_image_download_failure(uptane_repo, custom_repo
     Note: should aktualizr support unlimited number of redirects
 """
 @with_uptane_backend(start_generic_server=True)
-# TODO: Limit a number of HTTP redirects within a single request processing
-# https://saeljira.it.here.com/browse/OTA-3729
 @with_customrepo(handlers=[
                             RedirectHandler(number_of_redirects=10, url='/primary-image.img')
                         ])
