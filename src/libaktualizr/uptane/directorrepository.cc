@@ -147,12 +147,6 @@ void DirectorRepository::updateMeta(INvStorage& storage, const IMetadataFetcher&
   }
 }
 
-void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
-  (void)storage;
-  (void)fetcher;
-}
-
 void DirectorRepository::dropTargets(INvStorage& storage) {
   try {
     storage.clearNonRootMeta(RepositoryType::Director());
@@ -188,5 +182,18 @@ bool DirectorRepository::matchTargetsWithImageTargets(
 
   return true;
 }
+
+#ifdef BUILD_OFFLINE_UPDATES
+void DirectorRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+}
+
+void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+  (void)fetcher;
+}
+#endif
 
 }  // namespace Uptane

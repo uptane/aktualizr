@@ -300,6 +300,21 @@ bool OstreeManager::fetchTarget(const Uptane::Target &target, Uptane::Fetcher &f
   return OstreeManager::pull(config.sysroot, config.ostree_server, keys, target, token, progress_cb).success;
 }
 
+#ifdef BUILD_OFFLINE_UPDATES
+bool OstreeManager::fetchTargetOffUpd(const Uptane::Target &target, Uptane::OfflineUpdateFetcher &fetcher,
+                                      const KeyManager &keys, const FetcherProgressCb &progress_cb,
+                                      const api::FlowControlToken *token) {
+  if (!target.IsOstree()) {
+    // The case when the OSTree package manager is set as a package manager for aktualizr
+    // while the target is aimed for a Secondary ECU that is configured with another/non-OSTree package manager
+    return PackageManagerInterface::fetchTargetOffUpd(target, fetcher, keys, progress_cb, token);
+  }
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD (FETCH OSTREE TARGETS FROM THE TAKEOUT IMAGE).
+  LOG_WARNING << "OstreeManager::fetchTargetOffUpd() NOT IMPLEMENTED";
+  return false;
+}
+#endif
+
 TargetStatus OstreeManager::verifyTarget(const Uptane::Target &target) const {
   if (!target.IsOstree()) {
     // The case when the OSTree package manager is set as a package manager for aktualizr

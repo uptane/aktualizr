@@ -287,12 +287,6 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
   }
 }
 
-void ImageRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
-  (void)storage;
-  (void)fetcher;
-}
-
 void ImageRepository::checkMetaOffline(INvStorage& storage) {
   resetMeta();
   // Load Image repo Root metadata
@@ -347,5 +341,18 @@ void ImageRepository::checkMetaOffline(INvStorage& storage) {
     checkTargetsExpired();
   }
 }
+
+#ifdef BUILD_OFFLINE_UPDATES
+void ImageRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+}
+
+void ImageRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+  (void)fetcher;
+}
+#endif
 
 }  // namespace Uptane

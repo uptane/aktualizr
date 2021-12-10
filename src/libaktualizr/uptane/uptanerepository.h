@@ -21,7 +21,13 @@ class RepositoryCommon {
   int rootVersion() const { return root.version(); }
   bool rootExpired() const { return root.isExpired(TimeStamp::Now()); }
   virtual void updateMeta(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
   virtual void updateMetaOffUpd(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
+#endif
 
  protected:
   void resetRoot();

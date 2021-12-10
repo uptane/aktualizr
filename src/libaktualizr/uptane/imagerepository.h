@@ -32,7 +32,15 @@ class ImageRepository : public RepositoryCommon {
 
   void checkMetaOffline(INvStorage& storage);
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  void checkMetaOfflineOffUpd(INvStorage& storage);
   void updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+#endif
 
  private:
   void checkTimestampExpired();

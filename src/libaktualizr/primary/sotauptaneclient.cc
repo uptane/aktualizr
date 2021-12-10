@@ -411,7 +411,11 @@ void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
     if (utype == UpdateType::kOffline) {
       // Use the offline-update logic with a fetcher that knows about the
       // organization of the offline-update image.
+#ifdef BUILD_OFFLINE_UPDATES
       director_repo.updateMetaOffUpd(*storage, *uptane_fetcher_offupd);
+#else
+      LOG_WARNING << "updateDirectorMeta: offline-updates feature is disabled!";
+#endif
     } else {
       director_repo.updateMeta(*storage, *uptane_fetcher);
     }
@@ -426,7 +430,11 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
     if (utype == UpdateType::kOffline) {
       // Use the offline-update logic with a fetcher that knows about the
       // organization of the offline-update image.
+#ifdef BUILD_OFFLINE_UPDATES
       image_repo.updateMetaOffUpd(*storage, *uptane_fetcher_offupd);
+#else
+      LOG_WARNING << "updateImageMeta: offline-updates feature is disabled!";
+#endif
     } else {
       image_repo.updateMeta(*storage, *uptane_fetcher);
     }
@@ -436,18 +444,35 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
   }
 }
 
-void SotaUptaneClient::checkDirectorMetaOffline() {
+void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
   try {
-    director_repo.checkMetaOffline(*storage);
+    if (utype == UpdateType::kOffline) {
+      // TODO: [OFFUPD] This one should check the OfflineUpdates data -> tell Jeremias that this might be missing.
+#ifdef BUILD_OFFLINE_UPDATES
+      director_repo.checkMetaOfflineOffUpd(*storage);
+#else
+      LOG_WARNING << "checkDirectorMetaOffline: offline-updates feature is disabled!";
+#endif
+    } else {
+      director_repo.checkMetaOffline(*storage);
+    }
   } catch (const std::exception &e) {
     LOG_ERROR << "Failed to check Director metadata: " << e.what();
     throw;
   }
 }
 
-void SotaUptaneClient::checkImageMetaOffline() {
+void SotaUptaneClient::checkImageMetaOffline(UpdateType utype) {
   try {
-    image_repo.checkMetaOffline(*storage);
+    if (utype == UpdateType::kOffline) {
+#ifdef BUILD_OFFLINE_UPDATES
+      image_repo.checkMetaOfflineOffUpd(*storage);
+#else
+      LOG_WARNING << "checkImageMetaOffline: offline-updates feature is disabled!";
+#endif
+    } else {
+      image_repo.checkMetaOffline(*storage);
+    }
   } catch (const std::exception &e) {
     LOG_ERROR << "Failed to check Image repo metadata: " << e.what();
   }
@@ -675,7 +700,7 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetInDelegationTree(con
 }
 
 result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Target> &targets,
-                                                  const api::FlowControlToken *token) {
+                                                  const api::FlowControlToken *token, UpdateType utype) {
   // Uptane step 4 - download all the images and verify them against the metadata (for OSTree - pull without
   // deploying)
   std::lock_guard<std::mutex> guard(download_mutex);
@@ -684,7 +709,7 @@ result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Targ
 
   result::UpdateStatus update_status;
   try {
-    update_status = checkUpdatesOffline(targets);
+    update_status = checkUpdatesOffline(targets, utype);
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
     update_status = result::UpdateStatus::kError;
@@ -704,7 +729,7 @@ result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Targ
   }
 
   for (const auto &target : targets) {
-    auto res = downloadImage(target, token);
+    auto res = downloadImage(target, token, utype);
     if (res.first) {
       downloaded_targets.push_back(res.second);
     }
@@ -739,7 +764,8 @@ void SotaUptaneClient::reportResume() {
 }
 
 std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Target &target,
-                                                                const api::FlowControlToken *token) {
+                                                                const api::FlowControlToken *token, UpdateType utype) {
+  // TODO: [OFFUPD] How should we deal with the correlationId?
   const std::string &correlation_id = director_repo.getCorrelationId();
   // send an event for all ECUs that are touched by this target
   for (const auto &ecu : target.ecus()) {
@@ -766,7 +792,15 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
       std::chrono::milliseconds wait(500);
 
       for (; tries < max_tries; tries++) {
-        success = package_manager_->fetchTarget(target, *uptane_fetcher, keys, prog_cb, token);
+        if (utype == UpdateType::kOffline) {
+#ifdef BUILD_OFFLINE_UPDATES
+          success = package_manager_->fetchTargetOffUpd(target, *uptane_fetcher_offupd, keys, prog_cb, token);
+#else
+          success = false;
+#endif
+        } else {
+          success = package_manager_->fetchTarget(target, *uptane_fetcher, keys, prog_cb, token);
+        }
         // Skip trying to fetch the 'target' if control flow token transaction
         // was set to the 'abort' or 'pause' state, see the CommandQueue and FlowControlToken.
         if (success || (token != nullptr && !token->canContinue(false))) {
@@ -829,12 +863,14 @@ void SotaUptaneClient::uptaneIteration(std::vector<Uptane::Target> *targets, uns
   }
 }
 
-void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count) {
-  checkDirectorMetaOffline();
+void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
+                                              UpdateType utype) {
+  checkDirectorMetaOffline(utype);
 
   std::vector<Uptane::Target> tmp_targets;
   unsigned int ecus;
   try {
+    // TODO: [OFFUPD] Consider passing parameter `offupd`.
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();
@@ -843,7 +879,7 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
 
   if (!tmp_targets.empty()) {
     LOG_DEBUG << "New updates found in stored Director metadata. Checking stored Image repo metadata...";
-    checkImageMetaOffline();
+    checkImageMetaOffline(utype);
   }
 
   if (targets != nullptr) {
@@ -956,7 +992,8 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   return result;
 }
 
-result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Uptane::Target> &targets) {
+result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Uptane::Target> &targets,
+                                                           UpdateType utype) {
   if (hasPendingUpdates()) {
     // no need in update checking if there are some pending updates
     LOG_INFO << "An update is pending. Skipping stored metadata check until installation is complete.";
@@ -971,7 +1008,7 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
   std::vector<Uptane::Target> director_targets;
   unsigned int ecus_count = 0;
   try {
-    uptaneOfflineIteration(&director_targets, &ecus_count);
+    uptaneOfflineIteration(&director_targets, &ecus_count, utype);
   } catch (const std::exception &e) {
     LOG_ERROR << "Aborting; invalid Uptane metadata in storage.";
     throw;
@@ -983,7 +1020,6 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
     return result::UpdateStatus::kNoUpdatesAvailable;
   }
 
-  // TODO: [OFFUPD] Pass utype to findTargetInDelegationTree()...
   // For every target in the Director Targets metadata, walk the delegation
   // tree (if necessary) and find a matching target in the Image repo
   // metadata.
@@ -995,7 +1031,7 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
       throw Uptane::Exception(Uptane::RepositoryType::DIRECTOR, "No matching target in Director Targets metadata");
     }
 
-    const auto image_target = findTargetInDelegationTree(target, true);
+    const auto image_target = findTargetInDelegationTree(target, true, utype);
     if (image_target == nullptr) {
       LOG_ERROR << "No matching target in Image repo Targets metadata for " << target;
       throw Uptane::Exception(Uptane::RepositoryType::IMAGE, "No matching target in Director Targets metadata");
@@ -1572,5 +1608,10 @@ result::UpdateCheck SotaUptaneClient::fetchMetaOffUpd(const boost::filesystem::p
   sendEvent<event::UpdateCheckComplete>(result);
 
   return result;
+}
+
+result::Download SotaUptaneClient::fetchImagesOffUpd(const std::vector<Uptane::Target> &targets,
+                                                     const api::FlowControlToken *token) {
+  return downloadImages(targets, token, UpdateType::kOffline);
 }
 #endif

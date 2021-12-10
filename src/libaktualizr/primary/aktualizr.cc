@@ -299,13 +299,10 @@ std::future<result::UpdateCheck> Aktualizr::CheckUpdatesOffline(const boost::fil
   return api_queue_->enqueue(task);
 }
 
-std::future<result::Download> Aktualizr::OfflineFetchImages(const std::vector<Uptane::Target> &updates) {
+std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Uptane::Target> &updates) {
   std::function<result::Download(const api::FlowControlToken *)> task(
       [this, updates](const api::FlowControlToken *token) {
-        // TODO: return uptane_client_->fetchImagesOffUpd(updates, token);
-        (void)token;
-        LOG_WARNING << "OfflineFetchImages() is NOT implemented";
-        return result::Download();
+        return uptane_client_->fetchImagesOffUpd(updates, token);
       });
   return api_queue_->enqueue(task);
 }
@@ -332,7 +329,7 @@ bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_pat
     return true;
   }
 
-  result::Download download_result = OfflineFetchImages(update_result.updates).get();
+  result::Download download_result = FetchImagesOffline(update_result.updates).get();
   if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
     // TODO: [OFFUPD] Do we need this?
     // if (download_result.status != result::DownloadStatus::kNothingToDownload) {

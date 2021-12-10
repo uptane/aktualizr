@@ -25,8 +25,16 @@ class DirectorRepository : public RepositoryCommon {
   void dropTargets(INvStorage& storage);
 
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
-  void updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) override;
   bool matchTargetsWithImageTargets(const std::shared_ptr<const Uptane::Targets>& image_targets) const;
+
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  void checkMetaOfflineOffUpd(INvStorage& storage);
+  void updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+#endif
 
  private:
   FRIEND_TEST(Director, EmptyTargets);

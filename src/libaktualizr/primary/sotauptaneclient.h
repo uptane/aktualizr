@@ -47,7 +47,7 @@ class SotaUptaneClient {
   void initialize();
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
   result::Download downloadImages(const std::vector<Uptane::Target> &targets,
-                                  const api::FlowControlToken *token = nullptr);
+                                  const api::FlowControlToken *token = nullptr, UpdateType utype = UpdateType::kOnline);
 
   /** See Aktualizr::SetCustomHardwareInfo(Json::Value) */
   void setCustomHardwareInfo(Json::Value hwinfo) { custom_hardware_info_ = std::move(hwinfo); }
@@ -69,8 +69,14 @@ class SotaUptaneClient {
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
   std::ifstream openStoredTarget(const Uptane::Target &target);
 
-#ifdef BUILD_OFFLINE_UPDATES
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
   result::UpdateCheck fetchMetaOffUpd(const boost::filesystem::path &source_path);
+  result::Download fetchImagesOffUpd(const std::vector<Uptane::Target> &targets,
+                                     const api::FlowControlToken *token = nullptr);
 #endif
 
  private:
@@ -109,14 +115,17 @@ class SotaUptaneClient {
   friend class CheckForUpdate;       // for load tests
   friend class ProvisionDeviceTask;  // for load tests
 
-  data::InstallationResult PackageInstall(const Uptane::Target &target);
-  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
-                                                const api::FlowControlToken *token = nullptr);
+  result::UpdateCheck checkUpdates(UpdateType utype = UpdateType::kOnline);
+  result::UpdateStatus checkUpdatesOffline(const std::vector<Uptane::Target> &targets,
+                                           UpdateType utype = UpdateType::kOnline);
   void uptaneIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
                        UpdateType utype = UpdateType::kOnline);
-  void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
-  result::UpdateCheck checkUpdates(UpdateType utype = UpdateType::kOnline);
-  result::UpdateStatus checkUpdatesOffline(const std::vector<Uptane::Target> &targets);
+  void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
+                              UpdateType utype = UpdateType::kOnline);
+  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
+                                                const api::FlowControlToken *token = nullptr,
+                                                UpdateType utype = UpdateType::kOnline);
+  data::InstallationResult PackageInstall(const Uptane::Target &target);
   Json::Value AssembleManifest();
   std::exception_ptr getLastException() const { return last_exception; }
   Uptane::Target getCurrent() const { return package_manager_->getCurrent(); }
@@ -154,8 +163,8 @@ class SotaUptaneClient {
   void getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count = nullptr);
   void updateDirectorMeta(UpdateType utype = UpdateType::kOnline);
   void updateImageMeta(UpdateType utype = UpdateType::kOnline);
-  void checkDirectorMetaOffline();
-  void checkImageMetaOffline();
+  void checkDirectorMetaOffline(UpdateType utype = UpdateType::kOnline);
+  void checkImageMetaOffline(UpdateType utype = UpdateType::kOnline);
 
   void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report) const;
   std::unique_ptr<Uptane::Target> findTargetInDelegationTree(const Uptane::Target &target, bool offline,
