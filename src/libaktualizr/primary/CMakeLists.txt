@@ -34,8 +34,8 @@ if (BUILD_OSTREE)
     add_aktualizr_test(NAME aktualizr_fullostree
                        SOURCES aktualizr_fullostree_test.cc
                        PROJECT_WORKING_DIRECTORY
-                       ARGS $<TARGET_FILE:uptane-generator> ${PROJECT_BINARY_DIR}/ostree_repo
-                       LIBRARIES virtual_secondary)
+                       ARGS ${PROJECT_BINARY_DIR}/ostree_repo
+                       LIBRARIES uptane_generator_lib virtual_secondary)
     set_target_properties(t_aktualizr_fullostree PROPERTIES LINK_FLAGS -Wl,--export-dynamic)
     add_dependencies(t_aktualizr_fullostree uptane-generator make_ostree_sysroot)
 

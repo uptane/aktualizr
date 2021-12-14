@@ -112,16 +112,19 @@ if(SOTA_PACKED_CREDENTIALS)
         set_tests_properties(device_cred_prov_hsm_test PROPERTIES LABELS "credentials")
     endif(BUILD_P11 AND TEST_PKCS11_MODULE_PATH)
 
-    # do not link tests with libaktualizr, but sota_tools_lib
-    list(REMOVE_ITEM TEST_LIBS aktualizr_lib)
-    list(INSERT TEST_LIBS 0 sota_tools_lib)
-    add_aktualizr_test(NAME sota_tools_auth_cred_test
-                        SOURCES authenticate_cred_test.cc
-                        PROJECT_WORKING_DIRECTORY
-                        ARGS ${SOTA_PACKED_CREDENTIALS})
-    add_dependencies(t_sota_tools_auth_cred_test t_sota_tools_auth_test)
-    target_include_directories(t_sota_tools_auth_cred_test PUBLIC ${PROJECT_SOURCE_DIR}/tests ${PROJECT_SOURCE_DIR}/src/sota_tools)
-    set_tests_properties(test_sota_tools_auth_cred_test PROPERTIES LABELS "credentials")
+    if(BUILD_SOTA_TOOLS)
+        # do not link this test with libaktualizr, but rather with sota_tools_lib
+        list(REMOVE_ITEM TEST_LIBS aktualizr_lib)
+        list(INSERT TEST_LIBS 0 sota_tools_lib)
+        add_aktualizr_test(NAME sota_tools_auth_cred_test
+                           SOURCES authenticate_cred_test.cc
+                           PROJECT_WORKING_DIRECTORY
+                           ARGS ${SOTA_PACKED_CREDENTIALS})
+        add_dependencies(t_sota_tools_auth_cred_test t_sota_tools_auth_test)
+        target_include_directories(t_sota_tools_auth_cred_test PUBLIC
+                                   ${PROJECT_SOURCE_DIR}/tests ${PROJECT_SOURCE_DIR}/src/sota_tools)
+        set_tests_properties(test_sota_tools_auth_cred_test PROPERTIES LABELS "credentials")
+    endif(BUILD_SOTA_TOOLS)
 endif(SOTA_PACKED_CREDENTIALS)
 
 ###############################################################################
@@ -229,6 +232,11 @@ if(BUILD_OSTREE)
              COMMAND ${PROJECT_SOURCE_DIR}/tests/test_misc_ostree_update.py
              --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
     set_tests_properties(test_misc_ostree_update PROPERTIES LABELS "noptest")
+
+    add_test(NAME test_ostree_custom_uri
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/test_ostree_custom_uri.py
+            --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
+    set_tests_properties(test_ostree_custom_uri PROPERTIES LABELS "noptest")
 endif(BUILD_OSTREE)
 
 add_test(NAME test_aktualizr_kill

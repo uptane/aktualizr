@@ -9,18 +9,29 @@ import signal
 import socket
 import time
 
-from os import path
+from io import BytesIO
+from os import path, urandom
 from uuid import uuid4
-from os import urandom
 from functools import wraps
 from multiprocessing import pool, cpu_count
 from http.server import SimpleHTTPRequestHandler, HTTPServer
-
+from threading import Thread
 from fake_http_server.fake_test_server import FakeTestServerBackground
 from sota_tools.treehub_server import create_repo
+from shutil import copyfileobj
 
 
 logger = logging.getLogger(__name__)
+
+
+class CopyThread(Thread):
+    def __init__(self, src, dest):
+        super().__init__()
+        self._src = src
+        self._dst = dest
+
+    def run(self):
+        copyfileobj(self._src, self._dst, 1024)
 
 
 class Aktualizr:
@@ -247,19 +258,28 @@ class Aktualizr:
                                          stderr=None if self._output_logs else subprocess.STDOUT,
                                          close_fds=True,
                                          env=self._run_env)
+        if not self._output_logs:
+            self._stdout = BytesIO()
+            self._stdout_thread = CopyThread(self._process.stdout, self._stdout)
+            self._stdout_thread.start()
         logger.debug("Aktualizr has been started")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._process.terminate()
         self._process.wait(timeout=60)
+        if not self._output_logs:
+            self._stdout_thread.join(10)
         logger.debug("Aktualizr has been stopped")
 
     def terminate(self, sig=signal.SIGTERM):
         self._process.send_signal(sig)
 
     def output(self):
-        return self._process.stdout.read().decode(errors='replace')
+        if self._output_logs:
+            # stdout has gone to the console...
+            raise Exception("Can't get output from Aktualizr object if output_logs is set")
+        return self._stdout.getbuffer().tobytes().decode(errors='replace')
 
     def wait_for_completion(self, timeout=120):
         self._process.wait(timeout)
@@ -388,13 +408,25 @@ class IPSecondary:
                                          stderr=None if self._output_logs else subprocess.STDOUT,
                                          close_fds=True,
                                          env=self._run_env)
+        if not self._output_logs:
+            self._stdout = BytesIO()
+            self._stdout_thread = CopyThread(self._process.stdout, self._stdout)
+            self._stdout_thread.start()
         logger.debug("IP Secondary {} has been started with port {} and verification type {}".format(self.id, self.port, self.verification_type))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._process.terminate()
         self._process.wait(timeout=60)
+        if not self._output_logs:
+            self._stdout_thread.join(10)
         logger.debug("IP Secondary {} has been stopped with port {} and verification type {}".format(self.id, self.port, self.verification_type))
+
+    def output(self):
+        if self._output_logs:
+            # stdout has gone to the console...
+            raise Exception("Can't get output from IP Secondary object if output_logs is set")
+        return self._stdout.getbuffer().tobytes().decode(errors='replace')
 
     def wait_for_completion(self, timeout=120):
         self._process.wait(timeout)
@@ -781,7 +813,7 @@ class UptaneTestRepo:
 
         return target_hash
 
-    def add_ostree_target(self, id, rev_hash, target_name=None, expires_within_sec=(60 * 5)):
+    def add_ostree_target(self, id, rev_hash, target_name=None, expires_within_sec=(60 * 5), target_uri=None):
         # emulate the backend behavior on defining a target name for OSTREE target format
         target_name = rev_hash if target_name is None else "{}-{}".format(target_name, rev_hash)
         image_creation_cmdline = [self._repo_manager_exe,
@@ -790,8 +822,9 @@ class UptaneTestRepo:
                                   '--targetname', target_name,
                                   '--targetsha256', rev_hash,
                                   '--targetlength', '0',
-                                  '--targetformat', 'OSTREE',
                                   '--hwid', id[0]]
+        if target_uri is not None:
+            image_creation_cmdline += ["--url", target_uri]
         subprocess.run(image_creation_cmdline, check=True)
 
         expiration_time = time.time() + expires_within_sec

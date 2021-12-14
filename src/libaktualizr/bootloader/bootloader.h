@@ -8,7 +8,11 @@ class INvStorage;
 class Bootloader {
  public:
   Bootloader(BootloaderConfig config, INvStorage& storage);
-  virtual ~Bootloader() {}
+  virtual ~Bootloader() = default;
+  Bootloader(const Bootloader&) = delete;
+  Bootloader(Bootloader&&) = delete;
+  Bootloader& operator=(const Bootloader&) = delete;
+  Bootloader& operator=(Bootloader&&) = delete;
   virtual void setBootOK() const;
   virtual void updateNotify() const;
 

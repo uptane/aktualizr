@@ -28,6 +28,7 @@ enum class Cmd {
 };
 ///! @endcond
 
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline Cmd cmdFromName(const std::string &name) {
   return std::map<std::string, Cmd>{
       {"campaign_accept", Cmd::Accept}, {"campaign_decline", Cmd::Decline}, {"campaign_postpone", Cmd::Postpone}}
@@ -41,9 +42,8 @@ class Campaign {
   static void JsonFromCampaigns(const std::vector<Campaign> &in, Json::Value &out);
   static std::vector<Campaign> fetchAvailableCampaigns(HttpInterface &http_client, const std::string &tls_server);
 
- public:
   Campaign() = default;
-  Campaign(const Json::Value &json);
+  explicit Campaign(const Json::Value &json);
   void getJson(Json::Value &out) const;
 
   std::string id;

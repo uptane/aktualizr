@@ -43,8 +43,8 @@ void AktualizrSecondaryOstree::initialize() {
           AktualizrSecondary::storage()->saveInstalledVersion(serial().ToString(), *pending_target,
                                                               InstalledVersionUpdateMode::kCurrent);
         } else {
-          LOG_ERROR << "Application of the pending update has failed: (" << install_res.result_code.ToString() << ")"
-                    << install_res.description;
+          LOG_ERROR << "Application of the pending update has failed (" << install_res.result_code.ToString()
+                    << "): " << install_res.description;
           AktualizrSecondary::storage()->saveInstalledVersion(serial().ToString(), *pending_target,
                                                               InstalledVersionUpdateMode::kNone);
         }

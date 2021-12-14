@@ -21,6 +21,10 @@ class SQLStorage : public SQLStorageBase, public INvStorage {
   friend class SQLTargetRHandle;
   explicit SQLStorage(const StorageConfig& config, bool readonly);
   ~SQLStorage() override = default;
+  SQLStorage(const SQLStorage&) = delete;
+  SQLStorage(SQLStorage&&) = delete;
+  SQLStorage& operator=(const SQLStorage&) = delete;
+  SQLStorage& operator=(SQLStorage&&) = delete;
   void storePrimaryKeys(const std::string& public_key, const std::string& private_key) override;
   bool loadPrimaryKeys(std::string* public_key, std::string* private_key) const override;
   bool loadPrimaryPublic(std::string* public_key) const override;

@@ -8,6 +8,9 @@
 
 class SecondaryInterface {
  public:
+  SecondaryInterface() = default;
+  virtual ~SecondaryInterface() = default;
+
   using Ptr = std::shared_ptr<SecondaryInterface>;
 
   virtual void init(std::shared_ptr<SecondaryProvider> secondary_provider_in) = 0;
@@ -27,7 +30,11 @@ class SecondaryInterface {
   virtual data::InstallationResult sendFirmware(const Uptane::Target& target) = 0;
   virtual data::InstallationResult install(const Uptane::Target& target) = 0;
 
-  virtual ~SecondaryInterface() = default;
+ protected:
+  SecondaryInterface(const SecondaryInterface&) = default;
+  SecondaryInterface(SecondaryInterface&&) = default;
+  SecondaryInterface& operator=(const SecondaryInterface&) = default;
+  SecondaryInterface& operator=(SecondaryInterface&&) = default;
 };
 
 #endif  // UPTANE_SECONDARYINTERFACE_H

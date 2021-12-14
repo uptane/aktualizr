@@ -105,7 +105,10 @@ if(BUILD_OSTREE)
     find_package(OSTree REQUIRED)
     add_definitions(-DBUILD_OSTREE)
 else(BUILD_OSTREE)
-    unset(LIBOSTREE_LIBRARIES CACHE)
+    # The sota tools depend on libostree so no reason to unset LIBOSTREE_LIBRARIES if they are enabled
+    if (NOT BUILD_SOTA_TOOLS)
+        unset(LIBOSTREE_LIBRARIES CACHE)
+    endif(NOT BUILD_SOTA_TOOLS)
 endif(BUILD_OSTREE)
 
 if(BUILD_P11)
@@ -124,24 +127,21 @@ if(BUILD_P11)
                 message(STATUS "Detected pkcs11 engine path: ${engine}")
                 set(PKCS11_ENGINE_PATH ${engine})
             endif()
-
         endforeach()
 
         if (NOT PKCS11_ENGINE_PATH)
             message(FATAL_ERROR "Could not auto-detect path of PKCS11 engine, please specify PKCS11_ENGINE_PATH")
         endif()
 
-        set(PKCS11_ENGINE_PATH "${PKCS11_ENGINE_PATH}" CACHE STRING "Credentials.zip for tests involving the server")
+        set(PKCS11_ENGINE_PATH "${PKCS11_ENGINE_PATH}" CACHE STRING "Path to PKCS#11 engine library")
     endif()
 endif(BUILD_P11)
 
 if(BUILD_SOTA_TOOLS)
     find_package(GLIB2 REQUIRED)
     find_program(STRACE NAMES strace)
-
-    if (NOT BUILD_OSTREE)
-        message(SEND_ERROR "BUILD_SOTA_TOOLS requires BUILD_OSTREE to be enabled")
-    endif()
+    # The sota tools depend on libostree, but they don't require/depend on software enabled by BUILD_OSTREE flag
+    find_package(OSTree REQUIRED)
 endif(BUILD_SOTA_TOOLS)
 
 if(FAULT_INJECTION)
@@ -218,9 +218,8 @@ if(TESTSUITE_VALGRIND)
 endif()
 add_custom_target(build_tests)
 
-# clang-check and clang-format
 find_program(CLANG_FORMAT NAMES clang-format-10)
-find_program(CLANG_TIDY NAMES clang-tidy-10)
+find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-11 clang-tidy-10)
 
 if(CLANG_FORMAT)
     function(aktualizr_clang_format)
@@ -254,11 +253,6 @@ if(CLANG_TIDY)
     function(aktualizr_clang_tidy)
         file(RELATIVE_PATH SUBDIR ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
         foreach(FILE ${ARGN})
-            # Skip header files, since they are ignored. Headers are checked if
-            # they are included by a checked source file.
-            if(${FILE} MATCHES "\\.h")
-                continue()
-            endif()
             string(REPLACE "/" "_" TARGETNAME "aktualizr_clang_tidy-${SUBDIR}-${FILE}")
             add_custom_target(${TARGETNAME}
                 COMMAND ${PROJECT_SOURCE_DIR}/scripts/clang-tidy-wrapper.sh ${CLANG_TIDY} ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR} ${FILE}
@@ -268,7 +262,7 @@ if(CLANG_TIDY)
         endforeach()
     endfunction()
 else()
-    message(WARNING "clang-tidy-10 not found, skipping")
+    message(WARNING "Unable to find clang-tidy-12, clang-tidy-11, or clang-tidy-10; skipping")
     function(aktualizr_clang_tidy)
     endfunction()
 endif()

@@ -11,8 +11,8 @@
 
 class OSTreeHttpRepo : public OSTreeRepo {
  public:
-  explicit OSTreeHttpRepo(TreehubServer* server, const boost::filesystem::path& root_in = "")
-      : server_(server), root_(root_in) {
+  explicit OSTreeHttpRepo(TreehubServer* server, boost::filesystem::path root_in = "")
+      : server_(server), root_(std::move(root_in)) {
     if (root_.empty()) {
       root_ = root_tmp_.Path();
     }
@@ -20,7 +20,6 @@ class OSTreeHttpRepo : public OSTreeRepo {
     curlEasySetoptWrapper(easy_handle_.get(), CURLOPT_WRITEFUNCTION, &OSTreeHttpRepo::curl_handle_write);
     curlEasySetoptWrapper(easy_handle_.get(), CURLOPT_FAILONERROR, true);
   }
-  ~OSTreeHttpRepo() override = default;
 
   bool LooksValid() const override;
   OSTreeRef GetRef(const std::string& refname) const override;

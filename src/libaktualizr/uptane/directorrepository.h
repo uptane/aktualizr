@@ -28,13 +28,13 @@ class DirectorRepository : public RepositoryCommon {
   bool matchTargetsWithImageTargets(const std::shared_ptr<const Uptane::Targets>& image_targets) const;
 
  private:
+  FRIEND_TEST(Director, EmptyTargets);
+
   void resetMeta();
   void checkTargetsExpired();
   void targetsSanityCheck();
   bool usePreviousTargets() const;
 
- private:
-  FRIEND_TEST(Director, EmptyTargets);
   // Since the Director can send us an empty targets list to mean "no new
   // updates", we have to persist the previous targets list. Use the latest for
   // checking expiration but the most recent non-empty list for everything else.

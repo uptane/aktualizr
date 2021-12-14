@@ -87,12 +87,13 @@ HttpClient::HttpClient(const std::string& socket) {
   curlEasySetoptWrapper(curl, CURLOPT_USERAGENT, Utils::getUserAgent());
 }
 
-HttpClient::HttpClient(const HttpClient& curl_in) : pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
+HttpClient::HttpClient(const HttpClient& curl_in)
+    : HttpInterface(curl_in), pkcs11_key(curl_in.pkcs11_key), pkcs11_cert(curl_in.pkcs11_key) {
   curl = curl_easy_duphandle(curl_in.curl);
   headers = curl_slist_dup(curl_in.headers);
 }
 
-CurlGlobalInitWrapper HttpClient::manageCurlGlobalInit_{};
+const CurlGlobalInitWrapper HttpClient::manageCurlGlobalInit_{};
 
 HttpClient::~HttpClient() {
   curl_slist_free_all(headers);
@@ -200,6 +201,7 @@ HttpResponse HttpClient::put(const std::string& url, const Json::Value& data) {
   return put(url, "application/json", data_str);
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 HttpResponse HttpClient::perform(CURL* curl_handler, int retry_times, int64_t size_limit) {
   if (size_limit >= 0) {
     // it will only take effect if the server declares the size in advance,
@@ -223,6 +225,7 @@ HttpResponse HttpClient::perform(CURL* curl_handler, int retry_times, int64_t si
     LOG_ERROR << error_message.str();
     if (retry_times != 0) {
       sleep(1);
+      // NOLINTNEXTLINE(misc-no-recursion)
       response = perform(curl_handler, --retry_times, size_limit);
     }
   }
@@ -299,7 +302,7 @@ void HttpClient::timeout(int64_t ms) {
   // curl_easy_setopt() takes a 'long' be very sure that we are passing
   // whatever the platform ABI thinks is a long, while keeping the external
   // interface a clang-tidy preferred int64
-  auto ms_long = static_cast<long>(ms);  // NOLINT
+  auto ms_long = static_cast<long>(ms);  // NOLINT(google-runtime-int)
   curlEasySetoptWrapper(curl, CURLOPT_TIMEOUT_MS, ms_long);
   curlEasySetoptWrapper(curl, CURLOPT_CONNECTTIMEOUT_MS, ms_long);
 }

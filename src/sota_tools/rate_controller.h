@@ -17,8 +17,11 @@ class RateController {
  public:
   using clock = std::chrono::steady_clock;
   explicit RateController(int concurrency_cap = 30);
+  ~RateController() = default;
   RateController(const RateController&) = delete;
+  RateController(RateController&&) = delete;
   RateController operator=(const RateController&) = delete;
+  RateController operator=(RateController&&) = delete;
 
   void RequestCompleted(clock::time_point start_time, clock::time_point end_time, bool succeeded);
 

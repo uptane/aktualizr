@@ -31,10 +31,11 @@ add_aktualizr_test(NAME packagemanager_factory SOURCES packagemanagerfactory_tes
 add_aktualizr_test(NAME fetcher SOURCES fetcher_test.cc ARGS PROJECT_WORKING_DIRECTORY LIBRARIES PUBLIC uptane_generator_lib)
 add_aktualizr_test(NAME fetcher_death SOURCES fetcher_death_test.cc NO_VALGRIND ARGS PROJECT_WORKING_DIRECTORY)
 
-aktualizr_source_file_checks(fetcher_death_test.cc fetcher_test.cc)
-
-aktualizr_source_file_checks(packagemanagerconfig_test.cc)
-
-aktualizr_source_file_checks(packagemanagerfake_test.cc packagemanagerfactory_test.cc ostreemanager_test.cc)
-
-aktualizr_source_file_checks(ostreemanager.cc ostreemanager.h)
+aktualizr_source_file_checks(fetcher_death_test.cc
+                             fetcher_test.cc
+                             packagemanagerconfig_test.cc
+                             packagemanagerfake_test.cc
+                             packagemanagerfactory_test.cc
+                             ostreemanager_test.cc
+                             ostreemanager.cc
+                             ostreemanager.h)

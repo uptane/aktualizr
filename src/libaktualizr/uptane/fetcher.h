@@ -17,9 +17,9 @@ class IMetadataFetcher {
  public:
   IMetadataFetcher(const IMetadataFetcher&) = delete;
   IMetadataFetcher& operator=(const IMetadataFetcher&) = delete;
+  IMetadataFetcher& operator=(IMetadataFetcher&&) = delete;
   virtual ~IMetadataFetcher() = default;
 
- public:
   virtual void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
                          Version version) const = 0;
   virtual void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,

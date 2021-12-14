@@ -35,27 +35,27 @@ class ReportEvent {
 
 class CampaignAcceptedReport : public ReportEvent {
  public:
-  CampaignAcceptedReport(const std::string& campaign_id);
+  explicit CampaignAcceptedReport(const std::string& campaign_id);
 };
 
 class CampaignDeclinedReport : public ReportEvent {
  public:
-  CampaignDeclinedReport(const std::string& campaign_id);
+  explicit CampaignDeclinedReport(const std::string& campaign_id);
 };
 
 class CampaignPostponedReport : public ReportEvent {
  public:
-  CampaignPostponedReport(const std::string& campaign_id);
+  explicit CampaignPostponedReport(const std::string& campaign_id);
 };
 
 class DevicePausedReport : public ReportEvent {
  public:
-  DevicePausedReport(const std::string& correlation_id);
+  explicit DevicePausedReport(const std::string& correlation_id);
 };
 
 class DeviceResumedReport : public ReportEvent {
  public:
-  DeviceResumedReport(const std::string& correlation_id);
+  explicit DeviceResumedReport(const std::string& correlation_id);
 };
 
 class EcuDownloadStartedReport : public ReportEvent {
@@ -88,6 +88,10 @@ class ReportQueue {
   ReportQueue(const Config& config_in, std::shared_ptr<HttpInterface> http_client,
               std::shared_ptr<INvStorage> storage_in);
   ~ReportQueue();
+  ReportQueue(const ReportQueue&) = delete;
+  ReportQueue(ReportQueue&&) = delete;
+  ReportQueue& operator=(const ReportQueue&) = delete;
+  ReportQueue& operator=(ReportQueue&&) = delete;
   void run();
   void enqueue(std::unique_ptr<ReportEvent> event);
 

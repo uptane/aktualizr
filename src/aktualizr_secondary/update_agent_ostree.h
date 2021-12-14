@@ -8,14 +8,13 @@ class KeyManager;
 
 class OstreeUpdateAgent : public UpdateAgent {
  public:
-  OstreeUpdateAgent(const boost::filesystem::path& sysroot_path, std::shared_ptr<KeyManager>& key_mngr,
+  OstreeUpdateAgent(boost::filesystem::path sysroot_path, std::shared_ptr<KeyManager>& key_mngr,
                     std::shared_ptr<OstreeManager>& ostree_pack_man, std::string targetname_prefix)
-      : sysrootPath_(sysroot_path),
+      : sysrootPath_(std::move(sysroot_path)),
         keyMngr_(key_mngr),
         ostreePackMan_(ostree_pack_man),
         targetname_prefix_(std::move(targetname_prefix)) {}
 
- public:
   bool isTargetSupported(const Uptane::Target& target) const override;
   bool getInstalledImageInfo(Uptane::InstalledImageInfo& installed_image_info) const override;
 

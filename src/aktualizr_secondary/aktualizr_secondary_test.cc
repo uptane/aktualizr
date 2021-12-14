@@ -85,7 +85,7 @@ class UptaneRepoWrapper {
 
     uptane_repo_.addImage(image_file_path, targetname, hardware_id);
     if (add_and_sign_target) {
-      uptane_repo_.addTarget(targetname, hardware_id, serial, "");
+      uptane_repo_.addTarget(targetname, hardware_id, serial);
       uptane_repo_.signTargets();
     }
 
@@ -113,7 +113,7 @@ class UptaneRepoWrapper {
       broken_image.close();
     }
 
-    return getCurrentMetadata();
+    return Uptane::SecondaryMetadata(getCurrentMetadata());
   }
 
   void addCustomImageMetadata(const std::string& targetname, const std::string& hardware_id,

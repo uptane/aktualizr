@@ -105,7 +105,7 @@ bool SecondaryTcpServer::HandleOneConnection(int socket) {
   bool keep_running_current_session = true;
 
   while (keep_running_current_session) {  // Keep reading until we get an error
-    // Read an incomming message
+    // Read an incoming message
     AKIpUptaneMes_t *m = nullptr;
     asn_dec_rval_t res;
     asn_codec_ctx_s context{};
@@ -113,6 +113,10 @@ bool SecondaryTcpServer::HandleOneConnection(int socket) {
 
     do {
       received = recv(socket, buffer.Tail(), buffer.TailSpace(), 0);
+      if (received < 0) {
+        LOG_ERROR << "Failed to read data from a server socket: " << strerror(errno);
+        break;
+      }
       buffer.HaveEnqueued(static_cast<size_t>(received));
       res = ber_decode(&context, &asn_DEF_AKIpUptaneMes, reinterpret_cast<void **>(&m), buffer.Head(), buffer.Size());
       buffer.Consume(res.consumed);
@@ -156,7 +160,7 @@ bool SecondaryTcpServer::HandleOneConnection(int socket) {
       default: {
         // TODO: consider sending NOT_SUPPORTED/Unknown message and closing connection socket
         keep_running_current_session = false;
-        LOG_INFO << "Unknown message received from Primary!";
+        LOG_INFO << "Unsupported message received from Primary: " << request_msg->toStr();
       }
     }  // switch
 

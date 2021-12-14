@@ -15,7 +15,7 @@
 class AktualizrInfoConfig : public BaseConfig {
  public:
   AktualizrInfoConfig() = default;
-  AktualizrInfoConfig(const boost::program_options::variables_map& cmd);
+  explicit AktualizrInfoConfig(const boost::program_options::variables_map& cmd);
   explicit AktualizrInfoConfig(const boost::filesystem::path& filename);
 
   void postUpdateValues();

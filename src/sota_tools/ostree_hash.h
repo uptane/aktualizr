@@ -15,7 +15,8 @@ class OSTreeHash {
    */
   static OSTreeHash Parse(const std::string& hash);
 
-  explicit OSTreeHash(const uint8_t hash[32]);  // NOLINT(modernize-avoid-c-arrays)
+  // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
+  explicit OSTreeHash(const uint8_t hash[32]);
   explicit OSTreeHash(const std::array<uint8_t, 32>& hash);
 
   std::string string() const;

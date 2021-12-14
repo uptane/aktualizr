@@ -10,7 +10,7 @@ Root::Root(const RepositoryType repo, const Json::Value &json, Root &root) : Roo
 }
 
 Root::Root(const RepositoryType repo, const Json::Value &json) : MetaWithKeys(json), policy_(Policy::kCheck) {
-  if (!json["signed"].isMember("keys")) {
+  if (!json["signed"].isMember("keys")) {  // NOLINT(bugprone-branch-clone)
     throw InvalidMetadata(repo, "root", "missing keys field");
   } else if (!json["signed"].isMember("roles")) {
     throw InvalidMetadata(repo, "root", "missing roles field");

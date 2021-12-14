@@ -16,7 +16,7 @@ struct EventCounts {
   int UpdateCheckCompleteCount;
   int AllInstallsCompleteCount;
   int OtherCount;
-} counts;
+} counts;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 static void signal_handler(const char *event_name) {
   if (strcmp(event_name, "DownloadProgressReport") == 0) {

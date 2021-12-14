@@ -37,6 +37,7 @@ struct HttpResponse {
 
 class HttpInterface {
  public:
+  HttpInterface() = default;
   virtual ~HttpInterface() = default;
   virtual HttpResponse get(const std::string &url, int64_t maxsize) = 0;
   virtual HttpResponse post(const std::string &url, const std::string &content_type, const std::string &data) = 0;
@@ -54,6 +55,12 @@ class HttpInterface {
   static constexpr int64_t kNoLimit = 0;  // no limit the size of downloaded data
   static constexpr int64_t kPostRespLimit = 64 * 1024;
   static constexpr int64_t kPutRespLimit = 64 * 1024;
+
+ protected:
+  HttpInterface(const HttpInterface &) = default;
+  HttpInterface(HttpInterface &&) = default;
+  HttpInterface &operator=(const HttpInterface &) = default;
+  HttpInterface &operator=(HttpInterface &&) = default;
 };
 
 #endif  // HTTPINTERFACE_H_

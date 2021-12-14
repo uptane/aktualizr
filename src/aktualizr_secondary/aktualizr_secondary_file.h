@@ -11,7 +11,7 @@ class AktualizrSecondaryFile : public AktualizrSecondary {
  public:
   static const std::string FileUpdateDefaultFile;
 
-  AktualizrSecondaryFile(const AktualizrSecondaryConfig& config);
+  explicit AktualizrSecondaryFile(const AktualizrSecondaryConfig& config);
   AktualizrSecondaryFile(const AktualizrSecondaryConfig& config, std::shared_ptr<INvStorage> storage,
                          std::shared_ptr<FileUpdateAgent> update_agent = nullptr);
 

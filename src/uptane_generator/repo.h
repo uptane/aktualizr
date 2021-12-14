@@ -22,7 +22,7 @@ struct Delegation {
   bool isMatched(const boost::filesystem::path &image_path) const {
     return (fnmatch(pattern.c_str(), image_path.c_str(), 0) == 0);
   }
-  operator bool() const { return (!name.empty() && !pattern.empty()); }
+  explicit operator bool() const { return (!name.empty() && !pattern.empty()); }
   std::string name;
   std::string pattern;
 

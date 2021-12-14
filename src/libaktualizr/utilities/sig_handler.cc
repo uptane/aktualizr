@@ -1,10 +1,10 @@
 #include "sig_handler.h"
 #include "logging/logging.h"
 
-std::atomic_uint SigHandler::signal_marker_;
-std::mutex SigHandler::exit_m_;
-std::condition_variable SigHandler::exit_cv_;
-bool SigHandler::exit_flag_;
+std::atomic_uint SigHandler::signal_marker_;   // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::mutex SigHandler::exit_m_;                // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::condition_variable SigHandler::exit_cv_;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+bool SigHandler::exit_flag_;                   // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 SigHandler& SigHandler::get() {
   static SigHandler handler;
