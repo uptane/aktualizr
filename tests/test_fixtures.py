@@ -813,7 +813,7 @@ class UptaneTestRepo:
 
         return target_hash
 
-    def add_ostree_target(self, id, rev_hash, target_name=None, expires_within_sec=(60 * 5)):
+    def add_ostree_target(self, id, rev_hash, target_name=None, expires_within_sec=(60 * 5), target_uri=None):
         # emulate the backend behavior on defining a target name for OSTREE target format
         target_name = rev_hash if target_name is None else "{}-{}".format(target_name, rev_hash)
         image_creation_cmdline = [self._repo_manager_exe,
@@ -823,6 +823,8 @@ class UptaneTestRepo:
                                   '--targetsha256', rev_hash,
                                   '--targetlength', '0',
                                   '--hwid', id[0]]
+        if target_uri is not None:
+            image_creation_cmdline += ["--url", target_uri]
         subprocess.run(image_creation_cmdline, check=True)
 
         expiration_time = time.time() + expires_within_sec

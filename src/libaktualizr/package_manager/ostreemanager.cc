@@ -108,9 +108,20 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
     error = nullptr;
   }
 
-  if (alt_remote == nullptr && !OstreeManager::addRemote(repo.get(), ostree_server, keys)) {
-    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
-                                    std::string("Error adding a default OSTree remote: ") + remote);
+  if (alt_remote == nullptr) {
+    std::string ostree_remote_uri;
+    // If the Target specifies a custom fetch uri, use that.
+    std::string uri_override = target.uri();
+    if (uri_override.empty()) {
+      ostree_remote_uri = ostree_server;
+    } else {
+      ostree_remote_uri = uri_override;
+    }
+    // addRemote overwrites any previous ostree remote that was set
+    if (!OstreeManager::addRemote(repo.get(), ostree_remote_uri, keys)) {
+      return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
+                                      std::string("Error adding a default OSTree remote: ") + remote);
+    }
   }
 
   g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));

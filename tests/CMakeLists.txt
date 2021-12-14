@@ -232,6 +232,11 @@ if(BUILD_OSTREE)
              COMMAND ${PROJECT_SOURCE_DIR}/tests/test_misc_ostree_update.py
              --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
     set_tests_properties(test_misc_ostree_update PROPERTIES LABELS "noptest")
+
+    add_test(NAME test_ostree_custom_uri
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/test_ostree_custom_uri.py
+            --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
+    set_tests_properties(test_ostree_custom_uri PROPERTIES LABELS "noptest")
 endif(BUILD_OSTREE)
 
 add_test(NAME test_aktualizr_kill
