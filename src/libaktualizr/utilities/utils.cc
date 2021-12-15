@@ -455,6 +455,7 @@ std::string Utils::randomUuid() {
 }
 
 // Note that this doesn't work with broken symlinks.
+// NOLINTNEXTLINE(misc-no-recursion)
 void Utils::copyDir(const boost::filesystem::path &from, const boost::filesystem::path &to) {
   boost::filesystem::remove_all(to);
 
@@ -766,6 +767,7 @@ std::vector<boost::filesystem::path> Utils::getDirEntriesByExt(const boost::file
   return entries;
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 void Utils::createDirectories(const boost::filesystem::path &path, mode_t mode) {
   boost::filesystem::path parent = path.parent_path();
   if (!parent.empty() && !boost::filesystem::exists(parent)) {
@@ -828,9 +830,9 @@ CURL *Utils::curlDupHandleWrapper(CURL *const curl_in, const bool using_pkcs11) 
 class SafeTempRoot {
  public:
   SafeTempRoot(const SafeTempRoot &) = delete;
-  SafeTempRoot(const SafeTempRoot &&) = delete;
+  SafeTempRoot(SafeTempRoot &&) = delete;
   SafeTempRoot operator=(const SafeTempRoot &) = delete;
-  SafeTempRoot operator=(const SafeTempRoot &&) = delete;
+  SafeTempRoot operator=(SafeTempRoot &&) = delete;
   // provide this as a static method so that we can use C++ static destructor
   // to remove the temp root
   static boost::filesystem::path &Get() {
@@ -863,7 +865,7 @@ class SafeTempRoot {
   boost::filesystem::path path;
 };
 
-std::string Utils::storage_root_path_;
+std::string Utils::storage_root_path_;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 void Utils::setStorageRootPath(const std::string &storage_root_path) { storage_root_path_ = storage_root_path; }
 
@@ -878,12 +880,13 @@ const char *Utils::getUserAgent() {
   return user_agent_.c_str();
 }
 
-std::string Utils::user_agent_;
+std::string Utils::user_agent_;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 void Utils::setCaPath(boost::filesystem::path path) { ca_path_ = std::move(path); }
 
 const char *Utils::getCaPath() { return ca_path_.c_str(); }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 boost::filesystem::path Utils::ca_path_{"/etc/ssl/certs"};
 
 TemporaryFile::TemporaryFile(const std::string &hint)

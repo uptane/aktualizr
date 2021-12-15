@@ -9,8 +9,13 @@ namespace Uptane {
 
 class RepositoryCommon {
  public:
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   RepositoryCommon(RepositoryType type_in) : type{type_in} {}
   virtual ~RepositoryCommon() = default;
+  RepositoryCommon(const RepositoryCommon &guard) = default;
+  RepositoryCommon(RepositoryCommon &&) = default;
+  RepositoryCommon &operator=(const RepositoryCommon &guard) = default;
+  RepositoryCommon &operator=(RepositoryCommon &&) = default;
   void initRoot(RepositoryType repo_type, const std::string &root_raw);
   void verifyRoot(const std::string &root_raw);
   int rootVersion() const { return root.version(); }

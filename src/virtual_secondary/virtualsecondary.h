@@ -10,20 +10,18 @@ namespace Primary {
 
 class VirtualSecondaryConfig : public ManagedSecondaryConfig {
  public:
+  static constexpr const char* const Type{"virtual"};
+
   VirtualSecondaryConfig() : ManagedSecondaryConfig(Type) {}
   explicit VirtualSecondaryConfig(const Json::Value& json_config);
 
   static std::vector<VirtualSecondaryConfig> create_from_file(const boost::filesystem::path& file_full_path);
   void dump(const boost::filesystem::path& file_full_path) const;
-
- public:
-  static const char* const Type;
 };
 
 class VirtualSecondary : public ManagedSecondary {
  public:
   explicit VirtualSecondary(Primary::VirtualSecondaryConfig sconfig_in);
-  ~VirtualSecondary() override = default;
 
   std::string Type() const override { return VirtualSecondaryConfig::Type; }
   data::InstallationResult putMetadata(const Uptane::Target& target) override;

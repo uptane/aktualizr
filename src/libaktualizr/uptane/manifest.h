@@ -14,7 +14,6 @@ class ManifestIssuer {
  public:
   using Ptr = std::shared_ptr<ManifestIssuer>;
 
- public:
   ManifestIssuer(std::shared_ptr<KeyManager> &key_mngr, Uptane::EcuSerial ecu_serial)
       : ecu_serial_(std::move(ecu_serial)), key_mngr_(key_mngr) {}
 

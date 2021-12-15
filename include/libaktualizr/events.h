@@ -20,8 +20,12 @@ namespace event {
 class BaseEvent {
  public:
   BaseEvent() = default;
-  BaseEvent(std::string variant_in) : variant(std::move(variant_in)) {}
+  explicit BaseEvent(std::string variant_in) : variant(std::move(variant_in)) {}
   virtual ~BaseEvent() = default;
+  BaseEvent(const BaseEvent&) = default;
+  BaseEvent(BaseEvent&&) = default;
+  BaseEvent& operator=(const BaseEvent&) = default;
+  BaseEvent& operator=(BaseEvent&&) = default;
 
   template <typename T>
   bool isTypeOf() {
@@ -73,7 +77,6 @@ class DownloadProgressReport : public BaseEvent {
     return (report.progress == DownloadProgressReport::ProgressCompletedValue);
   }
 
- public:
   DownloadProgressReport(Uptane::Target target_in, std::string description_in, unsigned int progress_in)
       : target{std::move(target_in)}, description{std::move(description_in)}, progress{progress_in} {
     variant = TypeName;

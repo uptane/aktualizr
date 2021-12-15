@@ -1,6 +1,8 @@
 #ifndef INITIALIZER_H_
 #define INITIALIZER_H_
 
+#include <string>
+
 #include "libaktualizr/secondaryinterface.h"
 
 #include "crypto/keymanager.h"

@@ -45,6 +45,10 @@ class OstreeManager : public PackageManagerInterface {
                 const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
                 Bootloader *bootloader = nullptr);
   ~OstreeManager() override;
+  OstreeManager(const OstreeManager &) = delete;
+  OstreeManager(OstreeManager &&) = delete;
+  OstreeManager &operator=(const OstreeManager &) = delete;
+  OstreeManager &operator=(OstreeManager &&) = delete;
   std::string name() const override { return "ostree"; }
   Json::Value getInstalledPackages() const override;
   virtual std::string getCurrentHash() const;

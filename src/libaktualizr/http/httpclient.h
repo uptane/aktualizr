@@ -19,18 +19,21 @@ class CurlGlobalInitWrapper {
  public:
   CurlGlobalInitWrapper() { curl_global_init(CURL_GLOBAL_DEFAULT); }
   ~CurlGlobalInitWrapper() { curl_global_cleanup(); }
-  CurlGlobalInitWrapper &operator=(const CurlGlobalInitWrapper &) = delete;
   CurlGlobalInitWrapper(const CurlGlobalInitWrapper &) = delete;
-  CurlGlobalInitWrapper &operator=(CurlGlobalInitWrapper &&) = delete;
   CurlGlobalInitWrapper(CurlGlobalInitWrapper &&) = delete;
+  CurlGlobalInitWrapper &operator=(const CurlGlobalInitWrapper &) = delete;
+  CurlGlobalInitWrapper &operator=(CurlGlobalInitWrapper &&) = delete;
 };
 
 class HttpClient : public HttpInterface {
  public:
   explicit HttpClient(const std::vector<std::string> *extra_headers = nullptr);
-  HttpClient(const std::string &socket);
-  HttpClient(const HttpClient & /*curl_in*/);
+  explicit HttpClient(const std::string &socket);
+  HttpClient(const HttpClient &curl_in);  // non-default!
   ~HttpClient() override;
+  HttpClient(HttpClient &&) = default;
+  HttpClient &operator=(const HttpClient &) = delete;
+  HttpClient &operator=(HttpClient &&) = default;
   HttpResponse get(const std::string &url, int64_t maxsize) override;
   HttpResponse post(const std::string &url, const std::string &content_type, const std::string &data) override;
   HttpResponse post(const std::string &url, const Json::Value &data) override;
@@ -50,13 +53,12 @@ class HttpClient : public HttpInterface {
  private:
   FRIEND_TEST(GetTest, download_speed_limit);
 
-  static CurlGlobalInitWrapper manageCurlGlobalInit_;
+  static const CurlGlobalInitWrapper manageCurlGlobalInit_;
   CURL *curl;
   curl_slist *headers;
   HttpResponse perform(CURL *curl_handler, int retry_times, int64_t size_limit);
   static curl_slist *curl_slist_dup(curl_slist *sl);
 
-  static CURLcode sslCtxFunction(CURL *handle, void *sslctx, void *parm);
   std::unique_ptr<TemporaryFile> tls_ca_file;
   std::unique_ptr<TemporaryFile> tls_cert_file;
   std::unique_ptr<TemporaryFile> tls_pkey_file;

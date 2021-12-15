@@ -5,7 +5,7 @@
 #include "libaktualizr/types.h"
 
 struct AKMetaCollection;
-typedef struct AKMetaCollection AKMetaCollection_t;
+using AKMetaCollection_t = struct AKMetaCollection;
 
 namespace Uptane {
 

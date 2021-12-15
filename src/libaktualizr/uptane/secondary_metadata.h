@@ -8,8 +8,7 @@ namespace Uptane {
 
 class SecondaryMetadata : public IMetadataFetcher {
  public:
-  SecondaryMetadata(MetaBundle meta_bundle_in);
-  SecondaryMetadata(SecondaryMetadata&&) = default;
+  explicit SecondaryMetadata(MetaBundle meta_bundle_in);
 
   void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Role& role,
                  Version version) const override;

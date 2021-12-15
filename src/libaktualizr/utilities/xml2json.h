@@ -8,7 +8,7 @@
 namespace xml2json {
 
 static inline void addSubArray(Json::Value &d, const std::string &key, const Json::Value &arr) {
-  if (arr.size() == 0) {
+  if (arr.empty()) {
     return;
   } else if (arr.size() == 1) {
     d[key] = arr[0];
@@ -19,6 +19,7 @@ static inline void addSubArray(Json::Value &d, const std::string &key, const Jso
 
 static const int MAX_DEPTH = 10;
 
+// NOLINTNEXTLINE(misc-no-recursion)
 static inline Json::Value treeJson(const boost::property_tree::ptree &tree, int depth = 0) {
   namespace bpt = boost::property_tree;
 
@@ -48,7 +49,7 @@ static inline Json::Value treeJson(const boost::property_tree::ptree &tree, int 
       continue;
     }
 
-    if (cur.key == "") {
+    if (cur.key.empty()) {
       cur.key = val;
     } else if (cur.key != val) {
       addSubArray(output, cur.key, cur.list);
@@ -59,13 +60,13 @@ static inline Json::Value treeJson(const boost::property_tree::ptree &tree, int 
     cur.list.append(treeJson(subtree, depth + 1));
   }
 
-  if (cur.key != "") {
+  if (!cur.key.empty()) {
     addSubArray(output, cur.key, cur.list);
   }
 
   {
     auto val = tree.get_value_optional<std::string>();
-    if (!!val && val.get() != "") {
+    if (!!val && !val.get().empty()) {
       if (leaf) {
         // <e>c</e> -> { "e": "c" }
         return val.get();
@@ -79,6 +80,7 @@ static inline Json::Value treeJson(const boost::property_tree::ptree &tree, int 
   return output;
 }
 
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
 static inline Json::Value xml2json(std::istream &is) {
   namespace bpt = boost::property_tree;
 

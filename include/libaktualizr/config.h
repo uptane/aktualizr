@@ -180,11 +180,17 @@ struct KeyManagerConfig {
  */
 class BaseConfig {
  public:
+  BaseConfig() = default;
   virtual ~BaseConfig() = default;
   void updateFromToml(const boost::filesystem::path& filename);
   virtual void updateFromPropertyTree(const boost::property_tree::ptree& pt) = 0;
 
  protected:
+  BaseConfig(const BaseConfig&) = default;
+  BaseConfig(BaseConfig&&) = default;
+  BaseConfig& operator=(const BaseConfig&) = default;
+  BaseConfig& operator=(BaseConfig&&) = default;
+
   void updateFromDirs(const std::vector<boost::filesystem::path>& configs);
 
   static void checkDirs(const std::vector<boost::filesystem::path>& configs) {

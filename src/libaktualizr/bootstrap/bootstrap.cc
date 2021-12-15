@@ -1,15 +1,12 @@
 #include "bootstrap.h"
 
-#include <cstdio>
-#include <fstream>
 #include <sstream>
 
 #include "crypto/crypto.h"
 #include "logging/logging.h"
 #include "utilities/utils.h"
 
-Bootstrap::Bootstrap(const boost::filesystem::path& provision_path, const std::string& provision_password)
-    : ca_(""), cert_(""), pkey_("") {
+Bootstrap::Bootstrap(const boost::filesystem::path& provision_path, const std::string& provision_password) {
   if (provision_path.empty()) {
     LOG_ERROR << "Provision path is empty!";
     throw std::runtime_error("Unable to parse bootstrap (shared) credentials");

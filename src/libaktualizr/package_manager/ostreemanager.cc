@@ -20,6 +20,7 @@
 #include "storage/invstorage.h"
 #include "utilities/utils.h"
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 AUTO_REGISTER_PACKAGE_MANAGER(PACKAGE_MANAGER_OSTREE, OstreeManager);
 
 static void aktualizr_progress_cb(OstreeAsyncProgress *progress, gpointer data) {
@@ -107,9 +108,20 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
     error = nullptr;
   }
 
-  if (alt_remote == nullptr && !OstreeManager::addRemote(repo.get(), ostree_server, keys)) {
-    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
-                                    std::string("Error adding a default OSTree remote: ") + remote);
+  if (alt_remote == nullptr) {
+    std::string ostree_remote_uri;
+    // If the Target specifies a custom fetch uri, use that.
+    std::string uri_override = target.uri();
+    if (uri_override.empty()) {
+      ostree_remote_uri = ostree_server;
+    } else {
+      ostree_remote_uri = uri_override;
+    }
+    // addRemote overwrites any previous ostree remote that was set
+    if (!OstreeManager::addRemote(repo.get(), ostree_remote_uri, keys)) {
+      return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
+                                      std::string("Error adding a default OSTree remote: ") + remote);
+    }
   }
 
   g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
@@ -397,8 +409,17 @@ Uptane::Target OstreeManager::getCurrent() const {
       return *it;
     }
   }
-
-  return Uptane::Target::Unknown();
+  // We haven't found a matching target. This can occur when a device is
+  // freshly manufactured and the factory image is in a delegated target.
+  // Aktualizr will have had no reason to fetch the relevant delegation, and it
+  // doesn't know where in the delegation tree on the server it might be.
+  // See https://github.com/uptane/aktualizr/issues/1 for more details. In this
+  // case attempt to construct an approximate Uptane target. By getting the
+  // hash correct the server has a chance to figure out what is running on the
+  // device.
+  Uptane::EcuMap ecus;
+  std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
+  return {"unknown", ecus, hashes, 0, "", "OSTREE"};
 }
 
 // used for bootloader rollback

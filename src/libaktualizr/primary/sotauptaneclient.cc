@@ -582,6 +582,7 @@ void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, u
   }
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetHelper(const Uptane::Targets &cur_targets,
                                                                    const Uptane::Target &queried_target,
                                                                    const int level, const bool terminating,
@@ -627,6 +628,7 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetHelper(const Uptane:
       throw Uptane::Exception("image", "Inconsistent delegations");
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion)
     auto found_target = findTargetHelper(delegation, queried_target, level + 1, is_terminating->second, offline);
     if (found_target != nullptr) {
       return found_target;

@@ -5,6 +5,7 @@
 
 #include "logging/logging.h"
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::map<std::string, PackageManagerBuilder> *registered_pkgms_;
 
 bool PackageManagerFactory::registerPackageManager(const char *name, PackageManagerBuilder builder) {

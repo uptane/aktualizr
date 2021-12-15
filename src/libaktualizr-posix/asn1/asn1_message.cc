@@ -23,7 +23,7 @@ int Asn1StringAppendCallback(const void* buffer, size_t size, void* priv) {
  * priv is a SocketHandle
  */
 int Asn1SocketWriteCallback(const void* buffer, size_t size, void* priv) {
-  auto sock = reinterpret_cast<int*>(priv);  // NOLINT
+  auto* sock = reinterpret_cast<int*>(priv);
   assert(sock != nullptr);
   assert(-1 < *sock);
 
@@ -70,7 +70,7 @@ Asn1Message::Ptr Asn1Rpc(const Asn1Message::Ptr& tx, int con_fd) {
     res.code = RC_FAIL;
     received = recv(con_fd, buffer.Tail(), buffer.TailSpace(), 0);
     if (received < 0) {
-      LOG_ERROR << "Failed to read data from a coonnection socket: " << strerror(errno);
+      LOG_ERROR << "Failed to read data from a connection socket: " << strerror(errno);
       break;
     }
     LOG_TRACE << "Asn1Rpc read " << Utils::toBase64(std::string(buffer.Tail(), static_cast<size_t>(received)));

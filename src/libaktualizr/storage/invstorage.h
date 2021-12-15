@@ -20,7 +20,7 @@ class SQLStorage;
 using store_data_t = void (INvStorage::*)(const std::string&);
 using load_data_t = bool (INvStorage::*)(std::string*) const;
 
-typedef std::vector<std::pair<Uptane::EcuSerial, Uptane::HardwareIdentifier>> EcuSerials;
+using EcuSerials = std::vector<std::pair<Uptane::EcuSerial, Uptane::HardwareIdentifier>>;
 
 // kUnused was previously kNotRegistered, but re-registration is now possible so
 // that is no longer a misconfiguration.
@@ -44,6 +44,10 @@ class INvStorage {
  public:
   explicit INvStorage(StorageConfig config) : config_(std::move(config)) {}
   virtual ~INvStorage() = default;
+  INvStorage(const INvStorage&) = delete;
+  INvStorage(INvStorage&&) = delete;
+  INvStorage& operator=(const INvStorage&) = delete;
+  INvStorage& operator=(INvStorage&&) = delete;
   virtual StorageType type() = 0;
   virtual void storePrimaryKeys(const std::string& public_key, const std::string& private_key) = 0;
   virtual bool loadPrimaryKeys(std::string* public_key, std::string* private_key) const = 0;

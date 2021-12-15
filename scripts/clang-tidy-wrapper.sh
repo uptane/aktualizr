@@ -12,10 +12,5 @@ if [[ ! -e "${CMAKE_BINARY_DIR}/compile_commands.json" ]]; then
   exit 1
 fi
 
-# Filter out anything that we aren't trying to compile. Older clang-tidy
-# versions (<=6) skipped them automatically.
-if grep -q "${FILE}" "${CMAKE_BINARY_DIR}/compile_commands.json"; then
-  ${CLANG_TIDY} -quiet -header-filter="\(${CMAKE_SOURCE_DIR}|\\.\\.\)/src/.*" --extra-arg-before=-Wno-unknown-warning-option -format-style=file -p "${CMAKE_BINARY_DIR}" "${FILE}"
-else
-  echo "Skipping ${FILE}"
-fi
+${CLANG_TIDY} -quiet -header-filter="\(\(${CMAKE_SOURCE_DIR}|\\.\\.\)/src/|include/libaktualizr/\).*" \
+  --extra-arg-before=-Wno-unknown-warning-option -format-style=file -p "${CMAKE_BINARY_DIR}" "${FILE}"

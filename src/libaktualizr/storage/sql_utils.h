@@ -4,6 +4,8 @@
 #include <list>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
+#include <string>
 
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
@@ -21,14 +23,12 @@ struct SQLBlob {
 
 class SQLException : public std::runtime_error {
  public:
-  SQLException(const std::string& what = "SQL error") : std::runtime_error(what) {}
-  ~SQLException() noexcept override = default;
+  explicit SQLException(const std::string& what = "SQL error") : std::runtime_error(what) {}
 };
 
 class SQLInternalException : public SQLException {
  public:
-  SQLInternalException(const std::string& what = "SQL internal error") : SQLException(what) {}
-  ~SQLInternalException() noexcept override = default;
+  explicit SQLInternalException(const std::string& what = "SQL internal error") : SQLException(what) {}
 };
 
 class SQLiteStatement {
@@ -127,7 +127,7 @@ class SQLiteStatement {
 };
 
 // Unique ownership SQLite3 connection
-extern std::mutex sql_mutex;
+const extern std::mutex sql_mutex;
 class SQLite3Guard {
  public:
   sqlite3* get() { return handle_.get(); }
@@ -164,7 +164,8 @@ class SQLite3Guard {
     }
   }
   SQLite3Guard(const SQLite3Guard& guard) = delete;
-  SQLite3Guard operator=(const SQLite3Guard& guard) = delete;
+  SQLite3Guard& operator=(const SQLite3Guard& guard) = delete;
+  SQLite3Guard& operator=(SQLite3Guard&&) = delete;
 
   int exec(const char* sql, int (*callback)(void*, int, char**, char**), void* cb_arg) {
     return sqlite3_exec(handle_.get(), sql, callback, cb_arg, nullptr);

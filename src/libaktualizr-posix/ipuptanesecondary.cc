@@ -1,3 +1,5 @@
+#include "ipuptanesecondary.h"
+
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
@@ -6,9 +8,9 @@
 
 #include "asn1/asn1_message.h"
 #include "der_encoder.h"
-#include "ipuptanesecondary.h"
 #include "logging/logging.h"
-#include "storage/invstorage.h"
+#include "uptane/tuf.h"
+#include "utilities/utils.h"
 
 namespace Uptane {
 
@@ -338,7 +340,7 @@ Manifest IpUptaneSecondary::getManifest() const {
     LOG_ERROR << "Manifest wasn't in json format";
     return Json::Value();
   }
-  std::string manifest = ToString(r->manifest.choice.json);  // NOLINT
+  std::string manifest = ToString(r->manifest.choice.json);  // NOLINT(cppcoreguidelines-pro-type-union-access)
   return Utils::parseJSON(manifest);
 }
 
@@ -458,8 +460,7 @@ data::InstallationResult IpUptaneSecondary::install_v2(const Uptane::Target& tar
 }
 
 data::InstallationResult IpUptaneSecondary::downloadOstreeRev(const Uptane::Target& target) {
-  LOG_INFO << "Instructing Secondary ( " << getSerial() << " ) to download OSTree commit ( " << target.sha256Hash()
-           << " )";
+  LOG_INFO << "Instructing Secondary " << getSerial() << " to download OSTree commit " << target.sha256Hash();
   const std::string tls_creds = secondary_provider_->getTreehubCredentials();
   Asn1Message::Ptr req(Asn1Message::Empty());
   req->present(static_cast<AKIpUptaneMes_PR>(AKIpUptaneMes_PR_downloadOstreeRevReq));

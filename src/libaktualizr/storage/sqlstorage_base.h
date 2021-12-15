@@ -13,12 +13,12 @@ enum class DbVersion : int32_t { kEmpty = -1, kInvalid = -2 };
 class StorageLock {
  public:
   StorageLock() = default;
-  StorageLock(boost::filesystem::path path);
-  StorageLock(StorageLock &other) = delete;
-  StorageLock &operator=(StorageLock &other) = delete;
-  StorageLock(StorageLock &&other) = default;
-  StorageLock &operator=(StorageLock &&other) = default;
+  explicit StorageLock(boost::filesystem::path path);
   virtual ~StorageLock();
+  StorageLock(const StorageLock &other) = delete;
+  StorageLock(StorageLock &&other) = default;
+  StorageLock &operator=(const StorageLock &other) = delete;
+  StorageLock &operator=(StorageLock &&other) = default;
 
   class locked_exception : std::runtime_error {
    public:
@@ -35,7 +35,6 @@ class SQLStorageBase {
   explicit SQLStorageBase(boost::filesystem::path sqldb_path, bool readonly, std::vector<std::string> schema_migrations,
                           std::vector<std::string> schema_rollback_migrations, std::string current_schema,
                           int current_schema_version);
-  ~SQLStorageBase() = default;
   std::string getTableSchemaFromDb(const std::string &tablename);
   bool dbMigrateForward(int version_from, int version_to = 0);
   bool dbMigrateBackward(int version_from, int version_to = 0);
