@@ -215,6 +215,18 @@ class Aktualizr {
   std::future<result::Install> Install(const std::vector<Uptane::Target>& updates);
 
   /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of UptaneCycle() for the offline-update case.
+   */
+  bool OfflineCheckAndInstall(const boost::filesystem::path &source_path);
+
+  /**
+   * TODO: [OFFUPD] Remove after MVP.
+   * Check if an offline-update is available.
+   */
+  bool OfflineUpdateAvailable();
+
+  /**
    * SetInstallationRawReport allows setting a custom raw report field in the device installation result.
    *
    * @note An invocation of this method will have effect only after call of Aktualizr::Install and before calling
@@ -351,6 +363,17 @@ class Aktualizr {
   // Make sure this is declared before SotaUptaneClient to prevent Valgrind
   // complaints with destructors.
   Config config_;
+
+  /**
+   * TODO: [OFFUPD] Remove after MVP.
+   */
+  enum class OffUpdSourceState {
+    Unknown,
+    SourceDoesNotExist,
+    SourceExistsNoContent,
+    SourceExists,
+  };
+  OffUpdSourceState offupd_source_state_{OffUpdSourceState::SourceDoesNotExist};
 
  protected:
   Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in, const std::shared_ptr<HttpInterface>& http_in);

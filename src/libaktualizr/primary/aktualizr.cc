@@ -1,4 +1,5 @@
 #include <chrono>
+#include <boost/filesystem.hpp>
 
 #include <sodium.h>
 
@@ -11,6 +12,8 @@
 
 using std::make_shared;
 using std::shared_ptr;
+
+namespace bf = boost::filesystem;
 
 Aktualizr::Aktualizr(const Config &config)
     : Aktualizr(config, INvStorage::newStorage(config.storage), std::make_shared<HttpClient>()) {}
@@ -84,13 +87,41 @@ std::future<void> Aktualizr::RunForever() {
 
     std::unique_lock<std::mutex> l(exit_cond_.m);
     while (true) {
-      if (!UptaneCycle()) {
-        break;
+      // TODO: [OFFUPD] The "!enable_offline_updates" below should be removed after the MVP.
+      if (config_.uptane.enable_online_updates && !config_.uptane.enable_offline_updates) {
+        if (!UptaneCycle()) {
+          break;
+        }
       }
 
-      if (exit_cond_.cv.wait_for(l, std::chrono::seconds(config_.uptane.polling_sec),
-                                 [this] { return exit_cond_.flag; })) {
-        break;
+#if 1 // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
+      if (config_.uptane.enable_offline_updates) {
+        // Check update directory while waiting for next polling cycle.
+        bool quit = false;
+        for (auto loop = config_.uptane.polling_sec; loop > 0; loop--) {
+          if (OfflineUpdateAvailable()) {
+            if (!OfflineCheckAndInstall(config_.uptane.offline_updates_source)) {
+              quit = true;
+            }
+          }
+          if (exit_cond_.cv.wait_for(l, std::chrono::seconds(1),
+                                     [this] { return exit_cond_.flag; })) {
+            quit = true;
+            break;
+          }
+        }
+        if (quit) {
+          break;
+        }
+      }
+      else
+#endif
+      {
+        // Wait for next polling cycle.
+        if (exit_cond_.cv.wait_for(l, std::chrono::seconds(config_.uptane.polling_sec),
+                                   [this] { return exit_cond_.flag; })) {
+          break;
+        }
       }
     }
     uptane_client_->completeInstall();
@@ -239,3 +270,34 @@ void Aktualizr::DeleteStoredTarget(const Uptane::Target &target) { uptane_client
 std::ifstream Aktualizr::OpenStoredTarget(const Uptane::Target &target) {
   return uptane_client_->openStoredTarget(target);
 }
+
+#if 1 // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
+bool Aktualizr::OfflineUpdateAvailable() {
+  static const std::string update_subdir{"update"};
+
+  OffUpdSourceState old_state = offupd_source_state_;
+  OffUpdSourceState cur_state = OffUpdSourceState::Unknown;
+
+  if (bf::exists(config_.uptane.offline_updates_source)) {
+    if (bf::is_directory(config_.uptane.offline_updates_source / update_subdir)) {
+      cur_state = OffUpdSourceState::SourceExists;
+    } else {
+      cur_state = OffUpdSourceState::SourceExistsNoContent;
+    }
+  } else {
+    cur_state = OffUpdSourceState::SourceDoesNotExist;
+  }
+
+  offupd_source_state_ = cur_state;
+  // LOG_INFO << "OfflineUpdateAvailable: " << int(old_state) << " -> " << int(cur_state);
+
+  return (old_state == OffUpdSourceState::SourceDoesNotExist &&
+          cur_state == OffUpdSourceState::SourceExists);
+}
+
+bool Aktualizr::OfflineCheckAndInstall(const boost::filesystem::path &source_path) {
+  // TODO: [OFFUPD] IMPLEMENT THIS.
+  LOG_INFO << "OfflineCheckAndInstall: called for path " << source_path.string();
+  return true;
+}
+#endif // defined(BUILD_OFFLINE_UPDATES)

@@ -72,6 +72,10 @@ struct UptaneConfig {
   bool force_install_completion{false};
   boost::filesystem::path secondary_config_file;
   uint64_t secondary_preinstall_wait_sec{600U};
+  bool enable_online_updates{true};
+  bool enable_offline_updates{false};
+  // TODO: [OFFUPD] This might be removed after the MVP.
+  boost::filesystem::path offline_updates_source{"/mnt/offline-updates/"};
 
   void updateFromPropertyTree(const boost::property_tree::ptree& pt);
   void writeToStream(std::ostream& out_stream) const;
