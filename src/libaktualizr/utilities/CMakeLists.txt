@@ -1,6 +1,7 @@
 set(SOURCES aktualizr_version.cc
             apiqueue.cc
             dequeue_buffer.cc
+            results.cc
             sig_handler.cc
             timer.cc
             types.cc
