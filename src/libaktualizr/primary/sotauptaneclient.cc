@@ -1250,6 +1250,9 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
   data::InstallationResult result{data::ResultCode::Numeric::kOk, ""};
   const int last_root_version = Uptane::extractVersionUntrusted(latest_root);
   const int sec_root_version = secondary.getRootVersion((repo == Uptane::RepositoryType::Director()));
+  // If sec_root_version is 0, assume either the Secondary doesn't have Root
+  // metadata or doesn't support the Root version request. Continue on and hope
+  // for the best.
   if (sec_root_version < 0) {
     LOG_WARNING << "Secondary with serial " << secondary.getSerial() << " reported an invalid " << repo
                 << " repo Root version: " << sec_root_version;
