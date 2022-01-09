@@ -174,7 +174,6 @@ class SotaUptaneClient {
   std::unique_ptr<ReportQueue> report_queue;
   std::shared_ptr<SecondaryProvider> secondary_provider_;
   std::shared_ptr<event::Channel> events_channel;
-  boost::signals2::scoped_connection conn;
   std::exception_ptr last_exception;
   // ecu_serial => secondary*
   std::map<Uptane::EcuSerial, SecondaryInterface::Ptr> secondaries;

@@ -721,7 +721,7 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
   }
 
   // Note: handle exceptions from here so that we can send reports and
-  // DownloadTargetComple events in all cases. We might want to move these to
+  // DownloadTargetComplete events in all cases. We might want to move these to
   // downloadImages but aktualizr-lite currently calls this method directly.
 
   bool success = false;

@@ -78,7 +78,7 @@ TEST(Provisioner, InitializeTwice) {
   std::string private_key1;
   EXPECT_FALSE(storage->loadPrimaryKeys(&public_key1, &private_key1));
 
-  // Intialize and verify that the storage contains what we expect.
+  // Initialize and verify that the storage contains what we expect.
   {
     auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
 
@@ -93,7 +93,7 @@ TEST(Provisioner, InitializeTwice) {
     EXPECT_NE(private_key1, "");
   }
 
-  // Intialize again and verify that nothing has changed.
+  // Initialize again and verify that nothing has changed.
   {
     auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
     ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
