@@ -248,7 +248,7 @@ void INvStorage::FSSToSQLS(FSStorageRead& fs_storage, SQLStorage& sql_storage) {
   // additionally migrate the whole Root metadata chain
   std::string latest_root;
   for (auto repo : {Uptane::RepositoryType::Director(), Uptane::RepositoryType::Image()}) {
-    if (fs_storage.loadLatestRoot(&latest_root, Uptane::RepositoryType::Director())) {
+    if (fs_storage.loadLatestRoot(&latest_root, repo)) {
       int latest_version = Uptane::extractVersionUntrusted(latest_root);
       for (int version = 0; version <= latest_version; ++version) {
         std::string root;
