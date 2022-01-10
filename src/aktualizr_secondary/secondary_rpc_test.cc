@@ -804,8 +804,8 @@ TEST(SecondaryTcpServer, TestIpSecondaryIfSecondaryIsNotRunning) {
   Uptane::Target target = target_file.createTarget(package_manager);
 
   // Expect failures since the Secondary is not running.
-  EXPECT_EQ(ip_secondary->getRootVersion(true), -1);
-  EXPECT_EQ(ip_secondary->getRootVersion(false), -1);
+  EXPECT_EQ(ip_secondary->getRootVersion(true), 0);
+  EXPECT_EQ(ip_secondary->getRootVersion(false), 0);
   EXPECT_FALSE(ip_secondary->putRoot("director-root-v2", true).isSuccess());
   EXPECT_FALSE(ip_secondary->putRoot("image-root-v2", false).isSuccess());
   EXPECT_FALSE(ip_secondary->putMetadata(target).isSuccess());
