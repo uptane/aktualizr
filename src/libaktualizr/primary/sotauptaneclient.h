@@ -36,15 +36,21 @@
 class SotaUptaneClient {
  public:
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
-                   std::shared_ptr<event::Channel> events_channel_in,
-                   Uptane::EcuSerial primary_serial = Uptane::EcuSerial::Unknown(),
-                   Uptane::HardwareIdentifier hwid = Uptane::HardwareIdentifier::Unknown());
+                   std::shared_ptr<event::Channel> events_channel_in);
 
   SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in)
       : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr) {}
 
   void initialize();
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
+
+  /**
+   * Make one attempt at provisioning on-line.
+   * If the device is already provisioned then this is a no-op.
+   * @return True if the device has completed on-line provisioning
+   */
+  bool attemptProvision();
+
   result::Download downloadImages(const std::vector<Uptane::Target> &targets,
                                   const api::FlowControlToken *token = nullptr);
 
@@ -60,10 +66,9 @@ class SotaUptaneClient {
   void campaignAccept(const std::string &campaign_id);
   void campaignDecline(const std::string &campaign_id);
   void campaignPostpone(const std::string &campaign_id);
-
   bool hasPendingUpdates() const;
-  bool isInstallCompletionRequired() const;
-  void completeInstall() const;
+  bool isInstallCompletionRequired();
+  void completeInstall();
   std::vector<Uptane::Target> getStoredTargets() const { return package_manager_->getTargetFiles(); }
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
   std::ifstream openStoredTarget(const Uptane::Target &target);
@@ -142,15 +147,15 @@ class SotaUptaneClient {
   void checkDirectorMetaOffline();
   void checkImageMetaOffline();
 
-  void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report) const;
+  void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report);
   std::unique_ptr<Uptane::Target> findTargetInDelegationTree(const Uptane::Target &target, bool offline);
   std::unique_ptr<Uptane::Target> findTargetHelper(const Uptane::Targets &cur_targets,
                                                    const Uptane::Target &queried_target, int level, bool terminating,
                                                    bool offline);
   Uptane::LazyTargetsList allTargets() const;
   void checkAndUpdatePendingSecondaries();
-  const Uptane::EcuSerial &primaryEcuSerial() const { return primary_ecu_serial_; }
-  boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial) const;
+  Uptane::EcuSerial primaryEcuSerial() { return provisioner_.PrimaryEcuSerial(); }
+  boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial);
 
   template <class T, class... Args>
   void sendEvent(Args &&... args) {
@@ -178,8 +183,6 @@ class SotaUptaneClient {
   // ecu_serial => secondary*
   std::map<Uptane::EcuSerial, SecondaryInterface::Ptr> secondaries;
   std::mutex download_mutex;
-  Uptane::EcuSerial primary_ecu_serial_;
-  Uptane::HardwareIdentifier primary_ecu_hw_id_;
   Provisioner provisioner_;
   Json::Value custom_hardware_info_{Json::nullValue};
 };

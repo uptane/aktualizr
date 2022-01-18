@@ -53,7 +53,8 @@ void initKeyTests(Config& config, Primary::VirtualSecondaryConfig& ecu_config1,
 // SotaUptaneClient. The name is carefully constructed for this purpose.
 class UptaneKey_Check_Test {
  public:
-  static void checkKeyTests(std::shared_ptr<INvStorage>& storage, const SotaUptaneClient& sota_client) {
+  static void checkKeyTests(std::shared_ptr<INvStorage>& storage, SotaUptaneClient& sota_client) {
+    EXPECT_NO_THROW(sota_client.initialize());
     // Verify that TLS credentials are valid.
     std::string ca;
     std::string cert;
@@ -116,7 +117,6 @@ TEST(UptaneKey, CheckAllKeys) {
   auto sota_client = std_::make_unique<UptaneTestCommon::TestUptaneClient>(config, storage, http);
   sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config1));
   sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config2));
-  EXPECT_NO_THROW(sota_client->initialize());
   UptaneKey_Check_Test::checkKeyTests(storage, *sota_client);
 }
 
@@ -139,7 +139,6 @@ TEST(UptaneKey, RecoverWithoutKeys) {
     auto sota_client = std_::make_unique<UptaneTestCommon::TestUptaneClient>(config, storage, http);
     sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config1));
     sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config2));
-    EXPECT_NO_THROW(sota_client->initialize());
     UptaneKey_Check_Test::checkKeyTests(storage, *sota_client);
 
     // Remove TLS keys but keep ECU keys and try to initialize again.
@@ -151,7 +150,6 @@ TEST(UptaneKey, RecoverWithoutKeys) {
     auto sota_client = std_::make_unique<UptaneTestCommon::TestUptaneClient>(config, storage, http);
     sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config1));
     sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config2));
-    EXPECT_NO_THROW(sota_client->initialize());
     UptaneKey_Check_Test::checkKeyTests(storage, *sota_client);
 
     // Remove ECU keys but keep TLS keys and try to initialize again.
@@ -168,7 +166,6 @@ TEST(UptaneKey, RecoverWithoutKeys) {
     auto sota_client = std_::make_unique<UptaneTestCommon::TestUptaneClient>(config, storage, http);
     sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config1));
     sota_client->addSecondary(std::make_shared<Primary::VirtualSecondary>(ecu_config2));
-    EXPECT_NO_THROW(sota_client->initialize());
     UptaneKey_Check_Test::checkKeyTests(storage, *sota_client);
   }
 }
