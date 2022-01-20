@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <thread>
 #include "logging/logging.h"
 #include "utilities/utils.h"
 #include "device_data_proxy.h"
