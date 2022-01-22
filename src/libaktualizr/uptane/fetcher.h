@@ -72,6 +72,14 @@ class OfflineUpdateFetcher : public IMetadataFetcher {
     fetchRole(result, maxsize, repo, role, Version());
   }
 
+  boost::filesystem::path getBasePath() const { return source_path_; }
+  boost::filesystem::path getImagesPath() const {
+    return source_path_.empty() ? source_path_ : (source_path_ / "images");
+  }
+  boost::filesystem::path getMetadataPath() const {
+    return source_path_.empty() ? source_path_ : (source_path_ / "metadata");
+  }
+
  private:
   boost::filesystem::path source_path_;
 };

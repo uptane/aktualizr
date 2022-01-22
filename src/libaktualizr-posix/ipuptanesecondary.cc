@@ -413,7 +413,7 @@ data::InstallationResult IpUptaneSecondary::sendFirmware_v2(const Uptane::Target
   }
 }
 
-data::InstallationResult IpUptaneSecondary::install(const Uptane::Target& target) {
+data::InstallationResult IpUptaneSecondary::install(const Uptane::Target& target, const InstallInfo&) {
   data::InstallationResult install_result;
   if (protocol_version == 2) {
     install_result = install_v2(target);

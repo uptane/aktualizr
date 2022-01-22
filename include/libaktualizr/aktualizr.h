@@ -241,7 +241,7 @@ class Aktualizr {
    * TODO: [OFFUPD] Explain.
    * Counterpart of Install() for the offline-update case.
    */
-  std::future<result::Install> OfflineInstall(const std::vector<Uptane::Target>& updates);
+  std::future<result::Install> InstallOffline(const std::vector<Uptane::Target>& updates);
 
   /**
    * TODO: [OFFUPD] Explain.

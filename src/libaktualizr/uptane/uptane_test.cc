@@ -594,7 +594,7 @@ class SecondaryInterfaceMock : public SecondaryInterface {
   virtual data::InstallationResult sendFirmware(const Uptane::Target &) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
-  virtual data::InstallationResult install(const Uptane::Target &) override {
+  virtual data::InstallationResult install(const Uptane::Target &, const InstallInfo &) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
 

@@ -27,7 +27,7 @@ class VirtualSecondary : public ManagedSecondary {
   data::InstallationResult putMetadata(const Uptane::Target& target) override;
   data::InstallationResult putRoot(const std::string& root, bool director) override;
   data::InstallationResult sendFirmware(const Uptane::Target& target) override;
-  data::InstallationResult install(const Uptane::Target& target) override;
+  data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
 
   bool ping() const override { return true; }
 };

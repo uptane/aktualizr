@@ -56,7 +56,7 @@ class SotaUptaneClient {
   void sendDeviceData();
   result::UpdateCheck fetchMeta();
   bool putManifest(const Json::Value &custom = Json::nullValue);
-  result::Install uptaneInstall(const std::vector<Uptane::Target> &updates);
+  result::Install uptaneInstall(const std::vector<Uptane::Target> &updates, UpdateType utype = UpdateType::kOnline);
   result::CampaignCheck campaignCheck();
   void campaignAccept(const std::string &campaign_id);
   void campaignDecline(const std::string &campaign_id);
@@ -77,6 +77,7 @@ class SotaUptaneClient {
   result::UpdateCheck fetchMetaOffUpd(const boost::filesystem::path &source_path);
   result::Download fetchImagesOffUpd(const std::vector<Uptane::Target> &targets,
                                      const api::FlowControlToken *token = nullptr);
+  result::Install uptaneInstallOffUpd(const std::vector<Uptane::Target> &updates);
 #endif
 
  private:
@@ -153,11 +154,14 @@ class SotaUptaneClient {
   void reportAktualizrConfiguration();
   bool waitSecondariesReachable(const std::vector<Uptane::Target> &updates);
   void storeInstallationFailure(const data::InstallationResult &result);
-  data::InstallationResult rotateSecondaryRoot(Uptane::RepositoryType repo, SecondaryInterface &secondary);
+  data::InstallationResult rotateSecondaryRoot(Uptane::RepositoryType repo, SecondaryInterface &secondary,
+                                               UpdateType utype);
   void sendMetadataToEcus(const std::vector<Uptane::Target> &targets, data::InstallationResult *result,
-                          std::string *raw_installation_report);
-  std::future<data::InstallationResult> sendFirmwareAsync(SecondaryInterface &secondary, const Uptane::Target &target);
-  std::vector<result::Install::EcuReport> sendImagesToEcus(const std::vector<Uptane::Target> &targets);
+                          std::string *raw_installation_report, UpdateType utype);
+  std::future<data::InstallationResult> sendFirmwareAsync(SecondaryInterface &secondary, const Uptane::Target &target,
+                                                          UpdateType utype);
+  std::vector<result::Install::EcuReport> sendImagesToEcus(const std::vector<Uptane::Target> &targets,
+                                                           UpdateType utype);
 
   bool putManifestSimple(const Json::Value &custom = Json::nullValue);
   void getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count = nullptr);

@@ -307,12 +307,8 @@ std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Up
   return api_queue_->enqueue(task);
 }
 
-std::future<result::Install> Aktualizr::OfflineInstall(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Install()> task([this, updates] {
-    // TODO: return uptane_client_->uptaneInstallOffUpd(updates, token);
-    LOG_WARNING << "OfflineInstall() is NOT implemented";
-    return result::Install();
-  });
+std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane::Target> &updates) {
+  std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstallOffUpd(updates); });
   return api_queue_->enqueue(task);
 }
 
@@ -339,7 +335,7 @@ bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_pat
     return true;
   }
 
-  OfflineInstall(download_result.updates).get();
+  InstallOffline(download_result.updates).get();
 
   // TODO: [OFFUPD] Do we need this?
   if (uptane_client_->isInstallCompletionRequired()) {
