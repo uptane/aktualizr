@@ -158,7 +158,7 @@ class SotaUptaneClient {
   boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial);
 
   template <class T, class... Args>
-  void sendEvent(Args &&... args) {
+  void sendEvent(Args &&...args) {
     std::shared_ptr<event::BaseEvent> event = std::make_shared<T>(std::forward<Args>(args)...);
     if (events_channel) {
       (*events_channel)(std::move(event));
