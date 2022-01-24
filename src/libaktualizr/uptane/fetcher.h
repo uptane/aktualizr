@@ -1,6 +1,8 @@
 #ifndef UPTANE_FETCHER_H_
 #define UPTANE_FETCHER_H_
 
+#include <boost/filesystem.hpp>
+
 #include "http/httpinterface.h"
 #include "libaktualizr/config.h"
 #include "tuf.h"
@@ -51,6 +53,35 @@ class Fetcher : public IMetadataFetcher {
   std::shared_ptr<HttpInterface> http;
   std::string repo_server;
   std::string director_server;
+};
+
+class OfflineUpdateFetcher : public IMetadataFetcher {
+ public:
+  OfflineUpdateFetcher(const boost::filesystem::path& source_path) : source_path_(source_path) {}
+  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
+                 Version version) const override {
+    // TODO: [OFFUPD] IMPLEMENT THIS METHOD.
+    (void)result;
+    (void)maxsize;
+    (void)repo;
+    (void)role;
+    (void)version;
+  }
+  void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
+                       const Uptane::Role& role) const override {
+    fetchRole(result, maxsize, repo, role, Version());
+  }
+
+  boost::filesystem::path getBasePath() const { return source_path_; }
+  boost::filesystem::path getImagesPath() const {
+    return source_path_.empty() ? source_path_ : (source_path_ / "images");
+  }
+  boost::filesystem::path getMetadataPath() const {
+    return source_path_.empty() ? source_path_ : (source_path_ / "metadata");
+  }
+
+ private:
+  boost::filesystem::path source_path_;
 };
 
 }  // namespace Uptane

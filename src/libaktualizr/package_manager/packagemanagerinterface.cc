@@ -183,6 +183,21 @@ bool PackageManagerInterface::fetchTarget(const Uptane::Target& target, Uptane::
   return result;
 }
 
+#ifdef BUILD_OFFLINE_UPDATES
+bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target, Uptane::OfflineUpdateFetcher& fetcher,
+                                                const KeyManager& keys, const FetcherProgressCb& progress_cb,
+                                                const api::FlowControlToken* token) {
+  (void)target;
+  (void)fetcher;
+  (void)keys;
+  (void)progress_cb;
+  (void)token;
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD (FETCH GENERIC BINARY TARGETS FROM THE TAKEOUT IMAGE).
+  LOG_WARNING << "PackageManagerInterface::fetchTargetOffUpd() NOT IMPLEMENTED";
+  return true;
+}
+#endif
+
 TargetStatus PackageManagerInterface::verifyTarget(const Uptane::Target& target) const {
   auto target_exists = checkTargetFile(target);
   if (!target_exists) {

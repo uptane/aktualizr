@@ -40,9 +40,7 @@ void Aktualizr::Initialize() {
   api_queue_->run();
 }
 
-void Aktualizr::DisableUpdates(bool status) {
-  updates_disabled_ = status;
-}
+void Aktualizr::DisableUpdates(bool status) { updates_disabled_ = status; }
 
 bool Aktualizr::UptaneCycle() {
   result::UpdateCheck update_result = CheckUpdates().get();
@@ -100,7 +98,7 @@ std::future<void> Aktualizr::RunForever() {
         bool quit = false;
         for (auto loop = config_.uptane.polling_sec; loop > 0; loop--) {
           if (OfflineUpdateAvailable()) {
-            if (!OfflineCheckAndInstall(config_.uptane.offline_updates_source)) {
+            if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
               quit = true;
             }
           }
@@ -271,7 +269,7 @@ std::ifstream Aktualizr::OpenStoredTarget(const Uptane::Target &target) {
   return uptane_client_->openStoredTarget(target);
 }
 
-#if 1 // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
+#ifdef BUILD_OFFLINE_UPDATES
 bool Aktualizr::OfflineUpdateAvailable() {
   static const std::string update_subdir{"update"};
 
@@ -295,9 +293,65 @@ bool Aktualizr::OfflineUpdateAvailable() {
           cur_state == OffUpdSourceState::SourceExists);
 }
 
-bool Aktualizr::OfflineCheckAndInstall(const boost::filesystem::path &source_path) {
-  // TODO: [OFFUPD] IMPLEMENT THIS.
-  LOG_INFO << "OfflineCheckAndInstall: called for path " << source_path.string();
+std::future<result::UpdateCheck> Aktualizr::CheckUpdatesOffline(const boost::filesystem::path &source_path) {
+  std::function<result::UpdateCheck()> task(
+      [this, source_path] { return uptane_client_->fetchMetaOffUpd(source_path); });
+  return api_queue_->enqueue(task);
+}
+
+std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Uptane::Target> &updates) {
+  std::function<result::Download(const api::FlowControlToken *)> task(
+      [this, updates](const api::FlowControlToken *token) {
+        return uptane_client_->fetchImagesOffUpd(updates, token);
+      });
+  return api_queue_->enqueue(task);
+}
+
+std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane::Target> &updates) {
+  std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstallOffUpd(updates); });
+  return api_queue_->enqueue(task);
+}
+
+bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_path) {
+  // TODO: [OFFUPD] Handle interaction between offline and online modes.
+
+  result::UpdateCheck update_result = CheckUpdatesOffline(source_path).get();
+  if (update_result.updates.empty() || updates_disabled_) {
+    // TODO: [OFFUPD] Do we need this?
+    // if (update_result.status == result::UpdateStatus::kError) {
+    //   // If the metadata verification failed, inform the backend immediately.
+    //   SendManifest().get();
+    // }
+    return true;
+  }
+
+  result::Download download_result = FetchImagesOffline(update_result.updates).get();
+  if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
+    // TODO: [OFFUPD] Do we need this?
+    // if (download_result.status != result::DownloadStatus::kNothingToDownload) {
+    //   // If the download failed, inform the backend immediately.
+    //   SendManifest().get();
+    // }
+    return true;
+  }
+
+  InstallOffline(download_result.updates).get();
+
+  // TODO: [OFFUPD] Do we need this?
+  if (uptane_client_->isInstallCompletionRequired()) {
+    // If there are some pending updates then effectively either reboot (OSTree) or restart
+    // aktualizr (fake pack mngr) to apply the update(s)
+    LOG_INFO << "Exiting aktualizr so that pending updates can be applied after reboot";
+    return false;
+  }
+
+  // TODO: [OFFUPD] Do we need this?
+  // if (!uptane_client_->hasPendingUpdates()) {
+  //   // If updates were applied and no any reboot/finalization is required then send/put
+  //   // manifestas soon as possible
+  //   SendManifest().get();
+  // }
+
   return true;
 }
-#endif // defined(BUILD_OFFLINE_UPDATES)
+#endif

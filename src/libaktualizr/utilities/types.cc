@@ -53,6 +53,23 @@ std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, UpdateType utype) {
+  std::string utype_str;
+  switch (utype) {
+    case UpdateType::kOnline:
+      utype_str = "online";
+      break;
+    case UpdateType::kOffline:
+      utype_str = "offline";
+      break;
+    default:
+      utype_str = "<unknown>";
+      break;
+  }
+  os << '"' << utype_str << '"';
+  return os;
+}
+
 std::string TimeToString(struct tm time) {
   std::array<char, 22> formatted{};
   strftime(formatted.data(), 22, "%Y-%m-%dT%H:%M:%SZ", &time);

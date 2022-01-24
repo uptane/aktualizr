@@ -342,4 +342,17 @@ void ImageRepository::checkMetaOffline(INvStorage& storage) {
   }
 }
 
+#ifdef BUILD_OFFLINE_UPDATES
+void ImageRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+}
+
+void ImageRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
+  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
+  (void)storage;
+  (void)fetcher;
+}
+#endif
+
 }  // namespace Uptane

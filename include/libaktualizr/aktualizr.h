@@ -214,17 +214,41 @@ class Aktualizr {
    */
   std::future<result::Install> Install(const std::vector<Uptane::Target>& updates);
 
-  /**
-   * TODO: [OFFUPD] Explain.
-   * Counterpart of UptaneCycle() for the offline-update case.
-   */
-  bool OfflineCheckAndInstall(const boost::filesystem::path &source_path);
-
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
   /**
    * TODO: [OFFUPD] Remove after MVP.
    * Check if an offline-update is available.
    */
   bool OfflineUpdateAvailable();
+
+  /**
+   * TODO: [OFFUPD] Remove after MVP.
+   * Counterpart of CheckUpdates() for the offline-update case.
+   */
+  std::future<result::UpdateCheck> CheckUpdatesOffline(const boost::filesystem::path &source_path);
+
+  /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of Download() for the offline-update case.
+   */
+  std::future<result::Download> FetchImagesOffline(const std::vector<Uptane::Target> &updates);
+
+  /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of Install() for the offline-update case.
+   */
+  std::future<result::Install> InstallOffline(const std::vector<Uptane::Target>& updates);
+
+  /**
+   * TODO: [OFFUPD] Explain.
+   * Counterpart of UptaneCycle() for the offline-update case.
+   */
+  bool CheckAndInstallOffline(const boost::filesystem::path &source_path);
+#endif
 
   /**
    * SetInstallationRawReport allows setting a custom raw report field in the device installation result.

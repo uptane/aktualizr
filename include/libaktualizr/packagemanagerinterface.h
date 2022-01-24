@@ -17,7 +17,8 @@ class FlowControlToken;
 
 namespace Uptane {
 class Fetcher;
-}
+class OfflineUpdateFetcher;
+}  // namespace Uptane
 
 using FetcherProgressCb = std::function<void(const Uptane::Target&, const std::string&, unsigned int)>;
 
@@ -60,6 +61,15 @@ class PackageManagerInterface {
   virtual void updateNotify() {}
   virtual bool fetchTarget(const Uptane::Target& target, Uptane::Fetcher& fetcher, const KeyManager& keys,
                            const FetcherProgressCb& progress_cb, const api::FlowControlToken* token);
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  virtual bool fetchTargetOffUpd(const Uptane::Target& target, Uptane::OfflineUpdateFetcher& fetcher,
+                                 const KeyManager& keys, const FetcherProgressCb& progress_cb,
+                                 const api::FlowControlToken* token);
+#endif
   virtual TargetStatus verifyTarget(const Uptane::Target& target) const;
   virtual bool checkAvailableDiskSpace(uint64_t required_bytes) const;
   virtual boost::optional<std::pair<uintmax_t, std::string>> checkTargetFile(const Uptane::Target& target) const;

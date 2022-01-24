@@ -60,6 +60,15 @@ class OstreeManager : public PackageManagerInterface {
   void updateNotify() override;
   bool fetchTarget(const Uptane::Target &target, Uptane::Fetcher &fetcher, const KeyManager &keys,
                    const FetcherProgressCb &progress_cb, const api::FlowControlToken *token) override;
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  virtual bool fetchTargetOffUpd(const Uptane::Target &target, Uptane::OfflineUpdateFetcher &fetcher,
+                                 const KeyManager &keys, const FetcherProgressCb &progress_cb,
+                                 const api::FlowControlToken *token) override;
+#endif
   TargetStatus verifyTarget(const Uptane::Target &target) const override;
 
   GObjectUniquePtr<OstreeDeployment> getStagedDeployment() const;
