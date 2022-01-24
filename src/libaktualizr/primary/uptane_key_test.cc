@@ -55,6 +55,7 @@ class UptaneKey_Check_Test {
  public:
   static void checkKeyTests(std::shared_ptr<INvStorage>& storage, SotaUptaneClient& sota_client) {
     EXPECT_NO_THROW(sota_client.initialize());
+    EXPECT_TRUE(sota_client.attemptProvision());
     // Verify that TLS credentials are valid.
     std::string ca;
     std::string cert;

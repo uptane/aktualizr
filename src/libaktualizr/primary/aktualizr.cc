@@ -73,12 +73,21 @@ bool Aktualizr::UptaneCycle() {
 
 std::future<void> Aktualizr::RunForever() {
   std::future<void> future = std::async(std::launch::async, [this]() {
-    SendDeviceData().get();
-
     std::unique_lock<std::mutex> l(exit_cond_.m);
+    bool have_sent_device_data = false;
     while (true) {
-      if (!UptaneCycle()) {
-        break;
+      try {
+        if (!have_sent_device_data) {
+          // Can throw SotaUptaneClient::ProvisioningFailed
+          SendDeviceData().get();
+          have_sent_device_data = true;
+        }
+
+        if (!UptaneCycle()) {
+          break;
+        }
+      } catch (SotaUptaneClient::ProvisioningFailed &e) {
+        LOG_DEBUG << "Not provisioned yet:" << e.what();
       }
 
       if (exit_cond_.cv.wait_for(l, std::chrono::seconds(config_.uptane.polling_sec),

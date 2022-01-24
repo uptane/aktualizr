@@ -35,6 +35,24 @@
 
 class SotaUptaneClient {
  public:
+  /**
+   * Provisioning was needed, attempted and failed.
+   * Thrown by requiresProvision().
+   */
+  class ProvisioningFailed : public std::runtime_error {
+   public:
+    explicit ProvisioningFailed() : std::runtime_error("Device was not able provision on-line") {}
+  };
+
+  /**
+   * Device must be provisioned before calling this operation.
+   * Thrown by requiresAlreadyProvisioned().
+   */
+  class NotProvisionedYet : public std::runtime_error {
+   public:
+    explicit NotProvisionedYet() : std::runtime_error("Device is not provisioned on-line yet") {}
+  };
+
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
                    std::shared_ptr<event::Channel> events_channel_in);
 
@@ -108,6 +126,20 @@ class SotaUptaneClient {
   FRIEND_TEST(Delegation, IterateAll);
   friend class CheckForUpdate;       // for load tests
   friend class ProvisionDeviceTask;  // for load tests
+
+  /**
+   * This operation requires that the device is provisioned.
+   * Make one attempt at provisioning on-line, and if it fails throw a
+   * ProvisioningFailed exception.
+   */
+  void requiresProvision();
+
+  /**
+   * This operation requires that the device is already provisioned.
+   * If it isn't then immediately throw a NotProvisionedYet exception without
+   * attempting any network communications.
+   */
+  void requiresAlreadyProvisioned();
 
   data::InstallationResult PackageInstall(const Uptane::Target &target);
   std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
