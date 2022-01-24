@@ -34,7 +34,7 @@ class DockerComposeSecondary : public ManagedSecondary {
 
  private:
   bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const override;
-  data::InstallationResult install(const Uptane::Target &target) override;
+  data::InstallationResult install(const Uptane::Target &target, const InstallInfo& info) override;
   void validateInstall();
 };
 

@@ -76,7 +76,7 @@ DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryCo
   validateInstall();
 }
 
-data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target) {
+data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target, const InstallInfo&) {
   auto str = secondary_provider_->getTargetFileHandle(target);
 
   /* Here we try to make container updates "as atomic as possible". So we save
