@@ -22,6 +22,7 @@ set_property(SOURCE aktualizr_version.cc PROPERTY COMPILE_DEFINITIONS AKTUALIZR_
 
 add_library(utilities OBJECT ${SOURCES})
 
+add_aktualizr_test(NAME api_queue SOURCES api_queue_test.cc)
 add_aktualizr_test(NAME dequeue_buffer SOURCES dequeue_buffer_test.cc)
 add_aktualizr_test(NAME timer SOURCES timer_test.cc)
 add_aktualizr_test(NAME types SOURCES types_test.cc)
