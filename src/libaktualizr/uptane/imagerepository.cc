@@ -84,7 +84,7 @@ void ImageRepository::verifySnapshot(const std::string& snapshot_raw, bool prefe
 
   try {
     // Verify the signature:
-    snapshot = Snapshot(RepositoryType::Image(), Utils::parseJSON(snapshot_raw), std::make_shared<MetaWithKeys>(root));
+    snapshot = Snapshot(RepositoryType::Image(), Uptane::Role::Snapshot(), Utils::parseJSON(snapshot_raw), std::make_shared<MetaWithKeys>(root));
   } catch (const Exception& e) {
     LOG_ERROR << "Signature verification for Snapshot metadata failed";
     throw;

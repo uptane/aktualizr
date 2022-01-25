@@ -27,7 +27,7 @@ void check_repo(const TemporaryDirectory &temp_dir, const Uptane::RepositoryType
   root = Uptane::Root(repo_type, Utils::parseJSON(root_raw), root);  // signature verification against itself
   const auto snapshot_raw = Utils::readFile(repo_dir / "snapshot.json");
   const auto snapshot =
-      Uptane::Snapshot(repo_type, Utils::parseJSON(snapshot_raw), std::make_shared<Uptane::MetaWithKeys>(root));
+      Uptane::Snapshot(repo_type, Uptane::Role::Snapshot(), Utils::parseJSON(snapshot_raw), std::make_shared<Uptane::MetaWithKeys>(root));
   const auto timestamp_raw = Utils::readFile(repo_dir / "timestamp.json");
   const auto timestamp =
       Uptane::TimestampMeta(repo_type, Utils::parseJSON(timestamp_raw), std::make_shared<Uptane::MetaWithKeys>(root));
