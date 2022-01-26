@@ -271,7 +271,7 @@ std::ifstream Aktualizr::OpenStoredTarget(const Uptane::Target &target) {
 
 #ifdef BUILD_OFFLINE_UPDATES
 bool Aktualizr::OfflineUpdateAvailable() {
-  static const std::string update_subdir{"update"};
+  static const std::string update_subdir{"metadata"};
 
   OffUpdSourceState old_state = offupd_source_state_;
   OffUpdSourceState cur_state = OffUpdSourceState::Unknown;

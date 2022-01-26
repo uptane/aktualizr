@@ -59,14 +59,7 @@ class OfflineUpdateFetcher : public IMetadataFetcher {
  public:
   OfflineUpdateFetcher(const boost::filesystem::path& source_path) : source_path_(source_path) {}
   void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
-                 Version version) const override {
-    // TODO: [OFFUPD] IMPLEMENT THIS METHOD.
-    (void)result;
-    (void)maxsize;
-    (void)repo;
-    (void)role;
-    (void)version;
-  }
+                 Version version) const override;
   void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
                        const Uptane::Role& role) const override {
     fetchRole(result, maxsize, repo, role, Version());
