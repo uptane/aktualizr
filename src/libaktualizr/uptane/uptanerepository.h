@@ -26,7 +26,7 @@ class RepositoryCommon {
   //       the same in aktualizr-torizon but they aren't ATM
   // BUILD_OFFLINE_UPDATES {{
 #if 1
-  virtual void updateMetaOffUpd(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
+  virtual void updateMetaOffUpd(INvStorage &storage, const OfflineUpdateFetcher &fetcher) = 0;
 #endif
 
  protected:

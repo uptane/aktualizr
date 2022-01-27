@@ -348,7 +348,7 @@ void ImageRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
   (void)storage;
 }
 
-void ImageRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
+void ImageRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) {
   // TODO: [OFFUPD] IMPLEMENT THIS METHOD
   (void)storage;
   (void)fetcher;

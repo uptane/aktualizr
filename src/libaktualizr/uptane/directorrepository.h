@@ -33,15 +33,21 @@ class DirectorRepository : public RepositoryCommon {
   // BUILD_OFFLINE_UPDATES {{
 #if 1
   void checkMetaOfflineOffUpd(INvStorage& storage);
-  void updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+  void updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) override;
+  void verifyOfflineSnapshot(const std::string& snapshot_raw_new, const std::string& snapshot_raw_old);
+  void verifyOfflineSnapshot(const std::string& snapshot_raw_new) {
+    std::string empty;
+    verifyOfflineSnapshot(snapshot_raw_new, empty);
+  }
+  void verifyOfflineTargets(const std::string& targets_raw, INvStorage& storage);
 #endif
 
  private:
   FRIEND_TEST(Director, EmptyTargets);
 
   void resetMeta();
-  void checkTargetsExpired();
-  void targetsSanityCheck();
+  void checkTargetsExpired(UpdateType utype);
+  void targetsSanityCheck(UpdateType utype);
   bool usePreviousTargets() const;
 
   // Since the Director can send us an empty targets list to mean "no new
@@ -49,6 +55,16 @@ class DirectorRepository : public RepositoryCommon {
   // checking expiration but the most recent non-empty list for everything else.
   Uptane::Targets targets;         // Only empty if we've never received non-empty targets.
   Uptane::Targets latest_targets;  // Can be an empty list.
+
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  //       For this to work correctly the compilation options should be exactly
+  //       the same in aktualizr-torizon but they aren't ATM
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  void checkOfflineSnapshotExpired();
+  void transformOfflineTargets(INvStorage& storage);
+  Uptane::Snapshot offline_snapshot;
+#endif
 };
 
 }  // namespace Uptane

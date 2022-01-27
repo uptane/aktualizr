@@ -551,14 +551,6 @@ void SotaUptaneClient::computeDeviceInstallationResult(data::InstallationResult 
 }
 
 void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count) {
-  // TODO: [OFFUPD] Use an `offupd` parameter to get offline-targers.
-  //       const std::vector<Uptane::Target> targets = offupd ?
-  //             director_repo.getTargetsOffUpd().targets :
-  //             director_repo.getTargets().targets;
-  // OR
-  //       const std::vector<Uptane::Target> targets = director_repo.getTargets(offupd).targets;
-  // OR
-  //       no change and consider that getTargets() will simply return the offline-targets
   const std::vector<Uptane::Target> targets = director_repo.getTargets().targets;
   const Uptane::EcuSerial primary_ecu_serial = primaryEcuSerial();
   if (ecus_count != nullptr) {
@@ -843,7 +835,7 @@ void SotaUptaneClient::uptaneIteration(std::vector<Uptane::Target> *targets, uns
   std::vector<Uptane::Target> tmp_targets;
   unsigned int ecus;
   try {
-    // TODO: [OFFUPD] Consider passing parameter `utype`.
+    // PURE-2 step 5
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();
