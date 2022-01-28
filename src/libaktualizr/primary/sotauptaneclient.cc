@@ -932,10 +932,12 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
     return result;
   }
 
-  // TODO: [OFFUPD] Use appropriate role below: "OfflineUpdates"?
   std::string director_targets;
-  if (!storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
+  if (utype == UpdateType::kOnline && !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
+    return result;
+  } else if (utype == UpdateType::kOffline && !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::OfflineUpdates())) {
+    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update offline metadata.");
     return result;
   }
 
@@ -950,6 +952,7 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   // repositories match. A Primary ECU MUST perform this check on metadata for
   // all images listed in the Targets metadata file from the Director
   // repository.
+  // PURE-2 step 9
   try {
     for (auto &target : updates) {
       auto image_target = findTargetInDelegationTree(target, false, utype);
