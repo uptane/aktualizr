@@ -4,8 +4,7 @@
 
 #include "libaktualizr/aktualizr.h"
 #include "libaktualizr/events.h"
-
-#include "sotauptaneclient.h"
+#include "primary/sotauptaneclient.h"
 #include "utilities/apiqueue.h"
 #include "utilities/timer.h"
 

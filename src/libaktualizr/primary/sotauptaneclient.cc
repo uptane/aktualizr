@@ -1,4 +1,4 @@
-#include "sotauptaneclient.h"
+#include "primary/sotauptaneclient.h"
 
 #include <fnmatch.h>
 #include <memory>
