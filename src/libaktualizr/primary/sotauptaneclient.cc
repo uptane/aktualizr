@@ -21,6 +21,19 @@ static void report_progress_cb(event::Channel *channel, const Uptane::Target &ta
   (*channel)(event);
 }
 
+/**
+ * A utility class to compare targets between Image and Director repositories.
+ * The definition of 'sameness' is in Target::MatchTarget().
+ */
+class TargetCompare {
+ public:
+  explicit TargetCompare(const Uptane::Target &target_in) : target(target_in) {}
+  bool operator()(const Uptane::Target &in) const { return (in.MatchTarget(target)); }
+
+ private:
+  const Uptane::Target &target;
+};
+
 SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in,
                                    std::shared_ptr<HttpInterface> http_in,
                                    std::shared_ptr<event::Channel> events_channel_in)

@@ -187,13 +187,4 @@ class SotaUptaneClient {
   Json::Value custom_hardware_info_{Json::nullValue};
 };
 
-class TargetCompare {
- public:
-  explicit TargetCompare(const Uptane::Target &target_in) : target(target_in) {}
-  bool operator()(const Uptane::Target &in) const { return (in.MatchTarget(target)); }
-
- private:
-  const Uptane::Target &target;
-};
-
 #endif  // SOTA_UPTANE_CLIENT_H_
