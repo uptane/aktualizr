@@ -348,8 +348,39 @@ void ImageRepository::checkMetaOffline(INvStorage& storage) {
 
 #ifdef BUILD_OFFLINE_UPDATES
 void ImageRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
-  (void)storage;
+  resetMeta();
+
+  // Load Image repo Root Metadata
+  std::string image_root;
+  if (!storage.loadLatestRoot(&image_root, RepositoryType::Image())) {
+    throw Uptane::SecurityException(RepositoryType::IMAGE, "Could not load latest root");
+  }
+
+  initRoot(RepositoryType(RepositoryType::IMAGE), image_root);
+
+  if (rootExpired()) {
+    throw Uptane::ExpiredMetadata(RepositoryType::IMAGE, Role::Root().ToString());
+  }
+
+  // Load Image repo Snapshot Metadata
+  std::string image_snapshot;
+  if (!storage.loadNonRoot(&image_snapshot, RepositoryType::Image(), Role::Snapshot())) {
+    throw Uptane::SecurityException(RepositoryType::IMAGE, "Could not load Snapshot role");
+  }
+
+  verifySnapshotOffline(image_snapshot);
+
+  checkSnapshotExpired();
+
+  // Load Image repo Targets Metadata
+  std::string image_targets;
+  if (!storage.loadNonRoot(&image_targets, RepositoryType::Image(), Role::Targets())) {
+    throw Uptane::SecurityException(RepositoryType::IMAGE, "Could not load Targets role");
+  }
+
+  verifyTargets(image_targets, false);
+
+  checkTargetsExpired();
 }
 
 void ImageRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) {

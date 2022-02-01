@@ -447,7 +447,6 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
 void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
   try {
     if (utype == UpdateType::kOffline) {
-      // TODO: [OFFUPD] This one should check the OfflineUpdates data -> tell Jeremias that this might be missing.
 #ifdef BUILD_OFFLINE_UPDATES
       director_repo.checkMetaOfflineOffUpd(*storage);
 #else
@@ -862,7 +861,6 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
   std::vector<Uptane::Target> tmp_targets;
   unsigned int ecus;
   try {
-    // TODO: [OFFUPD] Consider passing parameter `offupd`.
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();

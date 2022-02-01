@@ -112,15 +112,7 @@ void DirectorRepository::updateMeta(INvStorage& storage, const IMetadataFetcher&
   // reset Director repo to initial state before starting Uptane iteration
   resetMeta();
 
-  // TODO: [OFFUPD] Questions:
-  // - If the fetcher knew the location of the files, would the following method
-  //   need to get the `offline` and path parameters? See changes in uptanerepository.cc
-  // - Could we keep all the file name formation rule in the fetcher?
-  //   IMetadataFetcher <- OfflineUpdatesFetcher
   updateRoot(storage, fetcher, RepositoryType::Director());
-
-  // TODO: [OFFUPD] Idea: The code below could go to a `updateNonRoot(storage, fetcher)`
-  //                if there is enough in common between online and offline modes.
 
   // Not supported: 3. Download and check the Timestamp metadata file from the Director repository, following the
   // procedure in Section 5.4.4.4. Not supported: 4. Download and check the Snapshot metadata file from the Director
@@ -201,8 +193,41 @@ bool DirectorRepository::matchTargetsWithImageTargets(
 
 #ifdef BUILD_OFFLINE_UPDATES
 void DirectorRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
-  (void)storage;
+  resetMeta();
+
+  // Load Director Root Metadata
+  std::string director_root;
+  if (!storage.loadLatestRoot(&director_root, RepositoryType::Director())) {
+    throw Uptane::SecurityException(RepositoryType::DIRECTOR, "Could not load latest root");
+  }
+
+  initRoot(RepositoryType(RepositoryType::DIRECTOR), director_root);
+
+  if (rootExpired()) {
+    throw Uptane::ExpiredMetadata(RepositoryType::DIRECTOR, Role::ROOT);
+  }
+
+  // Load Director Offline-Snapshot Metadata
+  std::string director_offline_snapshot;
+  if (!storage.loadNonRoot(&director_offline_snapshot, RepositoryType::Director(), Role::OfflineSnapshot())) {
+    throw Uptane::SecurityException(RepositoryType::DIRECTOR, "Could not load Offline Snapshot role");
+  }
+
+  verifyOfflineSnapshot(director_offline_snapshot);
+
+  checkOfflineSnapshotExpired();
+
+  // Load Director Offline-Updates(Targets) Metadata
+  std::string director_offline_targets;
+  if (!storage.loadNonRoot(&director_offline_targets, RepositoryType::Director(), Role::OfflineUpdates())) {
+    throw Uptane::SecurityException(RepositoryType::DIRECTOR, "Could not load Offline Updates role");
+  }
+
+  verifyOfflineTargets(director_offline_targets, storage);
+
+  checkTargetsExpired(UpdateType::kOffline);
+
+  targetsSanityCheck(UpdateType::kOffline);
 }
 
 void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) {
