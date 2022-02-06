@@ -59,9 +59,9 @@ while ! curl -I -s -f "http://localhost:$PORT"; do
 done
 
 if [[ -n $VALGRIND ]]; then
-    "$VALGRIND" "$UPTANE_VECTOR_TEST" "$PORT" "$@"
+    "$VALGRIND" "$UPTANE_VECTOR_TEST" "$PORT" "$TESTS_SRC_DIR" "$@"
 else
-    "$UPTANE_VECTOR_TEST" "$PORT" "$@"
+    "$UPTANE_VECTOR_TEST" "$PORT" "$TESTS_SRC_DIR" "$@"
 fi
 
 RES=$?

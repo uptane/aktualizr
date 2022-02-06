@@ -1,4 +1,4 @@
-#include "sotauptaneclient.h"
+#include "primary/sotauptaneclient.h"
 
 #include <fnmatch.h>
 #include <memory>
@@ -20,6 +20,19 @@ static void report_progress_cb(event::Channel *channel, const Uptane::Target &ta
   auto event = std::make_shared<event::DownloadProgressReport>(target, description, progress);
   (*channel)(event);
 }
+
+/**
+ * A utility class to compare targets between Image and Director repositories.
+ * The definition of 'sameness' is in Target::MatchTarget().
+ */
+class TargetCompare {
+ public:
+  explicit TargetCompare(const Uptane::Target &target_in) : target(target_in) {}
+  bool operator()(const Uptane::Target &in) const { return (in.MatchTarget(target)); }
+
+ private:
+  const Uptane::Target &target;
+};
 
 SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in,
                                    std::shared_ptr<HttpInterface> http_in,
@@ -385,26 +398,29 @@ Json::Value SotaUptaneClient::AssembleManifest() {
 bool SotaUptaneClient::hasPendingUpdates() const { return storage->hasPendingInstall(); }
 
 void SotaUptaneClient::initialize() {
-  bool provisioned = false;
-
   provisioner_.Prepare();
 
   uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, provisioner_.PrimaryEcuSerial());
 
   finalizeAfterReboot();
-  for (int i = 0; i < 3 && !provisioned; i++) {
-    provisioned = attemptProvision();
+
+  attemptProvision();
+}
+
+void SotaUptaneClient::requiresProvision() {
+  if (!attemptProvision()) {
+    throw ProvisioningFailed();
   }
+}
 
-  // This is temporary. For offline updates it will be necessary to
-  // run updates before provisioning has completed.
-
-  if (!provisioned) {
-    throw std::runtime_error("Initialization failed after 3 attempts");
+void SotaUptaneClient::requiresAlreadyProvisioned() {
+  if (provisioner_.CurrentState() != Provisioner::State::kOk) {
+    throw NotProvisionedYet();
   }
 }
 
 void SotaUptaneClient::updateDirectorMeta() {
+  requiresProvision();
   try {
     director_repo.updateMeta(*storage, *uptane_fetcher);
   } catch (const std::exception &e) {
@@ -414,6 +430,7 @@ void SotaUptaneClient::updateDirectorMeta() {
 }
 
 void SotaUptaneClient::updateImageMeta() {
+  requiresProvision();
   try {
     image_repo.updateMeta(*storage, *uptane_fetcher);
   } catch (const std::exception &e) {
@@ -423,6 +440,7 @@ void SotaUptaneClient::updateImageMeta() {
 }
 
 void SotaUptaneClient::checkDirectorMetaOffline() {
+  requiresAlreadyProvisioned();
   try {
     director_repo.checkMetaOffline(*storage);
   } catch (const std::exception &e) {
@@ -432,6 +450,7 @@ void SotaUptaneClient::checkDirectorMetaOffline() {
 }
 
 void SotaUptaneClient::checkImageMetaOffline() {
+  requiresAlreadyProvisioned();
   try {
     image_repo.checkMetaOffline(*storage);
   } catch (const std::exception &e) {
@@ -648,6 +667,7 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetInDelegationTree(con
 
 result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Target> &targets,
                                                   const api::FlowControlToken *token) {
+  requiresAlreadyProvisioned();
   // Uptane step 4 - download all the images and verify them against the metadata (for OSTree - pull without
   // deploying)
   std::lock_guard<std::mutex> guard(download_mutex);
@@ -825,6 +845,8 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
 }
 
 void SotaUptaneClient::sendDeviceData() {
+  requiresProvision();
+
   reportHwInfo();
   reportInstalledPackages();
   reportNetworkInfo();
@@ -833,6 +855,8 @@ void SotaUptaneClient::sendDeviceData() {
 }
 
 result::UpdateCheck SotaUptaneClient::fetchMeta() {
+  requiresProvision();
+
   result::UpdateCheck result;
 
   reportNetworkInfo();
@@ -974,6 +998,7 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
 }
 
 result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target> &updates) {
+  requiresAlreadyProvisioned();
   const std::string &correlation_id = director_repo.getCorrelationId();
 
   // put most of the logic in a lambda so that we can take care of common
@@ -1090,6 +1115,8 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
 }
 
 result::CampaignCheck SotaUptaneClient::campaignCheck() {
+  requiresProvision();
+
   auto campaigns = campaign::Campaign::fetchAvailableCampaigns(*http, config.tls.server);
   for (const auto &c : campaigns) {
     LOG_INFO << "Campaign: " << c.name;
@@ -1104,16 +1131,22 @@ result::CampaignCheck SotaUptaneClient::campaignCheck() {
 }
 
 void SotaUptaneClient::campaignAccept(const std::string &campaign_id) {
+  requiresAlreadyProvisioned();
+
   sendEvent<event::CampaignAcceptComplete>();
   report_queue->enqueue(std_::make_unique<CampaignAcceptedReport>(campaign_id));
 }
 
 void SotaUptaneClient::campaignDecline(const std::string &campaign_id) {
+  requiresAlreadyProvisioned();
+
   sendEvent<event::CampaignDeclineComplete>();
   report_queue->enqueue(std_::make_unique<CampaignDeclinedReport>(campaign_id));
 }
 
 void SotaUptaneClient::campaignPostpone(const std::string &campaign_id) {
+  requiresAlreadyProvisioned();
+
   sendEvent<event::CampaignPostponeComplete>();
   report_queue->enqueue(std_::make_unique<CampaignPostponedReport>(campaign_id));
 }
@@ -1169,6 +1202,8 @@ bool SotaUptaneClient::putManifestSimple(const Json::Value &custom) {
 }
 
 bool SotaUptaneClient::putManifest(const Json::Value &custom) {
+  requiresProvision();
+
   bool success = putManifestSimple(custom);
   sendEvent<event::PutManifestComplete>(success);
   return success;
