@@ -118,6 +118,33 @@ void INvStorage::importInstalledVersions(const boost::filesystem::path& base_pat
   }
 }
 
+void INvStorage::importInitialRoot(const boost::filesystem::path& base_path) {
+  importInitialRootFile(base_path / "repo/root.json", Uptane::RepositoryType::Image());
+  importInitialRootFile(base_path / "director/root.json", Uptane::RepositoryType::Director());
+}
+
+void INvStorage::importInitialRootFile(const boost::filesystem::path& root_path, Uptane::RepositoryType repo_type) {
+  std::string root_tmp;  // Only needed for loadLatestRoot
+  if (!loadLatestRoot(&root_tmp, repo_type)) {
+    if (boost::filesystem::is_regular_file(root_path)) {
+      try {
+        std::string root_str = Utils::readFile(root_path);
+        Uptane::Root orig_root(Uptane::Root::Policy::kAcceptAll);
+        Uptane::Root new_root(repo_type, Utils::parseJSON(root_str), orig_root);
+        // No exception. Save it
+        storeRoot(root_str, repo_type, Uptane::Version(new_root.version()));
+        LOG_INFO << "Imported initial " << repo_type << " root keys from " << root_path;
+      } catch (Uptane::Exception& e) {
+        LOG_WARNING << "Couldn't import initial " << repo_type << " root keys from " << root_path << " " << e.what();
+      }
+    } else {
+      LOG_DEBUG << "Not importing " << root_path << " because it doesn't exist";
+    }
+  } else {
+    LOG_TRACE << "Root for " << repo_type << " already present, not importing";
+  }
+}
+
 void INvStorage::importData(const ImportConfig& import_config) {
   importPrimaryKeys(import_config.base_path, import_config.uptane_public_key_path,
                     import_config.uptane_private_key_path);
@@ -127,6 +154,7 @@ void INvStorage::importData(const ImportConfig& import_config) {
   importUpdateSimple(import_config.base_path, &INvStorage::storeTlsPkey, &INvStorage::loadTlsPkey,
                      import_config.tls_pkey_path, "client TLS key");
   importInstalledVersions(import_config.base_path);
+  importInitialRoot(import_config.base_path);
 }
 
 std::shared_ptr<INvStorage> INvStorage::newStorage(const StorageConfig& config, const bool readonly) {

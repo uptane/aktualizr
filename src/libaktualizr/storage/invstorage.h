@@ -174,6 +174,17 @@ class INvStorage {
   void importPrimaryKeys(const boost::filesystem::path& base_path, const utils::BasedPath& import_pubkey_path,
                          const utils::BasedPath& import_privkey_path);
 
+  /**
+   * Import initial image and director root.json from the filesystem.
+   * These would be loaded onto the device during provisioning at a well-known
+   * location such as /var/sota/import/repo/root.json (image repo) and
+   * /var/sota/import/director/root.json for the director repo.
+   *
+   * @param base_path e.g. '/var/sota/import'
+   */
+  void importInitialRoot(const boost::filesystem::path& base_path);
+  void importInitialRootFile(const boost::filesystem::path& root_path, Uptane::RepositoryType repo_type);
+
  protected:
   const StorageConfig config_;
 };
