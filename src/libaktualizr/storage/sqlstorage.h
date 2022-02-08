@@ -110,7 +110,6 @@ class SQLStorage : public SQLStorageBase, public INvStorage {
   std::vector<std::string> getAllTargetNames() const override;
   void deleteTargetInfo(const std::string& targetname) const override;
 
-  void cleanUp() override;
   StorageType type() override { return StorageType::kSqlite; };
 
  private:

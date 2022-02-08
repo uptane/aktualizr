@@ -7,20 +7,6 @@
 #include "sqlstorage.h"
 #include "utilities/utils.h"
 
-void INvStorage::importSimple(const boost::filesystem::path& base_path, store_data_t store_func, load_data_t load_func,
-                              const utils::BasedPath& imported_data_path, const std::string& data_name) {
-  if (!(this->*load_func)(nullptr) && !imported_data_path.empty()) {
-    boost::filesystem::path abs_path = imported_data_path.get(base_path);
-    if (!boost::filesystem::exists(abs_path)) {
-      LOG_ERROR << "Couldn't import " << data_name << ": " << abs_path << " doesn't exist.";
-      return;
-    }
-    std::string content = Utils::readFile(abs_path.string());
-    (this->*store_func)(content);
-    LOG_DEBUG << "Successfully imported " << data_name << " from " << abs_path;
-  }
-}
-
 void INvStorage::importUpdateSimple(const boost::filesystem::path& base_path, store_data_t store_func,
                                     load_data_t load_func, const utils::BasedPath& imported_data_path,
                                     const std::string& data_name) {

@@ -147,8 +147,6 @@ class INvStorage {
   virtual std::vector<std::string> getAllTargetNames() const = 0;
   virtual void deleteTargetInfo(const std::string& targetname) const = 0;
 
-  virtual void cleanUp() = 0;
-
   // Special constructors and utilities
   static std::shared_ptr<INvStorage> newStorage(const StorageConfig& config, bool readonly = false);
   static void FSSToSQLS(FSStorageRead& fs_storage, SQLStorage& sql_storage);
@@ -170,8 +168,6 @@ class INvStorage {
   void importInstalledVersions(const boost::filesystem::path& base_path);
 
  private:
-  void importSimple(const boost::filesystem::path& base_path, store_data_t store_func, load_data_t load_func,
-                    const utils::BasedPath& imported_data_path, const std::string& data_name);
   void importUpdateSimple(const boost::filesystem::path& base_path, store_data_t store_func, load_data_t load_func,
                           const utils::BasedPath& imported_data_path, const std::string& data_name);
   void importUpdateCertificate(const boost::filesystem::path& base_path, const utils::BasedPath& imported_data_path);
