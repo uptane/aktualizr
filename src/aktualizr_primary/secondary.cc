@@ -62,7 +62,7 @@ void initSecondaries(Aktualizr& aktualizr, const boost::filesystem::path& config
       }
     } catch (const std::exception& exc) {
       LOG_ERROR << "Failed to initialize a Secondary: " << exc.what();
-      throw exc;
+      throw;
     }
   }
 }

@@ -39,6 +39,9 @@ void Repo::addDelegationToSnapshot(Json::Value *snapshot, const Uptane::Role &ro
   std::string signed_role = Utils::readFile(repo_dir / role_file_name);
 
   (*snapshot)["meta"][role_file_name]["version"] = role_json["version"].asUInt();
+  (*snapshot)["meta"][role_file_name]["length"] = signed_role.size();
+  (*snapshot)["meta"][role_file_name]["hashes"]["sha256"] =
+      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(signed_role)));
 
   if (role_json["delegations"].isObject()) {
     auto delegations_list = role_json["delegations"]["roles"];
