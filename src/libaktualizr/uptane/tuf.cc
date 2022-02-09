@@ -326,7 +326,7 @@ std::string Uptane::BaseMeta::signature() const {
     throw Uptane::InvalidMetadata("", "", "invalid metadata json, signatures are not an array");
   }
   const auto signs{original_object_["signatures"]};
-  if (signs.size() == 0) {
+  if (signs.empty()) {
     throw Uptane::InvalidMetadata("", "", "invalid metadata json, no any signatures found");
   }
   if (signs.size() > 1) {
