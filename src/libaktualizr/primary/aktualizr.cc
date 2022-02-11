@@ -1,5 +1,5 @@
-#include <chrono>
 #include <boost/filesystem.hpp>
+#include <chrono>
 
 #include <sodium.h>
 
@@ -92,7 +92,7 @@ std::future<void> Aktualizr::RunForever() {
         }
       }
 
-#if 1 // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
+#if 1  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
       if (config_.uptane.enable_offline_updates) {
         // Check update directory while waiting for next polling cycle.
         bool quit = false;
@@ -102,8 +102,7 @@ std::future<void> Aktualizr::RunForever() {
               quit = true;
             }
           }
-          if (exit_cond_.cv.wait_for(l, std::chrono::seconds(1),
-                                     [this] { return exit_cond_.flag; })) {
+          if (exit_cond_.cv.wait_for(l, std::chrono::seconds(1), [this] { return exit_cond_.flag; })) {
             quit = true;
             break;
           }
@@ -111,8 +110,7 @@ std::future<void> Aktualizr::RunForever() {
         if (quit) {
           break;
         }
-      }
-      else
+      } else
 #endif
       {
         // Wait for next polling cycle.
@@ -289,8 +287,7 @@ bool Aktualizr::OfflineUpdateAvailable() {
   offupd_source_state_ = cur_state;
   // LOG_INFO << "OfflineUpdateAvailable: " << int(old_state) << " -> " << int(cur_state);
 
-  return (old_state == OffUpdSourceState::SourceDoesNotExist &&
-          cur_state == OffUpdSourceState::SourceExists);
+  return (old_state == OffUpdSourceState::SourceDoesNotExist && cur_state == OffUpdSourceState::SourceExists);
 }
 
 std::future<result::UpdateCheck> Aktualizr::CheckUpdatesOffline(const boost::filesystem::path &source_path) {

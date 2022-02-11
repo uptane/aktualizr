@@ -32,7 +32,7 @@ Role::Role(const std::string &role_name, const bool delegation) {
     role_ = RoleEnum::kTimestamp;
   } else if (role_name_lower == OFFLINESNAPSHOT) {
     role_ = RoleEnum::kOfflineSnapshot;
-  } else if (role_name_lower ==  OFFLINEUPDATES) {
+  } else if (role_name_lower == OFFLINEUPDATES) {
     role_ = RoleEnum::kOfflineUpdates;
   } else {
     role_ = RoleEnum::kInvalidRole;

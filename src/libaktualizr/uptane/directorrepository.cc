@@ -240,7 +240,8 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   // Update Director Offline Snapshot Metadata
   // PURE-2 step 3(i)
   std::string director_offline_snapshot;
-  fetcher.fetchLatestRole(&director_offline_snapshot, kMaxSnapshotSize, RepositoryType::Director(), Role::OfflineSnapshot());
+  fetcher.fetchLatestRole(&director_offline_snapshot, kMaxSnapshotSize, RepositoryType::Director(),
+                          Role::OfflineSnapshot());
   const int fetched_version = extractVersionUntrusted(director_offline_snapshot);
 
   int local_version;
@@ -289,7 +290,8 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   // We abuse the Delegation role as a way to hold the offline target filename for the fetcher.
   // TODO: Try to handle this in a less "hack-ish" way later.
   Uptane::Role offline_target_role = Uptane::Role::Delegation(offline_target_name);
-  fetcher.fetchLatestRole(&director_offline_targets, kMaxDirectorTargetsSize, RepositoryType::Director(), offline_target_role);
+  fetcher.fetchLatestRole(&director_offline_targets, kMaxDirectorTargetsSize, RepositoryType::Director(),
+                          offline_target_role);
 
   int offline_targets_version = Utils::parseJSON(director_offline_targets)["signed"]["version"].asInt();
   if (offline_targets_version != offline_snapshot_version) {
@@ -308,10 +310,12 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   targetsSanityCheck(UpdateType::kOffline);
 }
 
-void DirectorRepository::verifyOfflineSnapshot(const std::string& snapshot_raw_new, const std::string& snapshot_raw_old) {
+void DirectorRepository::verifyOfflineSnapshot(const std::string& snapshot_raw_new,
+                                               const std::string& snapshot_raw_old) {
   // PURE-2 step 3(ii)
   try {
-    offline_snapshot = Snapshot(RepositoryType::Image(), Uptane::Role::OfflineSnapshot(), Utils::parseJSON(snapshot_raw_new), std::make_shared<MetaWithKeys>(root));
+    offline_snapshot = Snapshot(RepositoryType::Image(), Uptane::Role::OfflineSnapshot(),
+                                Utils::parseJSON(snapshot_raw_new), std::make_shared<MetaWithKeys>(root));
   } catch (const Exception& e) {
     LOG_ERROR << "Signature verification for Offline Snapshot metadata failed";
     throw;
@@ -362,14 +366,14 @@ void DirectorRepository::transformOfflineTargets(INvStorage& storage) {
   // TODO: This method may not be foolproof should check and see if this causes issues.
 
   EcuSerials serials;
-    if (!storage.loadEcuSerials(&serials) || serials.empty()) {
-      throw std::runtime_error("Unable to load ECU serials");
-    }
+  if (!storage.loadEcuSerials(&serials) || serials.empty()) {
+    throw std::runtime_error("Unable to load ECU serials");
+  }
 
-  for (Uptane::Target &target : latest_targets.targets) {
+  for (Uptane::Target& target : latest_targets.targets) {
     std::vector<Uptane::HardwareIdentifier> hwids = target.hardwareIds();
-    for (Uptane::HardwareIdentifier &hwid : hwids) {
-      for (const auto &s : serials) {
+    for (Uptane::HardwareIdentifier& hwid : hwids) {
+      for (const auto& s : serials) {
         Uptane::EcuSerial serialNum = s.first;
         Uptane::HardwareIdentifier hw_id = s.second;
         if (hwid == hw_id) {

@@ -931,11 +931,15 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   }
 
   std::string director_targets;
-  if (utype == UpdateType::kOnline && !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
+  if (utype == UpdateType::kOnline &&
+      !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
     return result;
-  } else if (utype == UpdateType::kOffline && !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::OfflineUpdates())) {
-    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update offline metadata.");
+  } else if (utype == UpdateType::kOffline &&
+             !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(),
+                                   Uptane::Role::OfflineUpdates())) {
+    result =
+        result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update offline metadata.");
     return result;
   }
 

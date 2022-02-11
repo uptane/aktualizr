@@ -393,7 +393,8 @@ Uptane::TimestampMeta::TimestampMeta(RepositoryType repo, const Json::Value &jso
 
 void Uptane::Snapshot::init(const Json::Value &json) {
   Json::Value meta_list = json["signed"]["meta"];
-  if ((!json.isObject() || !meta_list.isObject()) || (json["signed"]["_type"] != "Snapshot" && json["signed"]["_type"] != "Offline-Snapshot")) {
+  if ((!json.isObject() || !meta_list.isObject()) ||
+      (json["signed"]["_type"] != "Snapshot" && json["signed"]["_type"] != "Offline-Snapshot")) {
     throw Uptane::InvalidMetadata("", "snapshot", "invalid snapshot.json");
   }
 
@@ -435,8 +436,8 @@ void Uptane::Snapshot::init(const Json::Value &json) {
 
 Uptane::Snapshot::Snapshot(const Json::Value &json) : BaseMeta(json) { init(json); }
 
-Uptane::Snapshot::Snapshot(RepositoryType repo, const Role &role,
-                           const Json::Value &json, const std::shared_ptr<MetaWithKeys> &signer)
+Uptane::Snapshot::Snapshot(RepositoryType repo, const Role &role, const Json::Value &json,
+                           const std::shared_ptr<MetaWithKeys> &signer)
     : BaseMeta(repo, role, json, signer) {
   init(json);
 }
