@@ -51,16 +51,20 @@ void AktualizrInfoConfig::updateFromPropertyTree(const boost::property_tree::ptr
   }
 
   // from aktualizr config
+  CopySubtreeFromConfig(pacman, "bootloader", pt);
   CopySubtreeFromConfig(pacman, "pacman", pt);
   CopySubtreeFromConfig(storage, "storage", pt);
+  CopySubtreeFromConfig(storage, "uptane", pt);
 }
 
 void AktualizrInfoConfig::writeToStream(std::ostream& sink) const {
   // Keep this order the same as in aktualizr_info_config.h and
   // AktualizrInfoConfig::updateFromPropertyTree().
   WriteSectionToStream(logger, "logger", sink);
+  WriteSectionToStream(logger, "bootloader", sink);
   WriteSectionToStream(pacman, "pacman", sink);
   WriteSectionToStream(storage, "storage", sink);
+  WriteSectionToStream(storage, "uptane", sink);
 }
 
 std::ostream& operator<<(std::ostream& os, const AktualizrInfoConfig& cfg) {

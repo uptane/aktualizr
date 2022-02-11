@@ -299,18 +299,58 @@ TEST_F(AktualizrInfoTest, PrintPrimaryEcuKeys) {
   db_storage_->storeEcuSerials({{primary_ecu_serial, primary_hw_id}});
   db_storage_->storeEcuRegistered();
 
-  const std::string public_key = "public-key-1dc766fe-136d-4c6c-bdf4-daa79c49b3c8";
-  const std::string private_key = "private-key-5cb805f1-859f-48b1-b787-8055d39b6c5f";
+  const std::string public_keyid = "c2a42c620f56698f343c6746efa6a145cf93f4ddbd4e7b7017fbe78003c73e2b";
+  const std::string public_key =
+      "-----BEGIN PUBLIC KEY-----\n"
+      "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxMhBei0MRQAEf3VtNa5T\n"
+      "/aa3l3r1ekMQ5Fh8eqj9SfQbuF1BgmjpYhV6NqZjqQiYbnpZWBEDJKqg9RL1D8rk\n"
+      "9ILSr7YGQDs34+Bt/4vmsZjghvex/N0tfxv85ckWmybiseZPXIwaCRx/B2QruXts\n"
+      "tUh3shfKOms2dWt7ZXP27mc66Qe8/aIf+gT4lL1zYammaGfBoNqj5/1HdguqM4aX\n"
+      "K/4g9fivqwEA4q4ejDheJJ8w8w4kUJGnPNi+GAgJHHX+lX68ZVgmiO/+uef453sd\n"
+      "Vwandii+Fw6B0monaGAYG0pQ3ZZ1Cgz5cAZGjL+P9eviDrgx4x7F2DDZHyfUNP3h\n"
+      "5wIDAQAB\n"
+      "-----END PUBLIC KEY-----\n";
+  const std::string private_key =
+      "-----BEGIN RSA PRIVATE KEY-----\n"
+      "MIIEpAIBAAKCAQEAxMhBei0MRQAEf3VtNa5T/aa3l3r1ekMQ5Fh8eqj9SfQbuF1B\n"
+      "gmjpYhV6NqZjqQiYbnpZWBEDJKqg9RL1D8rk9ILSr7YGQDs34+Bt/4vmsZjghvex\n"
+      "/N0tfxv85ckWmybiseZPXIwaCRx/B2QruXtstUh3shfKOms2dWt7ZXP27mc66Qe8\n"
+      "/aIf+gT4lL1zYammaGfBoNqj5/1HdguqM4aXK/4g9fivqwEA4q4ejDheJJ8w8w4k\n"
+      "UJGnPNi+GAgJHHX+lX68ZVgmiO/+uef453sdVwandii+Fw6B0monaGAYG0pQ3ZZ1\n"
+      "Cgz5cAZGjL+P9eviDrgx4x7F2DDZHyfUNP3h5wIDAQABAoIBAE07s8c6CwjB2wIT\n"
+      "motpInn5hzEjB1m3HNgiiqixzsfJ0V9o6p8+gesHNvJgF9luEDW8O3i/JJatiYLm\n"
+      "r9xE69uzxPFF5eor0+HSYhncVOz7bZRLf0YZoRO0bmvZos++UVc1Z4yRSF6vGoRS\n"
+      "In8oHCCCksgJYkvPbI5lYwcMnqwuk50TBGAuGVPxamsCXhCETKJtclDX/ZMUmey2\n"
+      "psTqM76fjmzqhLLuSmurh+60VG3VCNueUVwrC/AW1xS07NzaQO28KZ/6AGFkXWWd\n"
+      "8Q6KSwKJ85qN4+qpsSKqNvzeva8OPWwWSFLBRRw8dwyvesmHUNncYeIReyM+nSMw\n"
+      "N0QkMgECgYEA7CS52/4K3y8coqkSSkeugRluSpCykd14YxvpyF1asq0MJcACpsUV\n"
+      "BJUWlqPAD9FM6ZvBNNrpDcV04YjDAzjLSNPN95TV7tS/eSrNqZ0Hd5lpYA0gVSq8\n"
+      "BQafuSlx/TTWIrreFc0v+eGq9WLHK6oPWDnGHgJbOYWEbn7WF858X4ECgYEA1VQ7\n"
+      "ZHrWtzAeJ9DohHUQNrz4LwseEu0Y+eqJ1PtxsX2eWW/gKa/4Ew4YUjOhD3ajcelf\n"
+      "ZcpzT/cdFk8Ya3zEHHKEU7ZMHKOPs0LpmFuYtxwOABXLanNIb/k9mvEkvTqIrYFf\n"
+      "QKxL2fC2VJiZCBDXeo2ImlUs6fgq1IsgckAN9WcCgYEAi2TKicAWbtSClMo0z8As\n"
+      "lGyMnFt57XzMecSaZfoldd+MkiQb7JHd7EyNfvK+hxfHzQZyMF8gv05VxmRSqW43\n"
+      "IZBVvtYOyuKu/Dl2Ga9mHwViHJ7i/SMyxcy5MDX04cD0vp+MRVZQAbNilWNvqqjC\n"
+      "UhQYjNJbQ0M7f3ZDrt3msQECgYEAoeOIJtppcx8a41BQA6Tqpv+Ev/6J1gcDuzRX\n"
+      "YL9oKi+QKYMS88/MTHmXz1nK0fdQVbOqZ47ZL0fyVOm1OGy4TnZBIV3oKJufA4S1\n"
+      "zJ9GJz8tCLeBZMkToZXdQGXbYZa3/iN9a5DVBxD67PvYthxByYj6r1QP/4YKyrzB\n"
+      "5LHjZeUCgYBFn5dKJ57ef+m0YelSf60Xa/ui5OodGmxgp9dC72WVsqTyePjQ8JSC\n"
+      "xRw2nRx80qFPGKwKeD7JO7nrPdCsgj41OQjIXgb2dTb+QDsSAAFcBSTIVPCa7Nb/\n"
+      "lbQDwseg8d8IrQyGvnMB6VDGt3rqd3UKt66h2PNRh13i0HYArfIAUQ==\n"
+      "-----END RSA PRIVATE KEY-----\n";
+
   db_storage_->storePrimaryKeys(public_key, private_key);
 
   aktualizr_info_process_.run({"--ecu-keys"});
   ASSERT_FALSE(aktualizr_info_output.empty());
 
-  EXPECT_NE(aktualizr_info_output.find("Public key:"), std::string::npos);
-  EXPECT_NE(aktualizr_info_output.find(public_key), std::string::npos);
+  EXPECT_NE(aktualizr_info_output.find("Public key ID: " + public_keyid), std::string::npos);
+  EXPECT_NE(aktualizr_info_output.find("Public key:\n" + public_key), std::string::npos);
+  EXPECT_NE(aktualizr_info_output.find("Private key:\n" + private_key), std::string::npos);
 
-  EXPECT_NE(aktualizr_info_output.find("Private key:"), std::string::npos);
-  EXPECT_NE(aktualizr_info_output.find(private_key), std::string::npos);
+  aktualizr_info_process_.run({"--ecu-keyid"});
+  ASSERT_FALSE(aktualizr_info_output.empty());
+  EXPECT_NE(aktualizr_info_output.find(public_keyid), std::string::npos);
 
   aktualizr_info_process_.run({"--ecu-pub-key"});
   ASSERT_FALSE(aktualizr_info_output.empty());
@@ -479,7 +519,29 @@ TEST_F(AktualizrInfoTest, PrintSecondaryEcuCurrentAndPendingVersions) {
   EXPECT_NE(aktualizr_info_output.find("pending image hash: " + pending_ecu_version), std::string::npos);
   EXPECT_NE(aktualizr_info_output.find("pending image filename: " + secondary_ecu_filename_update), std::string::npos);
 
-  // negative test, no any installed images
+  // Add Secondary public key and test that too.
+  const std::string secondary_key_raw =
+      "-----BEGIN PUBLIC KEY-----\n"
+      "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4R0QC/aI2375auDXdRM7\n"
+      "SQekXkGG72VmJxUXQmSmo8RiExkZWabJmrcGhqLMYGWfPNfUzxzMze3k30PAYdRK\n"
+      "TwxOERmIDSYy2lBclfjLskpQF/z3mwRNlDfh1OI9gLFR9BGF7oDd4s2yWPRhAL1c\n"
+      "hborUz1KeTv60kE26Wm/efmY/Kka4I0iR4YfOUOI7xFAs3ONYAPx19KvcXkIjTGT\n"
+      "BgdkSJUrlpuP0f2C8Tm8kCC923owB3ZxaYkmVYDmKar4CC5f8lf4eBrigkkC6ybb\n"
+      "m7ggeNCp38M1gOkSMdmH1vhMkgSRqMFegw4wdoxcda/sjLG8sRk6/al5+cBvFRdq\n"
+      "awIDAQAB\n"
+      "-----END PUBLIC KEY-----\n";
+  const PublicKey secondary_key(secondary_key_raw, KeyType::kRSA2048);
+  db_storage_->saveSecondaryInfo(secondary_ecu_serial, "secondary-type", secondary_key);
+
+  aktualizr_info_process_.run({"--secondary-keys"});
+  ASSERT_FALSE(aktualizr_info_output.empty());
+
+  EXPECT_NE(aktualizr_info_output.find("public key ID: " + secondary_key.KeyId()), std::string::npos)
+      << aktualizr_info_output;
+  EXPECT_NE(aktualizr_info_output.find("public key:\n" + secondary_key_raw), std::string::npos)
+      << aktualizr_info_output;
+
+  // negative test without any installed images
   db_storage_->clearInstalledVersions();
   db_storage_->clearEcuSerials();
   db_storage_->storeEcuSerials({{primary_ecu_serial, primary_hw_id}, {secondary_ecu_serial, secondary_hw_id}});
