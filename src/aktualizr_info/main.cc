@@ -60,9 +60,11 @@ int main(int argc, char **argv) {
     ("tls-root-ca", "Outputs TLS Root CA")
     ("tls-cert", "Outputs TLS client certificate")
     ("tls-prv-key", "Output TLS client private key")
-    ("ecu-keys",  "Outputs Uptane keys")
-    ("ecu-pub-key", "Outputs Uptane public key")
-    ("ecu-prv-key", "Outputs Uptane private key")
+    ("ecu-keys",  "Outputs Primary's Uptane keys")
+    ("ecu-keyid",  "Outputs Primary's Uptane public key ID")
+    ("ecu-pub-key", "Outputs Primary's Uptane public key")
+    ("ecu-prv-key", "Outputs Primary's Uptane private key")
+    ("secondary-keys",  "Outputs Secondaries' Uptane public keys")
     ("image-root",  "Outputs root.json from Image repo")
     ("image-timestamp", "Outputs timestamp.json from Image repo")
     ("image-snapshot", "Outputs snapshot.json from Image repo")
@@ -199,29 +201,51 @@ int main(int argc, char **argv) {
     bool ecukeys_loaded = false;
     std::string priv;
     std::string pub;
-
     storage->loadPrimaryKeys(&pub, &priv);
     if (!pub.empty() && !priv.empty()) {
       ecukeys_loaded = true;
     }
+
     if (vm.count("ecu-keys") != 0U) {
-      std::cout << "Public key:" << std::endl << pub << std::endl;
-      std::cout << "Private key:" << std::endl << priv << std::endl;
-      cmd_trigger = true;
+      if (!ecukeys_loaded) {
+        std::cout << "Failed to load Primary ECU keys!" << std::endl;
+      } else {
+        // TODO: probably won't work with p11.
+        PublicKey pubkey(pub, config.uptane.key_type);
+        std::cout << "Public key ID: " << pubkey.KeyId() << std::endl;
+        std::cout << "Public key:" << std::endl << pub << std::endl;
+        std::cout << "Private key:" << std::endl << priv << std::endl;
+        cmd_trigger = true;
+      }
+    }
+
+    if (vm.count("ecu-keyid") != 0U) {
+      if (!ecukeys_loaded) {
+        std::cout << "Failed to load Primary ECU keys!" << std::endl;
+      } else {
+        // TODO: probably won't work with p11.
+        PublicKey pubkey(pub, config.uptane.key_type);
+        std::cout << pubkey.KeyId() << std::endl;
+        cmd_trigger = true;
+      }
     }
 
     if (vm.count("ecu-pub-key") != 0U) {
-      std::string key;
-      storage->loadPrimaryPublic(&key);
-      std::cout << key << std::endl;
-      return EXIT_SUCCESS;
+      if (!ecukeys_loaded) {
+        std::cout << "Failed to load Primary ECU keys!" << std::endl;
+      } else {
+        std::cout << pub << std::endl;
+        cmd_trigger = true;
+      }
     }
 
     if (vm.count("ecu-prv-key") != 0U) {
-      std::string key;
-      storage->loadPrimaryPrivate(&key);
-      std::cout << key << std::endl;
-      cmd_trigger = true;
+      if (!ecukeys_loaded) {
+        std::cout << "Failed to load Primary ECU keys!" << std::endl;
+      } else {
+        std::cout << priv << std::endl;
+        cmd_trigger = true;
+      }
     }
 
     // An arguments which depend on metadata.
@@ -329,18 +353,27 @@ int main(int argc, char **argv) {
     }
 
     if (serials.size() > 1) {
+      std::vector<SecondaryInfo> info;
+      if (vm.count("secondary-keys") != 0U) {
+        storage->loadSecondariesInfo(&info);
+        if (info.empty()) {
+          std::cout << "Failed to load Secondary info!" << std::endl;
+        }
+      }
+
       auto it = serials.begin() + 1;
       std::cout << "Secondaries:\n";
       int secondary_number = 1;
       for (; it != serials.end(); ++it) {
-        std::cout << secondary_number++ << ") serial ID: " << it->first << std::endl;
+        const Uptane::EcuSerial serial = it->first;
+        std::cout << secondary_number++ << ") serial ID: " << serial << std::endl;
         std::cout << "   hardware ID: " << it->second << std::endl;
 
         boost::optional<Uptane::Target> current_version;
         boost::optional<Uptane::Target> pending_version;
 
         auto load_installed_version_res =
-            storage->loadInstalledVersions((it->first).ToString(), &current_version, &pending_version);
+            storage->loadInstalledVersions(serial.ToString(), &current_version, &pending_version);
 
         if (!load_installed_version_res || (!current_version && !pending_version)) {
           std::cout << "   no details about installed nor pending images\n";
@@ -354,7 +387,20 @@ int main(int argc, char **argv) {
             std::cout << "   pending image filename: " << pending_version->filename() << "\n";
           }
         }
+
+        if (vm.count("secondary-keys") != 0U) {
+          auto f = std::find_if(info.cbegin(), info.cend(),
+                                [&serial](const SecondaryInfo &i) { return serial == i.serial; });
+          if (f == info.cend()) {
+            std::cout << "   Failed to find matching Secondary info!" << std::endl;
+          } else {
+            std::cout << "   public key ID: " << f->pub_key.KeyId() << std::endl;
+            std::cout << "   public key:" << std::endl << f->pub_key.Value() << std::endl;
+          }
+        }
       }
+    } else if (vm.count("secondary-keys") != 0U) {
+      std::cout << "Failed to load Secondary data!" << std::endl;
     }
 
     std::vector<MisconfiguredEcu> misconfigured_ecus;
