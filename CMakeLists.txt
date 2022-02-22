@@ -37,8 +37,6 @@ set(SOTA_PACKED_CREDENTIALS "" CACHE STRING "Credentials.zip for tests involving
 set(TESTSUITE_ONLY "" CACHE STRING "Only run tests matching this list of labels")
 set(TESTSUITE_EXCLUDE "" CACHE STRING "Exclude tests matching this list of labels")
 
-set(STORAGE_TYPE "sqlite" CACHE STRING "")
-
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     message(FATAL_ERROR "Aktualizr does not support building in the source tree. Please remove CMakeCache.txt and the CMakeFiles/ directory, then create a subdirectory to build in: mkdir build; cd build; cmake ..")
 endif()

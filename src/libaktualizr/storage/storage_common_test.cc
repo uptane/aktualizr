@@ -9,18 +9,11 @@
 #include "storage/sqlstorage.h"
 #include "utilities/utils.h"
 
-StorageType current_storage_type{StorageType::kSqlite};
-
 std::unique_ptr<INvStorage> Storage(const boost::filesystem::path &dir) {
   StorageConfig storage_config;
-  storage_config.type = current_storage_type;
+  storage_config.type = StorageType::kSqlite;
   storage_config.path = dir;
-
-  if (storage_config.type == StorageType::kSqlite) {
-    return std::unique_ptr<INvStorage>(new SQLStorage(storage_config, false));
-  } else {
-    throw std::runtime_error("Invalid config type");
-  }
+  return std::unique_ptr<INvStorage>(new SQLStorage(storage_config, false));
 }
 
 StorageConfig MakeConfig(StorageType type, const boost::filesystem::path &storage_dir) {
@@ -652,11 +645,6 @@ int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   logger_init();
   logger_set_threshold(boost::log::trivial::trace);
-
-  std::cout << "Running tests for SQLStorage" << std::endl;
-  current_storage_type = StorageType::kSqlite;
-  int res_sql = RUN_ALL_TESTS();
-
-  return res_sql;  // 0 indicates success
+  return RUN_ALL_TESTS();
 }
 #endif
