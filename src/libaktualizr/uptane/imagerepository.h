@@ -39,7 +39,8 @@ class ImageRepository : public RepositoryCommon {
   // BUILD_OFFLINE_UPDATES {{
 #if 1
   void checkMetaOfflineOffUpd(INvStorage& storage);
-  void updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+  void updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) override;
+  void verifySnapshotOffline(const std::string& snapshot_raw);
 #endif
 
  private:

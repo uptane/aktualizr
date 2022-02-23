@@ -1,5 +1,5 @@
 CREATE TABLE version(version INTEGER);
-INSERT INTO version(rowid,version) VALUES(1,25);
+INSERT INTO version(rowid,version) VALUES(1,26);
 CREATE TABLE device_info(unique_mark INTEGER PRIMARY KEY CHECK (unique_mark = 0), device_id TEXT, is_registered INTEGER NOT NULL DEFAULT 0 CHECK (is_registered IN (0,1)));
 CREATE TABLE ecus(id INTEGER PRIMARY KEY, serial TEXT UNIQUE, hardware_id TEXT NOT NULL, is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0,1)));
 CREATE TABLE secondary_ecus(serial TEXT PRIMARY KEY, sec_type TEXT, public_key_type TEXT, public_key TEXT, extra TEXT, manifest TEXT);
@@ -17,6 +17,8 @@ INSERT INTO meta_types(rowid,meta,meta_string) VALUES(1,0,'root');
 INSERT INTO meta_types(rowid,meta,meta_string) VALUES(2,1,'snapshot');
 INSERT INTO meta_types(rowid,meta,meta_string) VALUES(3,2,'targets');
 INSERT INTO meta_types(rowid,meta,meta_string) VALUES(4,3,'timestamp');
+INSERT INTO meta_types(rowid,meta,meta_string) VALUES(5,5,'offlinesnapshot');
+INSERT INTO meta_types(rowid,meta,meta_string) VALUES(6,6,'offlineupdates');
 INSERT INTO repo_types(rowid,repo,repo_string) VALUES(1,0,'images');
 INSERT INTO repo_types(rowid,repo,repo_string) VALUES(2,1,'director');
 CREATE TABLE device_installation_result(unique_mark INTEGER PRIMARY KEY CHECK (unique_mark = 0), success INTEGER NOT NULL DEFAULT 0, result_code TEXT NOT NULL DEFAULT "", description TEXT NOT NULL DEFAULT "", raw_report TEXT NOT NULL DEFAULT "", correlation_id TEXT NOT NULL DEFAULT "");

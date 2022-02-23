@@ -71,6 +71,8 @@ class Role {
   static const std::string SNAPSHOT;
   static const std::string TARGETS;
   static const std::string TIMESTAMP;
+  static const std::string OFFLINESNAPSHOT;
+  static const std::string OFFLINEUPDATES;
 
   static Role Root() { return Role{RoleEnum::kRoot}; }
   static Role Snapshot() { return Role{RoleEnum::kSnapshot}; }
@@ -78,11 +80,16 @@ class Role {
   static Role Timestamp() { return Role{RoleEnum::kTimestamp}; }
   static Role Delegation(const std::string &name) { return Role(name, true); }
   static Role InvalidRole() { return Role{RoleEnum::kInvalidRole}; }
+  static Role OfflineSnapshot() { return Role{RoleEnum::kOfflineSnapshot}; }
+  static Role OfflineUpdates() { return Role{RoleEnum::kOfflineUpdates}; }
   // Delegation is not included because this is only used for a metadata table
   // that doesn't include delegations.
-  static std::vector<Role> Roles() { return {Root(), Snapshot(), Targets(), Timestamp()}; }
+  static std::vector<Role> Roles() {
+    return {Root(), Snapshot(), Targets(), Timestamp(), OfflineSnapshot(), OfflineUpdates()};
+  }
   static bool IsReserved(const std::string &name) {
-    return (name == ROOT || name == TARGETS || name == SNAPSHOT || name == TIMESTAMP);
+    return (name == ROOT || name == TARGETS || name == SNAPSHOT || name == TIMESTAMP || name == OFFLINESNAPSHOT ||
+            name == OFFLINEUPDATES);
   }
 
   explicit Role(const std::string &role_name, bool delegation = false);
@@ -98,7 +105,16 @@ class Role {
  private:
   /** The four standard roles must match the meta_types table in sqlstorage.
    *  Delegations are special and handled differently. */
-  enum class RoleEnum { kRoot = 0, kSnapshot = 1, kTargets = 2, kTimestamp = 3, kDelegation = 4, kInvalidRole = -1 };
+  enum class RoleEnum {
+    kRoot = 0,
+    kSnapshot = 1,
+    kTargets = 2,
+    kTimestamp = 3,
+    kDelegation = 4,
+    kOfflineSnapshot = 5,
+    kOfflineUpdates = 6,
+    kInvalidRole = -1
+  };
 
   explicit Role(RoleEnum role) : role_(role) {
     if (role_ == RoleEnum::kRoot) {
@@ -109,6 +125,10 @@ class Role {
       name_ = TARGETS;
     } else if (role_ == RoleEnum::kTimestamp) {
       name_ = TIMESTAMP;
+    } else if (role == RoleEnum::kOfflineSnapshot) {
+      name_ = OFFLINESNAPSHOT;
+    } else if (role == RoleEnum::kOfflineUpdates) {
+      name_ = OFFLINEUPDATES;
     } else {
       role_ = RoleEnum::kInvalidRole;
       name_ = "invalidrole";
@@ -347,7 +367,7 @@ class TimestampMeta : public BaseMeta {
 class Snapshot : public BaseMeta {
  public:
   explicit Snapshot(const Json::Value &json);
-  Snapshot(RepositoryType repo, const Json::Value &json, const std::shared_ptr<MetaWithKeys> &signer);
+  Snapshot(RepositoryType repo, const Role &role, const Json::Value &json, const std::shared_ptr<MetaWithKeys> &signer);
   Snapshot() = default;
   std::vector<Hash> role_hashes(const Uptane::Role &role) const;
   int64_t role_size(const Uptane::Role &role) const;
@@ -356,12 +376,14 @@ class Snapshot : public BaseMeta {
     return version_ == rhs.version() && expiry_ == rhs.expiry() && role_size_ == rhs.role_size_ &&
            role_version_ == rhs.role_version_ && role_hashes_ == rhs.role_hashes_;
   }
+  std::vector<std::string> role_names() { return role_names_; }
 
  private:
   void init(const Json::Value &json);
   std::map<Uptane::Role, int64_t> role_size_;
   std::map<Uptane::Role, int> role_version_;
   std::map<Uptane::Role, std::vector<Hash>> role_hashes_;
+  std::vector<std::string> role_names_;
 };
 
 struct MetaPairHash {

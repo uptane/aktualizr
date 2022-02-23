@@ -18,4 +18,31 @@ void Fetcher::fetchRole(std::string* result, int64_t maxsize, RepositoryType rep
   *result = response.body;
 }
 
+void OfflineUpdateFetcher::fetchRole(std::string* result, int64_t maxsize, RepositoryType repo,
+                                     const Uptane::Role& role, Version version) const {
+  boost::filesystem::path path;
+  if (repo == RepositoryType::Director()) {
+    path = getMetadataPath() / "director" / version.RoleFileName(role);
+  } else {
+    path = getMetadataPath() / "image-repo" / version.RoleFileName(role);
+  }
+
+  if (!boost::filesystem::exists(path)) {
+    throw Uptane::MetadataFetchFailure(repo.ToString(), path.string());
+  }
+
+  boost::filesystem::ifstream file_input(path);
+  file_input.seekg(0, file_input.end);
+  int64_t file_size = file_input.tellg();
+  // [OFFUPD] Maybe throw a better error here?
+  if (file_size > maxsize) {
+    throw Uptane::MetadataFetchFailure(repo.ToString(), path.string());
+  }
+
+  file_input.seekg(0, file_input.beg);
+  std::vector<char> buffer(file_size);
+
+  file_input.read(buffer.data(), file_size);
+  *result = std::string(buffer.begin(), buffer.end());
+}
 }  // namespace Uptane

@@ -207,17 +207,17 @@ bool Target::MatchTarget(const Target &t2) const {
   }
 
   // If the HWID vector and ECU->HWID map match, we're good. Otherwise, assume
-  // we have a Target from the Director (ECU->HWID map populated, HWID vector
-  // empty) and a Target from the Image repo (HWID vector populated,
+  // we have a Target from the Director (ECU->HWID map populated)
+  // and a Target from the Image repo (HWID vector populated,
   // ECU->HWID map empty). Figure out which Target has the map, and then for
   // every item in the map, make sure it's in the other Target's HWID vector.
   if (hwids_ != t2.hwids_ || ecus_ != t2.ecus_) {
     std::shared_ptr<EcuMap> ecu_map;                               // Director
     std::shared_ptr<std::vector<HardwareIdentifier>> hwid_vector;  // Image repo
-    if (!hwids_.empty() && ecus_.empty() && t2.hwids_.empty() && !t2.ecus_.empty()) {
+    if (ecus_.empty() && !t2.ecus_.empty()) {
       ecu_map = std::make_shared<EcuMap>(t2.ecus_);
       hwid_vector = std::make_shared<std::vector<HardwareIdentifier>>(hwids_);
-    } else if (!t2.hwids_.empty() && t2.ecus_.empty() && hwids_.empty() && !ecus_.empty()) {
+    } else if (t2.ecus_.empty() && !ecus_.empty()) {
       ecu_map = std::make_shared<EcuMap>(ecus_);
       hwid_vector = std::make_shared<std::vector<HardwareIdentifier>>(t2.hwids_);
     } else {
@@ -319,7 +319,7 @@ Uptane::BaseMeta::BaseMeta(RepositoryType repo, const Role &role, const Json::Va
 }
 
 void Uptane::Targets::init(const Json::Value &json) {
-  if (!json.isObject() || json["signed"]["_type"] != "Targets") {
+  if (!json.isObject() || (json["signed"]["_type"] != "Targets" && json["signed"]["_type"] != "Offline-Updates")) {
     throw Uptane::InvalidMetadata("", "targets", "invalid targets.json");
   }
 
@@ -393,7 +393,8 @@ Uptane::TimestampMeta::TimestampMeta(RepositoryType repo, const Json::Value &jso
 
 void Uptane::Snapshot::init(const Json::Value &json) {
   Json::Value meta_list = json["signed"]["meta"];
-  if (!json.isObject() || json["signed"]["_type"] != "Snapshot" || !meta_list.isObject()) {
+  if ((!json.isObject() || !meta_list.isObject()) ||
+      (json["signed"]["_type"] != "Snapshot" && json["signed"]["_type"] != "Offline-Snapshot")) {
     throw Uptane::InvalidMetadata("", "snapshot", "invalid snapshot.json");
   }
 
@@ -408,6 +409,7 @@ void Uptane::Snapshot::init(const Json::Value &json) {
 
     auto role_name =
         it.key().asString().substr(0, it.key().asString().rfind('.'));  // strip extension from the role name
+    role_names_.push_back(role_name);
     auto role_object = Role(role_name, !Role::IsReserved(role_name));
 
     if (meta_version.isIntegral()) {
@@ -434,8 +436,9 @@ void Uptane::Snapshot::init(const Json::Value &json) {
 
 Uptane::Snapshot::Snapshot(const Json::Value &json) : BaseMeta(json) { init(json); }
 
-Uptane::Snapshot::Snapshot(RepositoryType repo, const Json::Value &json, const std::shared_ptr<MetaWithKeys> &signer)
-    : BaseMeta(repo, Role::Snapshot(), json, signer) {
+Uptane::Snapshot::Snapshot(RepositoryType repo, const Role &role, const Json::Value &json,
+                           const std::shared_ptr<MetaWithKeys> &signer)
+    : BaseMeta(repo, role, json, signer) {
   init(json);
 }
 

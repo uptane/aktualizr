@@ -84,7 +84,8 @@ void ImageRepository::verifySnapshot(const std::string& snapshot_raw, bool prefe
 
   try {
     // Verify the signature:
-    snapshot = Snapshot(RepositoryType::Image(), Utils::parseJSON(snapshot_raw), std::make_shared<MetaWithKeys>(root));
+    snapshot = Snapshot(RepositoryType::Image(), Uptane::Role::Snapshot(), Utils::parseJSON(snapshot_raw),
+                        std::make_shared<MetaWithKeys>(root));
   } catch (const Exception& e) {
     LOG_ERROR << "Signature verification for Snapshot metadata failed";
     throw;
@@ -157,15 +158,18 @@ int64_t ImageRepository::getRoleSize(const Uptane::Role& role) const { return sn
 
 void ImageRepository::verifyTargets(const std::string& targets_raw, bool prefetch) {
   try {
+    // Checking hashes not required by PURE-2 but does not hurt to check
     verifyRoleHashes(targets_raw, Uptane::Role::Targets(), prefetch);
 
     auto targets_json = Utils::parseJSON(targets_raw);
 
     // Verify the signature:
+    // PURE-2 step 8(iii.a)
     auto signer = std::make_shared<MetaWithKeys>(root);
     targets = std::make_shared<Uptane::Targets>(
         Targets(RepositoryType::Image(), Uptane::Role::Targets(), targets_json, signer));
 
+    // PURE-2 step 8(ii)
     if (targets->version() != snapshot.role_version(Uptane::Role::Targets())) {
       throw Uptane::VersionMismatch(RepositoryType::IMAGE, Uptane::Role::TARGETS);
     }
@@ -183,6 +187,7 @@ std::shared_ptr<Uptane::Targets> ImageRepository::verifyDelegation(const std::st
     const std::string canonical = Utils::jsonToCanonicalStr(delegation_json);
 
     // Verify the signature:
+    // PURE-2 step 8(iii.b)
     auto signer = std::make_shared<MetaWithKeys>(parent_target);
     return std::make_shared<Uptane::Targets>(Targets(RepositoryType::Image(), role, delegation_json, signer));
   } catch (const Exception& e) {
@@ -344,14 +349,110 @@ void ImageRepository::checkMetaOffline(INvStorage& storage) {
 
 #ifdef BUILD_OFFLINE_UPDATES
 void ImageRepository::checkMetaOfflineOffUpd(INvStorage& storage) {
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
-  (void)storage;
+  resetMeta();
+
+  // Load Image repo Root Metadata
+  std::string image_root;
+  if (!storage.loadLatestRoot(&image_root, RepositoryType::Image())) {
+    throw Uptane::SecurityException(RepositoryType::IMAGE, "Could not load latest root");
+  }
+
+  initRoot(RepositoryType(RepositoryType::IMAGE), image_root);
+
+  if (rootExpired()) {
+    throw Uptane::ExpiredMetadata(RepositoryType::IMAGE, Role::Root().ToString());
+  }
+
+  // Load Image repo Snapshot Metadata
+  std::string image_snapshot;
+  if (!storage.loadNonRoot(&image_snapshot, RepositoryType::Image(), Role::Snapshot())) {
+    throw Uptane::SecurityException(RepositoryType::IMAGE, "Could not load Snapshot role");
+  }
+
+  verifySnapshotOffline(image_snapshot);
+
+  checkSnapshotExpired();
+
+  // Load Image repo Targets Metadata
+  std::string image_targets;
+  if (!storage.loadNonRoot(&image_targets, RepositoryType::Image(), Role::Targets())) {
+    throw Uptane::SecurityException(RepositoryType::IMAGE, "Could not load Targets role");
+  }
+
+  verifyTargets(image_targets, false);
+
+  checkTargetsExpired();
 }
 
-void ImageRepository::updateMetaOffUpd(INvStorage& storage, const IMetadataFetcher& fetcher) {
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD
-  (void)storage;
-  (void)fetcher;
+void ImageRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) {
+  // reset Image repo to initial state before starting Uptane iteration
+  resetMeta();
+
+  // PURE-2 step 6
+  updateRoot(storage, fetcher, RepositoryType::Image());
+
+  // Update Image Snapshot Metadata
+  // PURE-2 step 7(i)
+  std::string image_snapshot;
+  fetcher.fetchLatestRole(&image_snapshot, kMaxSnapshotSize, RepositoryType::Image(), Role::Snapshot());
+
+  const int snapshot_fetched_version = extractVersionUntrusted(image_snapshot);
+  int snapshot_local_version;
+  std::string image_snapshot_stored;
+  if (storage.loadNonRoot(&image_snapshot_stored, RepositoryType::Image(), Role::Snapshot())) {
+    snapshot_local_version = extractVersionUntrusted(image_snapshot_stored);
+  } else {
+    snapshot_local_version = -1;
+  }
+
+  if (snapshot_local_version < snapshot_fetched_version) {
+    verifySnapshotOffline(image_snapshot);
+    storage.storeNonRoot(image_snapshot, RepositoryType::Image(), Role::Snapshot());
+  } else {
+    // Not required by PURE-2 but does not hurt to verify stored snapshot
+    verifySnapshotOffline(image_snapshot_stored);
+  }
+
+  // [OFFUPD] PURE-2 step 7(iii) can be skipped due to the reasons stated here:
+  // https://github.com/uptane/deployment-considerations/pull/39/files
+  // TODO: Make sure this assumptions stands true for offline updates.
+
+  // PURE-2 step 7(iv) we skip checking for expired snapshot in the offline case.
+
+  // Update Image Top-level Targets Metadata
+  // PURE-2 step 8(i)
+  std::string image_targets;
+  fetcher.fetchLatestRole(&image_targets, kMaxImageTargetsSize, RepositoryType::Image(), Role::Targets());
+
+  const int targets_fetched_version = extractVersionUntrusted(image_targets);
+  int targets_local_version;
+  std::string image_targets_stored;
+  if (storage.loadNonRoot(&image_targets_stored, RepositoryType::Image(), Role::Targets())) {
+    targets_local_version = extractVersionUntrusted(image_targets_stored);
+  } else {
+    targets_local_version = -1;
+  }
+
+  if (targets_local_version < targets_fetched_version) {
+    verifyTargets(image_targets, false);
+    storage.storeNonRoot(image_targets, RepositoryType::Image(), Role::Targets());
+  } else {
+    verifyTargets(image_targets_stored, true);
+  }
+
+  // PURE-2 step 8(iv)
+  checkTargetsExpired();
+}
+
+void ImageRepository::verifySnapshotOffline(const std::string& snapshot_raw) {
+  // PURE-2 step 7(ii)
+  try {
+    snapshot = Snapshot(RepositoryType::Image(), Uptane::Role::Snapshot(), Utils::parseJSON(snapshot_raw),
+                        std::make_shared<MetaWithKeys>(root));
+  } catch (const Exception& e) {
+    LOG_ERROR << "Signature verification for Snapshot metadata failed";
+    throw;
+  }
 }
 #endif
 

@@ -447,7 +447,6 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
 void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
   try {
     if (utype == UpdateType::kOffline) {
-      // TODO: [OFFUPD] This one should check the OfflineUpdates data -> tell Jeremias that this might be missing.
 #ifdef BUILD_OFFLINE_UPDATES
       director_repo.checkMetaOfflineOffUpd(*storage);
 #else
@@ -551,14 +550,6 @@ void SotaUptaneClient::computeDeviceInstallationResult(data::InstallationResult 
 }
 
 void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count) {
-  // TODO: [OFFUPD] Use an `offupd` parameter to get offline-targers.
-  //       const std::vector<Uptane::Target> targets = offupd ?
-  //             director_repo.getTargetsOffUpd().targets :
-  //             director_repo.getTargets().targets;
-  // OR
-  //       const std::vector<Uptane::Target> targets = director_repo.getTargets(offupd).targets;
-  // OR
-  //       no change and consider that getTargets() will simply return the offline-targets
   const std::vector<Uptane::Target> targets = director_repo.getTargets().targets;
   const Uptane::EcuSerial primary_ecu_serial = primaryEcuSerial();
   if (ecus_count != nullptr) {
@@ -843,7 +834,7 @@ void SotaUptaneClient::uptaneIteration(std::vector<Uptane::Target> *targets, uns
   std::vector<Uptane::Target> tmp_targets;
   unsigned int ecus;
   try {
-    // TODO: [OFFUPD] Consider passing parameter `utype`.
+    // PURE-2 step 5
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();
@@ -870,7 +861,6 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
   std::vector<Uptane::Target> tmp_targets;
   unsigned int ecus;
   try {
-    // TODO: [OFFUPD] Consider passing parameter `offupd`.
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();
@@ -940,10 +930,16 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
     return result;
   }
 
-  // TODO: [OFFUPD] Use appropriate role below: "OfflineUpdates"?
   std::string director_targets;
-  if (!storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
+  if (utype == UpdateType::kOnline &&
+      !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
+    return result;
+  } else if (utype == UpdateType::kOffline &&
+             !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(),
+                                   Uptane::Role::OfflineUpdates())) {
+    result =
+        result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update offline metadata.");
     return result;
   }
 
@@ -958,6 +954,7 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   // repositories match. A Primary ECU MUST perform this check on metadata for
   // all images listed in the Targets metadata file from the Director
   // repository.
+  // PURE-2 step 9
   try {
     for (auto &target : updates) {
       auto image_target = findTargetInDelegationTree(target, false, utype);
