@@ -6,24 +6,20 @@
 #include <boost/filesystem.hpp>
 
 #include "libaktualizr/types.h"
+#include "repo.h"
 #include "storage/sqlstorage.h"
 #include "utilities/utils.h"
 
-StorageType current_storage_type{StorageType::kSqlite};
+namespace fs = boost::filesystem;
 
-std::unique_ptr<INvStorage> Storage(const boost::filesystem::path &dir) {
+std::unique_ptr<INvStorage> Storage(const fs::path &dir) {
   StorageConfig storage_config;
-  storage_config.type = current_storage_type;
+  storage_config.type = StorageType::kSqlite;
   storage_config.path = dir;
-
-  if (storage_config.type == StorageType::kSqlite) {
-    return std::unique_ptr<INvStorage>(new SQLStorage(storage_config, false));
-  } else {
-    throw std::runtime_error("Invalid config type");
-  }
+  return std::unique_ptr<INvStorage>(new SQLStorage(storage_config, false));
 }
 
-StorageConfig MakeConfig(StorageType type, const boost::filesystem::path &storage_dir) {
+StorageConfig MakeConfig(StorageType type, const fs::path &storage_dir) {
   StorageConfig config;
 
   config.type = type;
@@ -531,7 +527,7 @@ TEST(StorageCommon, LoadStoreSecondaryInfo) {
 TEST(StorageImport, ImportData) {
   TemporaryDirectory temp_dir;
   std::unique_ptr<INvStorage> storage = Storage(temp_dir.Path());
-  boost::filesystem::create_directories(temp_dir / "import");
+  fs::create_directories(temp_dir / "import");
 
   ImportConfig import_config;
   import_config.base_path = temp_dir.Path() / "import";
@@ -647,16 +643,48 @@ TEST(StorageImport, ImportData) {
   EXPECT_EQ(tls_pkey, tls_pkey_in3);
 }
 
+TEST(StorageImport, ImportInitialRoot) {
+  TemporaryDirectory temp_dir;
+  std::unique_ptr<INvStorage> storage = Storage(temp_dir.Path());
+  fs::create_directories(temp_dir / "import");
+
+  ImportConfig import_config;
+  import_config.base_path = temp_dir.Path() / "import";
+
+  // Generate a set of valid Uptane root keys
+  auto repo_path = temp_dir.Path() / "repo";
+  Repo image_repo{Uptane::RepositoryType::Image(), repo_path, "", ""};
+  image_repo.generateRepo();
+  Repo director_repo{Uptane::RepositoryType::Director(), repo_path, "", ""};
+  director_repo.generateRepo();
+  director_repo.rotate(Uptane::Role::Root());
+
+  EXPECT_FALSE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Image()));
+  EXPECT_FALSE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Director()));
+
+  fs::create_directories(import_config.base_path / "repo");
+  fs::create_directories(import_config.base_path / "director");
+
+  fs::copy(repo_path / "repo/repo/root.json", import_config.base_path / "repo/root.json");
+  Utils::writeFile(import_config.base_path / "director/root.json", std::string("invalid"));
+
+  storage->importData(import_config);
+  EXPECT_TRUE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Image()));
+  EXPECT_FALSE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Director()))
+      << "Director root.json was invalid. It shouldn't have been imported";
+
+  // Copy the real director root.json over
+  fs::copy_file(repo_path / "repo/director/root.json", import_config.base_path / "director/root.json",
+                fs::copy_option::overwrite_if_exists);
+  storage->importData(import_config);
+  EXPECT_TRUE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Director()));
+}
+
 #ifndef __NO_MAIN__
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   logger_init();
   logger_set_threshold(boost::log::trivial::trace);
-
-  std::cout << "Running tests for SQLStorage" << std::endl;
-  current_storage_type = StorageType::kSqlite;
-  int res_sql = RUN_ALL_TESTS();
-
-  return res_sql;  // 0 indicates success
+  return RUN_ALL_TESTS();
 }
 #endif
