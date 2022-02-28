@@ -47,6 +47,10 @@ HttpClient::HttpClient(const std::vector<std::string>* extra_headers) {
   curlEasySetoptWrapper(curl, CURLOPT_CONNECTTIMEOUT, 60L);
   curlEasySetoptWrapper(curl, CURLOPT_CAPATH, Utils::getCaPath());
 
+  curlEasySetoptWrapper(curl, CURLOPT_FOLLOWLOCATION, 1L);
+  curlEasySetoptWrapper(curl, CURLOPT_MAXREDIRS, 10L);
+  curlEasySetoptWrapper(curl, CURLOPT_POSTREDIR, CURL_REDIR_POST_301);
+
   // let curl use our write function
   curlEasySetoptWrapper(curl, CURLOPT_WRITEFUNCTION, writeString);
   curlEasySetoptWrapper(curl, CURLOPT_WRITEDATA, NULL);
