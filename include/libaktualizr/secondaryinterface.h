@@ -50,7 +50,8 @@ class SecondaryInterface {
   virtual data::InstallationResult putRoot(const std::string& root, bool director) = 0;
 
   virtual data::InstallationResult sendFirmware(const Uptane::Target& target) = 0;
-  virtual data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info = InstallInfo()) = 0;
+  virtual data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) = 0;
+  virtual data::InstallationResult install(const Uptane::Target& target) { return install(target, InstallInfo()); }
 
  protected:
   SecondaryInterface(const SecondaryInterface&) = default;

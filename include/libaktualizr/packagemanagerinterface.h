@@ -66,7 +66,7 @@ class PackageManagerInterface {
   //       the same in aktualizr-torizon but they aren't ATM
   // BUILD_OFFLINE_UPDATES {{
 #if 1
-  virtual bool fetchTargetOffUpd(const Uptane::Target& target, Uptane::OfflineUpdateFetcher& fetcher,
+  virtual bool fetchTargetOffUpd(const Uptane::Target& target, const Uptane::OfflineUpdateFetcher& fetcher,
                                  const KeyManager& keys, const FetcherProgressCb& progress_cb,
                                  const api::FlowControlToken* token);
 #endif

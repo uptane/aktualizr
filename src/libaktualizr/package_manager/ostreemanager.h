@@ -65,21 +65,29 @@ class OstreeManager : public PackageManagerInterface {
   //       the same in aktualizr-torizon but they aren't ATM
   // BUILD_OFFLINE_UPDATES {{
 #if 1
-  virtual bool fetchTargetOffUpd(const Uptane::Target &target, Uptane::OfflineUpdateFetcher &fetcher,
-                                 const KeyManager &keys, const FetcherProgressCb &progress_cb,
-                                 const api::FlowControlToken *token) override;
+  bool fetchTargetOffUpd(const Uptane::Target &target, const Uptane::OfflineUpdateFetcher &fetcher,
+                         const KeyManager &keys, const FetcherProgressCb &progress_cb,
+                         const api::FlowControlToken *token) override;
 #endif
   TargetStatus verifyTarget(const Uptane::Target &target) const override;
 
   GObjectUniquePtr<OstreeDeployment> getStagedDeployment() const;
   static GObjectUniquePtr<OstreeSysroot> LoadSysroot(const boost::filesystem::path &path);
   static GObjectUniquePtr<OstreeRepo> LoadRepo(OstreeSysroot *sysroot, GError **error);
-  static bool addRemote(OstreeRepo *repo, const std::string &url, const KeyManager &keys);
+  static bool addRemote(OstreeRepo *repo, const std::string &url, const KeyManager *keys = nullptr);
   static data::InstallationResult pull(
       const boost::filesystem::path &sysroot_path, const std::string &ostree_server, const KeyManager &keys,
       const Uptane::Target &target, const api::FlowControlToken *token = nullptr,
       OstreeProgressCb progress_cb = nullptr, const char *alt_remote = nullptr,
       boost::optional<std::unordered_map<std::string, std::string>> headers = boost::none);
+
+  // TODO: [OFFUPD] Protect with an #ifdef:
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  static data::InstallationResult pullLocal(const boost::filesystem::path &sysroot_path,
+                                            const boost::filesystem::path &srcrepo_path, const Uptane::Target &target,
+                                            OstreeProgressCb progress_cb = nullptr);
+#endif
 
  private:
   TargetStatus verifyTargetInternal(const Uptane::Target &target) const;

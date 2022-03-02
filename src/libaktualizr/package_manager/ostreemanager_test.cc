@@ -165,7 +165,43 @@ TEST(OstreeManager, AddRemoteNoCreds) {
   GError *error = nullptr;
   std::shared_ptr<OstreeSysroot> sysroot = OstreeManager::LoadSysroot(config.pacman.sysroot);
   EXPECT_TRUE(ostree_sysroot_get_repo(sysroot.get(), &repo, nullptr, &error));
-  EXPECT_TRUE(OstreeManager::addRemote(repo, config.pacman.ostree_server, keys));
+  EXPECT_TRUE(OstreeManager::addRemote(repo, config.pacman.ostree_server, &keys));
+
+  g_autofree char *url = nullptr;
+  EXPECT_TRUE(ostree_repo_get_remote_option(repo, remote, "url", nullptr, &url, &error));
+  EXPECT_EQ(url, config.pacman.ostree_server);
+
+  gboolean out_gpg_verify;
+  EXPECT_TRUE(ostree_repo_get_remote_boolean_option(repo, remote, "gpg-verify", FALSE, &out_gpg_verify, &error));
+
+  g_autofree char *ostree_cert = nullptr;
+  EXPECT_TRUE(ostree_repo_get_remote_option(repo, remote, "tls-client-cert-path", nullptr, &ostree_cert, &error));
+  EXPECT_EQ(ostree_cert, nullptr);
+
+  g_autofree char *ostree_key = nullptr;
+  EXPECT_TRUE(ostree_repo_get_remote_option(repo, remote, "tls-client-key-path", nullptr, &ostree_key, &error));
+  EXPECT_EQ(ostree_key, nullptr);
+
+  g_autofree char *ostree_ca = nullptr;
+  EXPECT_TRUE(ostree_repo_get_remote_option(repo, remote, "tls-ca-path", nullptr, &ostree_ca, &error));
+  EXPECT_EQ(ostree_ca, nullptr);
+
+  g_object_unref(repo);
+}
+
+/* Communicate with a remote OSTree server without credentials (second form). */
+TEST(OstreeManager, AddRemoteNoCreds2ndForm) {
+  TemporaryDirectory temp_dir;
+  Config config;
+  config.pacman.type = PACKAGE_MANAGER_OSTREE;
+  config.pacman.sysroot = test_sysroot;
+  config.storage.path = temp_dir.Path();
+
+  OstreeRepo *repo = nullptr;
+  GError *error = nullptr;
+  std::shared_ptr<OstreeSysroot> sysroot = OstreeManager::LoadSysroot(config.pacman.sysroot);
+  EXPECT_TRUE(ostree_sysroot_get_repo(sysroot.get(), &repo, nullptr, &error));
+  EXPECT_TRUE(OstreeManager::addRemote(repo, config.pacman.ostree_server));
 
   g_autofree char *url = nullptr;
   EXPECT_TRUE(ostree_repo_get_remote_option(repo, remote, "url", nullptr, &url, &error));
@@ -211,7 +247,7 @@ TEST(OstreeManager, AddRemoteWithCreds) {
   GError *error = nullptr;
   std::shared_ptr<OstreeSysroot> sysroot = OstreeManager::LoadSysroot(config.pacman.sysroot);
   EXPECT_TRUE(ostree_sysroot_get_repo(sysroot.get(), &repo, nullptr, &error));
-  EXPECT_TRUE(OstreeManager::addRemote(repo, config.pacman.ostree_server, keys));
+  EXPECT_TRUE(OstreeManager::addRemote(repo, config.pacman.ostree_server, &keys));
 
   g_autofree char *url = nullptr;
   EXPECT_TRUE(ostree_repo_get_remote_option(repo, remote, "url", nullptr, &url, &error));
