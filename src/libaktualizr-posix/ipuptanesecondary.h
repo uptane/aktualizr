@@ -39,6 +39,17 @@ class IpUptaneSecondary : public SecondaryInterface {
   data::InstallationResult sendFirmware(const Uptane::Target& target) override;
   data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
 
+  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
+#if 1
+  data::InstallationResult putMetadataOffUpd(const Uptane::Target& target,
+                                             const OfflineUpdateFetcher& fetcher) override {
+    (void)target;
+    (void)fetcher;
+    return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                    "IpUptaneSecondary::putMetadataOffUpd not implemented");
+  }
+#endif
+
  private:
   const std::pair<std::string, uint16_t>& getAddr() const { return addr_; }
   void getSecondaryVersion() const;

@@ -655,6 +655,7 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetHelper(const Uptane:
 
     Uptane::Targets delegation;
     if (utype == UpdateType::kOffline) {
+      // TODO: [OFFUPD] Protect with an #ifdef ??
       delegation = Uptane::getTrustedDelegation(delegate_role, cur_targets, image_repo, *storage,
                                                 *uptane_fetcher_offupd, offline);
     } else {
@@ -1331,6 +1332,7 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
         try {
           if (utype == UpdateType::kOffline) {
             // TODO: [OFFUPD] Test this condition; How?
+            // TODO: [OFFUPD] Protect with an #ifdef ??
             uptane_fetcher_offupd->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(),
                                              Uptane::Version(v));
           } else {
@@ -1388,8 +1390,16 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
           break;
         }
         try {
-          // TODO: [OFFUPD] Anything special to be done here?
-          local_result = sec->second->putMetadata(target);
+          if (utype == UpdateType::kOffline) {
+#ifdef BUILD_OFFLINE_UPDATES
+            local_result = sec->second->putMetadataOffUpd(target, *uptane_fetcher_offupd);
+#else
+            local_result = data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                                    "sendMetadataToEcus(): Offline-updates not enabled");
+#endif
+          } else {
+            local_result = sec->second->putMetadata(target);
+          }
         } catch (const std::exception &ex) {
           local_result = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
         }

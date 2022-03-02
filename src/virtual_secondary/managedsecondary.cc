@@ -115,6 +115,83 @@ data::InstallationResult ManagedSecondary::putMetadata(const Uptane::Target &tar
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
+#ifdef BUILD_OFFLINE_UPDATES
+data::InstallationResult ManagedSecondary::putMetadataOffUpd(const Uptane::Target &target,
+                                                             const Uptane::OfflineUpdateFetcher &fetcher) {
+  // TODO: [OFFUPD] Consider removing this parameter.
+  (void)target;
+  detected_attack = "";
+
+#if 0
+  /*
+   * TODO: [OFFUPD] Discuss and hopefully remove this block.
+   *
+   * ATM we are providing the secondary with the same fetcher used by the primary
+   * instead of creating an intermediate fetcher that keeps the metadata from the
+   * primary in memory.
+   *
+   * Some complications of trying to do so with the offline case:
+   *
+   * - The fetcher is called with a variable role in updateMetaOffUpd().
+   * - DirectorRepository::updateMetaOffUpd() directly access the takeout image so a
+   *   rigged USB flash drive could present different data to the primary and to the
+   *   secondary.
+   *     - Solving this might require extending the fetcher interface class to cover
+   *       code handling PURE-2 step 4: result may need to be kept in NVM to work as
+   *       a snapshot of the metadata as seen by the primary.
+   *
+   * Are we losing some security by accessing directly the offline fetcher here?
+   */
+  Uptane::MetaBundle bundle;
+  if (!secondary_provider_->getMetadata(&bundle, target)) {
+    return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                    "Unable to load stored metadata from Primary");
+  }
+  Uptane::SecondaryMetadata metadata(bundle);
+#endif
+
+  // TODO: [OFFUPD] Update ECU serials of secondary.
+  // Get ECU serials from primary to allow translation of targets specified
+  // only by their HWIDs into a form based on serials.
+  EcuSerials serials;
+  if (!secondary_provider_->getEcuSerials(&serials) || serials.empty()) {
+    throw std::runtime_error("Unable to get ECU serials from primary");
+  }
+  storage_->storeEcuSerials(serials);
+
+  // 2. Download and check the Root metadata file from the Director repository.
+  // 3. Download and check the offline Snapshot metadata file from the Director repository.
+  // 4. Download and check the offline Targets metadata file from the Director repository.
+  try {
+    director_repo_->updateMetaOffUpd(*storage_, fetcher);
+  } catch (const std::exception &e) {
+    detected_attack = std::string("Failed to update Director metadata: ") + e.what();
+    LOG_ERROR << detected_attack;
+    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+  }
+
+  // 6. Download and check the Root metadata file from the Image repository.
+  // 7. Download and check the offline Snapshot metadata file from the Image repository.
+  // 8. Download and check the offline Targets metadata file from the Image repository.
+  try {
+    image_repo_->updateMetaOffUpd(*storage_, fetcher);
+  } catch (const std::exception &e) {
+    detected_attack = std::string("Failed to update Image repo metadata: ") + e.what();
+    LOG_ERROR << detected_attack;
+    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+  }
+
+  // 9. Verify that Targets metadata from the Director and Image repositories match.
+  if (!director_repo_->matchTargetsWithImageTargets(image_repo_->getTargets())) {
+    detected_attack = "Targets metadata from the Director and Image repositories do not match";
+    LOG_ERROR << detected_attack;
+    return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
+  }
+
+  return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
+}
+#endif
+
 int ManagedSecondary::getRootVersion(const bool director) const {
   if (director) {
     return director_repo_->rootVersion();

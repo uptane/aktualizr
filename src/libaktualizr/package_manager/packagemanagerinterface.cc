@@ -261,7 +261,7 @@ bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target,
   } catch (const std::exception& e) {
     LOG_WARNING << "Error while fetching a target: " << e.what();
   }
-  LOG_DEBUG << "Fetch status for file " << target.filename() <<  " is " << result;
+  LOG_DEBUG << "Fetch status for file " << target.filename() << " is " << result;
   return result;
 }
 #endif

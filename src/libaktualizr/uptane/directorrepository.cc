@@ -263,6 +263,7 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   // PURE-2 step 3(iv)
   checkOfflineSnapshotExpired();
 
+  // TODO: [OFFUPD] This access to the file here may need a review when this method is called for a secondary.
   // Update Director Offline Updates(Targets) Metadata
   // PURE-2 step 4
   boost::filesystem::path offline_target_file;
