@@ -160,7 +160,8 @@ data::InstallationResult ManagedSecondary::sendFirmware(const Uptane::Target &ta
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
-data::InstallationResult ManagedSecondary::install(const Uptane::Target &target, const InstallInfo &) {
+data::InstallationResult ManagedSecondary::install(const Uptane::Target &target, const InstallInfo &info) {
+  (void)info;
   // TODO: check that the target is actually valid.
   auto str = secondary_provider_->getTargetFileHandle(target);
   std::ofstream out_file(sconfig.firmware_path.string(), std::ios::binary);

@@ -10,12 +10,16 @@ class InstallInfo {
  public:
   explicit InstallInfo(UpdateType update_type = UpdateType::kOnline) : update_type_(update_type) {}
   virtual ~InstallInfo() = default;
+  InstallInfo(const InstallInfo&) = default;
+  InstallInfo(InstallInfo&&) = default;
+  InstallInfo& operator=(const InstallInfo&) = default;
+  InstallInfo& operator=(InstallInfo&&) = default;
 
-  void initOffline(const boost::filesystem::path images_path_offline,
-                   const boost::filesystem::path metadata_path_offline) {
+  void initOffline(const boost::filesystem::path& images_path_offline,
+                   const boost::filesystem::path& metadata_path_offline) {
     assert(update_type_ == UpdateType::kOffline);
-    images_path_offline_ = std::move(images_path_offline);
-    metadata_path_offline_ = std::move(metadata_path_offline);
+    images_path_offline_ = images_path_offline;
+    metadata_path_offline_ = metadata_path_offline;
   }
 
   UpdateType getUpdateType() { return update_type_; }
