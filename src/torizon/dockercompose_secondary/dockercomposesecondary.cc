@@ -202,11 +202,15 @@ bool DockerComposeSecondary::pendingPrimaryUpdate() {
 bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const {
   std::string content;
 
-  if (!boost::filesystem::exists(sconfig.target_name_path) || !boost::filesystem::exists(sconfig.firmware_path)) {
+  if (!boost::filesystem::exists(sconfig.firmware_path)) {
     firmware_info.name = std::string("noimage");
     content = "";
   } else {
-    firmware_info.name = Utils::readFile(sconfig.target_name_path.string());
+    if (!boost::filesystem::exists(sconfig.target_name_path)) {
+      firmware_info.name = std::string("docker-compose.yml");
+    } else {
+      firmware_info.name = Utils::readFile(sconfig.target_name_path.string());
+    }
 
     // Read compose-file and transform it into its original form in memory.
     DockerComposeFile dcfile;
