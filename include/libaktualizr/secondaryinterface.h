@@ -10,12 +10,16 @@ class InstallInfo {
  public:
   explicit InstallInfo(UpdateType update_type = UpdateType::kOnline) : update_type_(update_type) {}
   virtual ~InstallInfo() = default;
+  InstallInfo(const InstallInfo&) = default;
+  InstallInfo(InstallInfo&&) = default;
+  InstallInfo& operator=(const InstallInfo&) = default;
+  InstallInfo& operator=(InstallInfo&&) = default;
 
-  void initOffline(const boost::filesystem::path images_path_offline,
-                   const boost::filesystem::path metadata_path_offline) {
+  void initOffline(const boost::filesystem::path& images_path_offline,
+                   const boost::filesystem::path& metadata_path_offline) {
     assert(update_type_ == UpdateType::kOffline);
-    images_path_offline_ = std::move(images_path_offline);
-    metadata_path_offline_ = std::move(metadata_path_offline);
+    images_path_offline_ = images_path_offline;
+    metadata_path_offline_ = metadata_path_offline;
   }
 
   UpdateType getUpdateType() { return update_type_; }
@@ -50,7 +54,8 @@ class SecondaryInterface {
   virtual data::InstallationResult putRoot(const std::string& root, bool director) = 0;
 
   virtual data::InstallationResult sendFirmware(const Uptane::Target& target) = 0;
-  virtual data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info = InstallInfo()) = 0;
+  virtual data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) = 0;
+  virtual data::InstallationResult install(const Uptane::Target& target) { return install(target, InstallInfo()); }
 
  protected:
   SecondaryInterface(const SecondaryInterface&) = default;

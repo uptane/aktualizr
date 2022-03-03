@@ -18,6 +18,7 @@
 #include "bootloader/bootloader.h"
 #include "logging/logging.h"
 #include "storage/invstorage.h"
+#include "uptane/fetcher.h"
 #include "utilities/utils.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -118,7 +119,7 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
       ostree_remote_uri = uri_override;
     }
     // addRemote overwrites any previous ostree remote that was set
-    if (!OstreeManager::addRemote(repo.get(), ostree_remote_uri, keys)) {
+    if (!OstreeManager::addRemote(repo.get(), ostree_remote_uri, &keys)) {
       return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
                                       std::string("Error adding a default OSTree remote: ") + remote);
     }
@@ -155,6 +156,77 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
   ostree_async_progress_finish(progress.get());
   g_variant_unref(options);
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "Pulling OSTree image was successful");
+}
+
+/**
+ * Simplified version of `OstreeManager::pull()` for performing local pulls.
+ */
+data::InstallationResult OstreeManager::pullLocal(const boost::filesystem::path &sysroot_path,
+                                                  const boost::filesystem::path &srcrepo_path,
+                                                  const Uptane::Target &target, OstreeProgressCb progress_cb) {
+  if (!target.IsOstree()) {
+    throw std::logic_error("Invalid type of Target, got " + target.type() + ", expected OSTREE");
+  }
+
+  // The "OSTree server" in this case will be a local directory.
+  const std::string ostree_server = "file://" + boost::filesystem::absolute(srcrepo_path).string();
+  const uint32_t pullflags = OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
+  const std::string refhash = target.sha256Hash();
+  // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
+  const char *const commit_ids[] = {refhash.c_str()};
+  GError *error = nullptr;
+  GObjectUniquePtr<OstreeSysroot> sysroot = OstreeManager::LoadSysroot(sysroot_path);
+  GObjectUniquePtr<OstreeRepo> repo = LoadRepo(sysroot.get(), &error);
+  if (error != nullptr) {
+    LOG_ERROR << "Could not get OSTree repo";
+    g_error_free(error);
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Could not get OSTree repo");
+  }
+
+  GHashTable *ref_list = nullptr;
+  if (ostree_repo_list_commit_objects_starting_with(repo.get(), refhash.c_str(), &ref_list, nullptr, &error) != 0) {
+    guint length = g_hash_table_size(ref_list);
+    g_hash_table_destroy(ref_list);  // OSTree creates the table with destroy notifiers, so no memory leaks expected
+    // should never be greater than 1, but use >= for robustness
+    if (length >= 1) {
+      LOG_DEBUG << "refhash already pulled";
+      return data::InstallationResult(true, data::ResultCode::Numeric::kAlreadyProcessed, "Refhash was already pulled");
+    }
+  }
+  if (error != nullptr) {
+    g_error_free(error);
+    error = nullptr;
+  }
+
+  if (!OstreeManager::addRemote(repo.get(), ostree_server)) {
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Error adding OSTree remote");
+  }
+
+  GVariantBuilder builder;
+  g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+  g_variant_builder_add(&builder, "{s@v}", "flags", g_variant_new_variant(g_variant_new_int32(pullflags)));
+  g_variant_builder_add(&builder, "{s@v}", "refs", g_variant_new_variant(g_variant_new_strv(commit_ids, 1)));
+  // Be aligned with ostree's pull-local (disable signapi verification):
+  g_variant_builder_add(&builder, "{s@v}", "disable-sign-verify", g_variant_new_variant(g_variant_new_boolean(TRUE)));
+  g_variant_builder_add(&builder, "{s@v}", "disable-sign-verify-summary",
+                        g_variant_new_variant(g_variant_new_boolean(TRUE)));
+  GVariant *options = g_variant_builder_end(&builder);
+
+  LOG_INFO << "Performing a local pull from " << ostree_server;
+
+  GObjectUniquePtr<OstreeAsyncProgress> progress = nullptr;
+  PullMetaStruct mt(target, nullptr, g_cancellable_new(), std::move(progress_cb));
+  progress.reset(ostree_async_progress_new_and_connect(aktualizr_progress_cb, &mt));
+  if (ostree_repo_pull_with_options(repo.get(), remote, options, progress.get(), mt.cancellable.get(), &error) == 0) {
+    LOG_ERROR << "Error while pulling local image: " << error->code << " " << error->message;
+    data::InstallationResult install_res(data::ResultCode::Numeric::kInstallFailed, error->message);
+    g_error_free(error);
+    g_variant_unref(options);
+    return install_res;
+  }
+  ostree_async_progress_finish(progress.get());
+  g_variant_unref(options);
+  return data::InstallationResult(data::ResultCode::Numeric::kOk, "Pulling local OSTree image was successful");
 }
 
 data::InstallationResult OstreeManager::install(const Uptane::Target &target) const {
@@ -301,7 +373,7 @@ bool OstreeManager::fetchTarget(const Uptane::Target &target, Uptane::Fetcher &f
 }
 
 #ifdef BUILD_OFFLINE_UPDATES
-bool OstreeManager::fetchTargetOffUpd(const Uptane::Target &target, Uptane::OfflineUpdateFetcher &fetcher,
+bool OstreeManager::fetchTargetOffUpd(const Uptane::Target &target, const Uptane::OfflineUpdateFetcher &fetcher,
                                       const KeyManager &keys, const FetcherProgressCb &progress_cb,
                                       const api::FlowControlToken *token) {
   if (!target.IsOstree()) {
@@ -309,9 +381,8 @@ bool OstreeManager::fetchTargetOffUpd(const Uptane::Target &target, Uptane::Offl
     // while the target is aimed for a Secondary ECU that is configured with another/non-OSTree package manager
     return PackageManagerInterface::fetchTargetOffUpd(target, fetcher, keys, progress_cb, token);
   }
-  // TODO: [OFFUPD] IMPLEMENT THIS METHOD (FETCH OSTREE TARGETS FROM THE TAKEOUT IMAGE).
-  LOG_WARNING << "OstreeManager::fetchTargetOffUpd() NOT IMPLEMENTED";
-  return false;
+  auto srcrepo_path = fetcher.getImagesPath() / "ostree";
+  return OstreeManager::pullLocal(config.sysroot, srcrepo_path, target, progress_cb).success;
 }
 #endif
 
@@ -510,7 +581,7 @@ GObjectUniquePtr<OstreeRepo> OstreeManager::LoadRepo(OstreeSysroot *sysroot, GEr
   return GObjectUniquePtr<OstreeRepo>(repo);
 }
 
-bool OstreeManager::addRemote(OstreeRepo *repo, const std::string &url, const KeyManager &keys) {
+bool OstreeManager::addRemote(OstreeRepo *repo, const std::string &url, const KeyManager *keys) {
   GCancellable *cancellable = nullptr;
   GError *error = nullptr;
   GVariantBuilder b;
@@ -518,16 +589,17 @@ bool OstreeManager::addRemote(OstreeRepo *repo, const std::string &url, const Ke
 
   g_variant_builder_init(&b, G_VARIANT_TYPE("a{sv}"));
   g_variant_builder_add(&b, "{s@v}", "gpg-verify", g_variant_new_variant(g_variant_new_boolean(FALSE)));
-
-  std::string cert_file = keys.getCertFile();
-  std::string pkey_file = keys.getPkeyFile();
-  std::string ca_file = keys.getCaFile();
-  if (!cert_file.empty() && !pkey_file.empty() && !ca_file.empty()) {
-    g_variant_builder_add(&b, "{s@v}", "tls-client-cert-path",
-                          g_variant_new_variant(g_variant_new_string(cert_file.c_str())));
-    g_variant_builder_add(&b, "{s@v}", "tls-client-key-path",
-                          g_variant_new_variant(g_variant_new_string(pkey_file.c_str())));
-    g_variant_builder_add(&b, "{s@v}", "tls-ca-path", g_variant_new_variant(g_variant_new_string(ca_file.c_str())));
+  if (keys != nullptr) {
+    std::string cert_file = keys->getCertFile();
+    std::string pkey_file = keys->getPkeyFile();
+    std::string ca_file = keys->getCaFile();
+    if (!cert_file.empty() && !pkey_file.empty() && !ca_file.empty()) {
+      g_variant_builder_add(&b, "{s@v}", "tls-client-cert-path",
+                            g_variant_new_variant(g_variant_new_string(cert_file.c_str())));
+      g_variant_builder_add(&b, "{s@v}", "tls-client-key-path",
+                            g_variant_new_variant(g_variant_new_string(pkey_file.c_str())));
+      g_variant_builder_add(&b, "{s@v}", "tls-ca-path", g_variant_new_variant(g_variant_new_string(ca_file.c_str())));
+    }
   }
   options = g_variant_builder_end(&b);
 

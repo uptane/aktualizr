@@ -57,7 +57,11 @@ class Fetcher : public IMetadataFetcher {
 
 class OfflineUpdateFetcher : public IMetadataFetcher {
  public:
-  OfflineUpdateFetcher(const boost::filesystem::path& source_path) : source_path_(source_path) {}
+  explicit OfflineUpdateFetcher(const boost::filesystem::path& source_path) : source_path_(source_path) {
+    if (source_path_.empty()) {
+      throw std::runtime_error("Source path for offline-updates is not defined");
+    }
+  }
   void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
                  Version version) const override;
   void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
@@ -66,12 +70,8 @@ class OfflineUpdateFetcher : public IMetadataFetcher {
   }
 
   boost::filesystem::path getBasePath() const { return source_path_; }
-  boost::filesystem::path getImagesPath() const {
-    return source_path_.empty() ? source_path_ : (source_path_ / "images");
-  }
-  boost::filesystem::path getMetadataPath() const {
-    return source_path_.empty() ? source_path_ : (source_path_ / "metadata");
-  }
+  boost::filesystem::path getImagesPath() const { return source_path_ / "images"; }
+  boost::filesystem::path getMetadataPath() const { return source_path_ / "metadata"; }
 
  private:
   boost::filesystem::path source_path_;

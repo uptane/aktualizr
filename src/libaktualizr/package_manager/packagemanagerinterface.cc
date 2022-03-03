@@ -184,8 +184,9 @@ bool PackageManagerInterface::fetchTarget(const Uptane::Target& target, Uptane::
 }
 
 #ifdef BUILD_OFFLINE_UPDATES
-bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target, Uptane::OfflineUpdateFetcher& fetcher,
-                                                const KeyManager& keys, const FetcherProgressCb& progress_cb,
+bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target,
+                                                const Uptane::OfflineUpdateFetcher& fetcher, const KeyManager& keys,
+                                                const FetcherProgressCb& progress_cb,
                                                 const api::FlowControlToken* token) {
   (void)target;
   (void)fetcher;
