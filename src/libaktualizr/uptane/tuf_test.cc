@@ -29,6 +29,17 @@ TEST(Root, RootJsonNoKeys) {
   EXPECT_THROW(Uptane::Root(Uptane::RepositoryType::Director(), initial_root, root1), Uptane::InvalidMetadata);
 }
 
+/**
+ * For offline updates we want to include more keys in root.json. Check that it
+ * is OK for root.json to contain keys types we don't know about.
+ * */
+TEST(Root, ExtraKeysOk) {
+  Uptane::Root root1(Uptane::Root::Policy::kAcceptAll);
+  Json::Value initial_root = Utils::parseJSONFile("tests/tuf/root-with-extra-keys.json");
+  Uptane::Root root(Uptane::RepositoryType::Director(), initial_root, root1);
+  EXPECT_NO_THROW(Uptane::Root(Uptane::RepositoryType::Director(), initial_root, root));
+}
+
 /* Throw an exception if Root metadata has no roles. */
 TEST(Root, RootJsonNoRoles) {
   Uptane::Root root1(Uptane::Root::Policy::kAcceptAll);
