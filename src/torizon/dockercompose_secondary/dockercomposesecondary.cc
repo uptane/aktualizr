@@ -1,4 +1,8 @@
+#include <boost/filesystem/path.hpp>
+#include <sstream>
+
 #include "dockercomposesecondary.h"
+#include "dockerofflineloader.h"
 #include "uptane/manifest.h"
 #include "libaktualizr/types.h"
 #include "logging/logging.h"
@@ -6,8 +10,6 @@
 #include "utilities/utils.h"
 #include "compose_manager.h"
 #include "storage/invstorage.h"
-
-#include <sstream>
 
 using std::stringstream;
 
@@ -76,39 +78,91 @@ DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryCo
   validateInstall();
 }
 
-data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target, const InstallInfo&) {
-  auto str = secondary_provider_->getTargetFileHandle(target);
+data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target, const InstallInfo& info) {
+  auto tgt_stream = secondary_provider_->getTargetFileHandle(target);
 
   /* Here we try to make container updates "as atomic as possible". So we save
    * the updated docker-compose file with another name (<firmware_path>.tmp), run
    * docker-compose commands to pull and run the containers, and if it fails
-   * we still have the previous docker-compose file to "roolback" to the current
+   * we still have the previous docker-compose file to "rollback" to the current
    * version of the containers.
    */
 
-  std::string compose_file = sconfig.firmware_path.string();
-  std::string compose_file_new = compose_file + ".tmp";
+  bool update_status = false;
+  std::string compose_cur = sconfig.firmware_path.string();
+  std::string compose_new = compose_cur + ".tmp";
 
-  std::ofstream out_file(compose_file_new, std::ios::binary);
-  out_file << str.rdbuf();
-  str.close();
+  ComposeManager compose = ComposeManager(compose_cur, compose_new);
+
+  // Save new compose file in a temporary file.
+  std::ofstream out_file(compose_new, std::ios::binary);
+  out_file << tgt_stream.rdbuf();
+  tgt_stream.close();
   out_file.close();
 
-  ComposeManager compose = ComposeManager(compose_file, compose_file_new);
+  if (info.getUpdateType() == UpdateType::kOnline) {
+    // Run online update method.
+    update_status = compose.update(false);
 
-  if (compose.update() == true) {
+  } else if (info.getUpdateType() == UpdateType::kOffline) {
+    auto img_path = info.getImagesPathOffline() / (target.sha256Hash() + ".images");
+    auto man_path = info.getMetadataPathOffline() / "docker" / (target.sha256Hash() + ".manifests");
+    boost::filesystem::path compose_out;
+
+    if (loadDockerImages(compose_new, target.sha256Hash(), img_path, man_path, &compose_out)) {
+      // Docker images loaded and an "offline" version of compose-file available.
+      // Overwrite the new compose file with that "offline" version.
+      boost::filesystem::rename(compose_out, compose_new);
+
+      update_status = compose.update(true);
+    }
+
+  } else {
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Unknown update type");
+  }
+
+  if (update_status == true) {
     Utils::writeFile(sconfig.target_name_path, target.filename());
     if (compose.sync_update) {
       return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
-    }
-    else {
+    } else {
       return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
     }
-  }
-  else {
-    compose.roolback();
+  } else {
+    compose.rollback();
     return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "");
   }
+}
+
+bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path &compose_in,
+                                              const std::string &compose_sha256,
+                                              const boost::filesystem::path &images_path,
+                                              const boost::filesystem::path &manifests_path,
+                                              boost::filesystem::path *compose_out) {
+  if (compose_out != nullptr) { compose_out->clear(); }
+
+  boost::filesystem::path compose_new = compose_in;
+  compose_new.replace_extension(".off");
+
+  try {
+    auto dmcache = std::make_shared<DockerManifestsCache>(manifests_path);
+
+    DockerComposeOfflineLoader dcloader(images_path, dmcache);
+    dcloader.loadCompose(compose_in, compose_sha256);
+    dcloader.dumpReferencedImages();
+    dcloader.dumpImageMapping();
+    dcloader.installImages();
+    dcloader.writeOfflineComposeFile(compose_new);
+    // TODO: [OFFUPD] Define how to perform the offline-online transformation (related to getFirmwareInfo()).
+
+  } catch (std::runtime_error &exc) {
+    LOG_WARNING << "Offline loading failed: " << exc.what();
+    return false;
+  }
+
+  if (compose_out != nullptr) { *compose_out = compose_new; }
+
+  return true;
 }
 
 bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const {
@@ -119,10 +173,21 @@ bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmwar
     content = "";
   } else {
     firmware_info.name = Utils::readFile(sconfig.target_name_path.string());
-    content = Utils::readFile(sconfig.firmware_path.string());
+
+    // Read compose-file and transform it into its original form in memory.
+    DockerComposeFile dcfile;
+    if (!dcfile.read(sconfig.firmware_path)) {
+      LOG_WARNING << "Could not read compose " << sconfig.firmware_path;
+      return false;
+    }
+    dcfile.backwardTransform();
+    content = dcfile.toString();
   }
+
   firmware_info.hash = Uptane::ManifestIssuer::generateVersionHashStr(content);
   firmware_info.len = content.size();
+
+  LOG_TRACE << "DockerComposeSecondary::getFirmwareInfo: hash=" << firmware_info.hash;
 
   return true;
 }
@@ -131,6 +196,8 @@ void DockerComposeSecondary::validateInstall() {
   std::string compose_file = sconfig.firmware_path.string();
   std::string compose_file_new = compose_file + ".tmp";
   ComposeManager pending_check(compose_file, compose_file_new);
+  // TODO: [OFFUPD] Here we're accessing the primary's DB directly;
+  // To be more aligned with the original design we could think about doing this via the secondary interface.
   if (!pending_check.pendingUpdate()) {
     LOG_ERROR << "Unable to complete pending container update";
 
@@ -145,9 +212,8 @@ void DockerComposeSecondary::validateInstall() {
     storage->saveEcuInstallationResult(serial, data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, ""));
     storage->saveInstalledVersion(serial.ToString(), *pending_target, InstalledVersionUpdateMode::kNone);
 
-    pending_check.roolback();
-   }
-
+    pending_check.rollback();
+  }
 }
 
 }  // namespace Primary

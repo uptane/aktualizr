@@ -1,3 +1,6 @@
+// TODO: [TDX] This module is used by the secondary only but is in the primary directory.
+#include <boost/filesystem/path.hpp>
+
 #include "compose_manager.h"
 #include "logging/logging.h"
 #include "libaktualizr/config.h"
@@ -64,29 +67,25 @@ bool ComposeManager::checkRollback() {
   }
 }
 
-bool ComposeManager::update() {
-
+bool ComposeManager::update(bool offline) {
   LOG_INFO << "Updating containers via docker-compose";
 
   sync_update = false;
   reboot = false;
 
-  bpo::variables_map vm;
-  Config config(vm);
-  std::shared_ptr<INvStorage> storage;
-  storage = INvStorage::newStorage(config.storage);
-  boost::optional<Uptane::Target> pending;
-  storage->loadPrimaryInstalledVersions(nullptr, &pending); 
-  if (!!pending) {
+  if (pendingPrimaryUpdate()) {
     sync_update = true;
     LOG_INFO << "OSTree update pending. This is a synchronous update transaction.";
   }
 
   containers_stopped = false;
 
-  if (pull(compose_file_new_) == false) {
-    LOG_ERROR << "Error running docker-compose pull";
-    return false;
+  if (!offline) {
+    // Only try to pull images upon an online update.
+    if (pull(compose_file_new_) == false) {
+      LOG_ERROR << "Error running docker-compose pull";
+      return false;
+    }
   }
 
   if (!sync_update) {
@@ -98,6 +97,17 @@ bool ComposeManager::update() {
   return true;
 }
 
+bool ComposeManager::pendingPrimaryUpdate() {
+  // TODO: Should we be accessing storage directly here?
+  bpo::variables_map vm;
+  Config config(vm);
+  std::shared_ptr<INvStorage> storage;
+  storage = INvStorage::newStorage(config.storage);
+  boost::optional<Uptane::Target> pending;
+  storage->loadPrimaryInstalledVersions(nullptr, &pending);
+  return !!pending;
+}
+
 bool ComposeManager::pendingUpdate() {
   if (!access(compose_file_new_.c_str(), F_OK)) {
     LOG_INFO << "Finishing pending container updates via docker-compose";
@@ -105,7 +115,6 @@ bool ComposeManager::pendingUpdate() {
   else {
     return true;
   }
-
 
   if (checkRollback()) {
     sync_update = false;
@@ -126,7 +135,7 @@ bool ComposeManager::pendingUpdate() {
   return true;
 }
 
-bool ComposeManager::roolback() {
+bool ComposeManager::rollback() {
 
   LOG_INFO << "Rolling back container update";
 

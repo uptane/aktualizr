@@ -28,9 +28,10 @@ class ComposeManager {
  public:
   ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new);
 
-  bool update();
+  bool update(bool offline);
   bool pendingUpdate();
-  bool roolback();
+  bool pendingPrimaryUpdate();
+  bool rollback();
 
   bool sync_update;
 };
