@@ -1202,6 +1202,13 @@ void SotaUptaneClient::completeInstall() const {
   }
 }
 
+void SotaUptaneClient::completePreviousSecondaryUpdates() {
+  if (hasPendingUpdates()) {
+    LOG_INFO << "The current update is pending. Check if secondaries have already been updated";
+    checkAndUpdatePendingSecondaries();
+  }
+}
+
 bool SotaUptaneClient::putManifestSimple(const Json::Value &custom) {
   // does not send event, so it can be used as a subset of other steps
   if (hasPendingUpdates()) {
@@ -1567,6 +1574,9 @@ void SotaUptaneClient::checkAndUpdatePendingSecondaries() {
         computeDeviceInstallationResult(&ir, &raw_report);
         storage->storeDeviceInstallationResult(ir, raw_report, pending_version->correlation_id());
       }
+    } else {
+      LOG_DEBUG << "The pending update for ECU " << pending_ecu.first << " has not been installed ("
+                << pending_ecu.second << " != " << current_ecu_hash << ")";
     }
   }
 }

@@ -65,6 +65,7 @@ class SotaUptaneClient {
   bool hasPendingUpdates() const;
   bool isInstallCompletionRequired() const;
   void completeInstall() const;
+  void completePreviousSecondaryUpdates();
   std::vector<Uptane::Target> getStoredTargets() const { return package_manager_->getTargetFiles(); }
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
   std::ifstream openStoredTarget(const Uptane::Target &target);
