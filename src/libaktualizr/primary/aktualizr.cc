@@ -81,6 +81,7 @@ bool Aktualizr::UptaneCycle() {
 
 std::future<void> Aktualizr::RunForever() {
   std::future<void> future = std::async(std::launch::async, [this]() {
+    CompleteSecondaryUpdates().get();
     SendDeviceData().get();
 
     std::unique_lock<std::mutex> l(exit_cond_.m);
@@ -120,6 +121,7 @@ std::future<void> Aktualizr::RunForever() {
         }
       }
     }
+    // FIXME: Is it correct to call a method of the uptane_client w/o going through the CommandQueue?
     uptane_client_->completeInstall();
   });
   return future;
@@ -184,6 +186,11 @@ std::future<void> Aktualizr::SendDeviceData(const Json::Value &hwinfo) {
     uptane_client_->setCustomHardwareInfo(std::move(hwinfo));
     uptane_client_->sendDeviceData();
   });
+  return api_queue_->enqueue(task);
+}
+
+std::future<void> Aktualizr::CompleteSecondaryUpdates() {
+  std::function<void()> task([this] { return uptane_client_->completePreviousSecondaryUpdates(); });
   return api_queue_->enqueue(task);
 }
 

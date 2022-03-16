@@ -122,6 +122,11 @@ class Aktualizr {
   std::future<void> SendDeviceData(const Json::Value &hwinfo);
 
   /**
+   * Complete previous secondary updates if any is pending.
+   */
+  std::future<void> CompleteSecondaryUpdates();
+
+  /**
    * Fetch Uptane metadata and check for updates.
    * This collects a client manifest, PUTs it to the director, updates the
    * Uptane metadata (including root and targets), and then checks the metadata
