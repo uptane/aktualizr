@@ -1,3 +1,5 @@
+// TODO: Review: Maybe this module could be absorbed by compose_manager or dockercomposesecondary.
+// TODO: Review: This module is used by the secondary but is in the primary directory.
 #include <boost/process.hpp>
 
 #include "command_runner.h"
@@ -16,6 +18,9 @@ std::vector<std::string> CommandRunner::runResult(const std::string& cmd) {
   std::vector<std::string> result;
   std::string line;
 
+  // TODO: Review: log sometimes seems to be lost. E.g.
+  // ...aktualizr-torizon[817]: emoving not used containers, networks an
+  // ...aktualizr-torizon[1396]: emoving not used containers, networks an
   while (c.running() && std::getline(pipe, line) && !line.empty())
       result.push_back(line);
 

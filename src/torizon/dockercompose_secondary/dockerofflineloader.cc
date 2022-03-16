@@ -975,3 +975,18 @@ void DockerComposeOfflineLoader::writeOfflineComposeFile(
     LOG_DEBUG << "Offline-mode compose written to " << compose_name;
   }
 }
+
+/*
+ * TODO: In the future we should add unit tests for everything that is performed by this module;
+ * Consider:
+ *
+ * - Installation of a "good" image with no issues;
+ * - Installation of "good" image when there is no storage space in a secure location (temporary directory);
+ * - Installation of images with the following issues:
+ *   - docker-compose file too big
+ *   - docker-compose file with wrong digest
+ *   - Corrupt manifest of a Docker image without manifest list
+ *   - Corrupt manifest of a Docker image with a manifest list
+ *   - Corrupt manifest list of a Docker image with a manifest list
+ *   - Corrupt contents of a docker-save tarball: files in tarball do not match expected ones
+ */

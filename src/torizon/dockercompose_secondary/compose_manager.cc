@@ -98,7 +98,8 @@ bool ComposeManager::update(bool offline) {
 }
 
 bool ComposeManager::pendingPrimaryUpdate() {
-  // TODO: Should we be accessing storage directly here?
+  // TODO: Consider adding a method to perform this check as part of the `SecondaryProvider` in libaktualizr.
+  // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
   bpo::variables_map vm;
   Config config(vm);
   std::shared_ptr<INvStorage> storage;

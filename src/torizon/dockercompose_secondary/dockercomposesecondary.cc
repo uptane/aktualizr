@@ -78,6 +78,17 @@ DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryCo
   validateInstall();
 }
 
+/*
+ * TODO: As per https://gitlab.int.toradex.com/rd/torizon-core/aktualizr/-/merge_requests/7#note_70291
+ * we may need to override method sendFirmware() possibly also passing the `info` parameter and
+ * performing operations that can fail inside that method.
+ *
+ * As to the question of what is the part that could fail (review later):
+ *
+ * - For online updates this would probably involve pulling the images.
+ * - For offline updates it would likely involve validating the Docker images?
+ */
+
 data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target, const InstallInfo& info) {
   auto tgt_stream = secondary_provider_->getTargetFileHandle(target);
 
@@ -156,6 +167,7 @@ bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path &com
     // TODO: [OFFUPD] Define how to perform the offline-online transformation (related to getFirmwareInfo()).
 
   } catch (std::runtime_error &exc) {
+    // TODO: Consider throwing/handling custom exception types from dockerofflineloader and dockertarballloader.
     LOG_WARNING << "Offline loading failed: " << exc.what();
     return false;
   }
@@ -192,15 +204,17 @@ bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmwar
   return true;
 }
 
+// TODO: Consider a more general mechanism to allow all secondaries to complete a previous installation.
+// See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
 void DockerComposeSecondary::validateInstall() {
   std::string compose_file = sconfig.firmware_path.string();
   std::string compose_file_new = compose_file + ".tmp";
   ComposeManager pending_check(compose_file, compose_file_new);
-  // TODO: [OFFUPD] Here we're accessing the primary's DB directly;
-  // To be more aligned with the original design we could think about doing this via the secondary interface.
   if (!pending_check.pendingUpdate()) {
     LOG_ERROR << "Unable to complete pending container update";
 
+    // TODO: Consider providing a method for clearing the pending flag via the `SecondaryProvider` in libaktualizr.
+    // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
     // Pending compose update failed, unset pending flag so that the rest of the Uptane process can go forward again
     Uptane::EcuSerial serial = getSerial();
     std::shared_ptr<INvStorage> storage;

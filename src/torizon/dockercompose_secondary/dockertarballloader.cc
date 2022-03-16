@@ -46,6 +46,10 @@ static constexpr std::size_t DEFAULT_BLOCK_BUFFER_SIZE_BYTES = 256 * 1024;
  * The destructor will restore the signal mask.
  *
  * TODO: Consider moving to a more general / separate module.
+ * TODO: Accept signals possibly generated while they were blocked.
+ *
+ * - See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_59407
+ * - See http://www.microhowto.info/howto/ignore_sigpipe_without_affecting_other_threads_in_a_process.html
  */
 class SignalBlocker {
   protected:
