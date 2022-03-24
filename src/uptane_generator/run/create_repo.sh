@@ -95,7 +95,7 @@ EOF
 
 if [ -e "${repo_dir}" ]; then
         echo "File or directory ${1} already exists"
-        exit -1
+        exit 1
 fi
 
 rm -rf "$repo_dir"

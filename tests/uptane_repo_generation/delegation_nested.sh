@@ -15,7 +15,7 @@ fi
 
 
 uptane_gen() {
-    echo "$UPTANE_GENERATOR --path $DEST_DIR $@"
+    echo "$UPTANE_GENERATOR --path $DEST_DIR" "$@"
     "$UPTANE_GENERATOR" --path "$DEST_DIR" "$@"
 }
 

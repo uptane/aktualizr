@@ -28,7 +28,7 @@ check_dependencies() {
 
 retry_command() {
   local name=${1}
-  local command=${@:2}
+  local command=${*:2}
   local n=0
   local max=100
   while true; do
@@ -54,7 +54,7 @@ wait_for_pods() {
 print_hosts() {
   retry_command "ingress" "${KUBECTL} get ingress -o json \
     | jq --exit-status '.items[0].status.loadBalancer.ingress'"
-  ${KUBECTL} get ingress --no-headers | awk -v ip=$(minikube ip) '{print ip " " $2}'
+  ${KUBECTL} get ingress --no-headers | awk -v ip="$(minikube ip)" '{print ip " " $2}'
 }
 
 kill_pid() {
@@ -125,7 +125,7 @@ new_client() {
 
   ${KUBECTL} proxy --port "${PROXY_PORT}" &
   local pid=$!
-  trap "kill_pid ${pid}" EXIT
+  trap 'kill_pid ${pid}' EXIT
   sleep 3s
 
   local api="http://localhost:${PROXY_PORT}/api/v1/namespaces/${NAMESPACE}/services"
@@ -234,7 +234,7 @@ start_vaults() {
     pod=$(wait_for_pods "${vault}")
     ${KUBECTL} port-forward "${pod}" "${PROXY_PORT}:${PROXY_PORT}" &
     local pid=$!
-    trap "kill_pid ${pid}" EXIT
+    trap 'kill_pid ${pid}' EXIT
     sleep 3s
 
     init_vault "${vault}"
@@ -248,7 +248,8 @@ start_vaults() {
 
 start_weave() {
   [[ ${SKIP_WEAVE} == true ]] && return 0;
-  local version=$(${KUBECTL} version | base64 | tr -d '\n')
+  local version
+  version=$(${KUBECTL} version | base64 | tr -d '\n')
   ${KUBECTL} apply -f "https://cloud.weave.works/k8s/net?k8s-version=${version}"
 }
 
@@ -273,7 +274,7 @@ get_credentials() {
 
   ${KUBECTL} proxy --port "${PROXY_PORT}" &
   local pid=$!
-  trap "kill_pid ${pid}" EXIT
+  trap 'kill_pid ${pid}' EXIT
   sleep 3s
 
   local namespace="x-ats-namespace:default"
@@ -323,7 +324,7 @@ END
 
 
 [ $# -lt 1 ] && { echo "Usage: $0 <command> [<args>]"; exit 1; }
-command=$(echo "${1}" | sed 's/-/_/g')
+command="${1//-/_}"
 
 case "${command}" in
   "start_all")

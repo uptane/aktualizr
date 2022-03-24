@@ -12,6 +12,7 @@ git -C "$REPO" submodule update --init --recursive
 
 python3 -m venv venv
 
+# shellcheck disable=SC1091
 . venv/bin/activate
 
 pip install 'git_archive_all==1.21.0'

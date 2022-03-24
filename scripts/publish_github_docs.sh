@@ -57,6 +57,7 @@ fi
 
 if [ "$DRY_RUN" != 1 ]; then
     git config credential.${GIT_REMOTE}.username "$GITHUB_API_USER"
+    # shellcheck disable=SC2016
     git config credential.${GIT_REMOTE}.helper '!f() { echo "password=$(echo $GITHUB_API_TOKEN)"; }; f'
     git push github_rls HEAD:gh-pages
 fi

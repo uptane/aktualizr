@@ -29,6 +29,7 @@ if [ ! -f venv/bin/activate ]; then
   python3 -m venv venv
 fi
 
+# shellcheck disable=SC1091
 . venv/bin/activate
 
 TTV_DIR="$TESTS_SRC_DIR/tuf-test-vectors"

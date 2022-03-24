@@ -4,7 +4,7 @@ get_variable() {
 	sed -ne "/\[import\]/,/\[.*\]/s/$1\s*=\s*\"\(.*\)\".*\$/\1/p" < "$2"
 }
 
-for f in $1/*.toml; do
+for f in "$1"/*.toml; do
 	if [[ $( get_variable tls_cacert_path "$f" ) = "/var/sota/root.crt" ]]; then
 		echo "import.tls_cacert_path in $f is the same as path for FS->SQL migration (/var/sota/root.crt)" >&2
 		exit 1;
