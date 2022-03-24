@@ -4,7 +4,8 @@
 set -euo pipefail
 
 readonly KUBECTL=${KUBECTL:-kubectl}
-readonly CWD=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+CWD=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+readonly CWD
 readonly DNS_NAME=${DNS_NAME:-ota.local}
 export   SERVER_NAME=${SERVER_NAME:-ota.ce}
 readonly SERVER_DIR=${SERVER_DIR:-${CWD}/../generated/${SERVER_NAME}}

@@ -11,10 +11,10 @@ TREEHUB="{\
   }\
 }"
 
-echo $TREEHUB > $TEMP_DIR/treehub.json
-./tests/sota_tools/treehub_server.py -p${PORT} -c &
-until curl -I localhost:${PORT} 2>/dev/null; do sleep 0.5; done
+echo "$TREEHUB" > "$TEMP_DIR"/treehub.json
+./tests/sota_tools/treehub_server.py -p"${PORT}" -c &
+until curl -I localhost:"${PORT}" 2>/dev/null; do sleep 0.5; done
 
-$1 --commit b9ac1e45f9227df8ee191b6e51e09417bd36c6ebbeff999431e3073ac50f0563 -f $TEMP_DIR/treehub.json -p $TEMP_DIR/treehub.json --name testname -h hwids
+$1 --commit b9ac1e45f9227df8ee191b6e51e09417bd36c6ebbeff999431e3073ac50f0563 -f "$TEMP_DIR"/treehub.json -p "$TEMP_DIR"/treehub.json --name testname -h hwids
 exit_code=$?
 exit $exit_code
