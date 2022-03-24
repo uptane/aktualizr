@@ -54,4 +54,4 @@ OPTS_STR=${DOCKER_OPTS[@]+"${DOCKER_OPTS[@]}"}
 #
 # note: we've switched back to running the tests as root on CI when we switched from Jenkins to Gitlab
 # it would be great to revert to the old way at some point
-docker run -u "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" --rm $OPTS_STR -it "${IMG_TAG}" "$@"
+docker run -u "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" --rm "$OPTS_STR" -it "${IMG_TAG}" "$@"
