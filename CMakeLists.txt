@@ -289,6 +289,18 @@ function(aktualizr_source_file_checks)
     endif()
 endfunction()
 
+find_program(SHELLCHECK NAMES shellcheck)
+if(SHELLCHECK)
+    add_custom_target(shellcheck
+        COMMAND find docs/ scripts/ src/ tests/ -name "*.sh" | xargs ${SHELLCHECK}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        VERBATIM)
+
+    add_dependencies(qa shellcheck)
+else()
+    message(WARNING "shellcheck not found, skipping")
+endif()
+
 # Use C++11, but without GNU or other extensions
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
