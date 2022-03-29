@@ -3,7 +3,7 @@
 import argparse
 import logging
 import signal
-import time
+import re
 
 from os import getcwd, chdir
 
@@ -17,20 +17,23 @@ logger = logging.getLogger(__file__)
 @with_director(start=True)
 @with_aktualizr(start=False, log_level=0, run_mode='full')
 def test_aktualizr_kill(director, aktualizr, **kwargs):
-    test_result = False
     with aktualizr:
         try:
             aktualizr.wait_for_provision()
             aktualizr.terminate()
             aktualizr.wait_for_completion()
-            test_result = 'Aktualizr daemon exiting...' in aktualizr.output()
+            # Match both "Aktualizr daemon exiting..." and "Aktualizr::RunForever exiting: <exception>
+            output = aktualizr.output()
+            test_pass = re.search('Aktualizr.*exiting', output)
+            if not test_pass:
+                print("Failed to find Aktualizr exit message in:")
+                print(output)
+            return test_pass
         except Exception:
             aktualizr.terminate(sig=signal.SIGKILL)
             aktualizr.wait_for_completion()
             print(aktualizr.output())
             raise
-
-    return test_result
 
 
 if __name__ == "__main__":
