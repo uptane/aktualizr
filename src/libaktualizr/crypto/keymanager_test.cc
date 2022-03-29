@@ -138,7 +138,7 @@ TEST(KeyManager, SignTufPkcs11) {
 }
 
 /* Generate Uptane keys, use them for signing, and verify them. */
-TEST(KeyManager, GenSignTufPkcs11) {
+TEST(KeyManager, DISABLED_GenSignTufPkcs11) {
   Json::Value tosign_json;
   tosign_json["mykey"] = "value";
 
@@ -165,7 +165,7 @@ TEST(KeyManager, GenSignTufPkcs11) {
 }
 
 /* Generate RSA keypairs via PKCS#11. */
-TEST(KeyManager, InitPkcs11Valid) {
+TEST(KeyManager, DISABLED_InitPkcs11Valid) {
   Config config;
   P11Config p11_conf;
   p11_conf.module = TEST_PKCS11_MODULE_PATH;

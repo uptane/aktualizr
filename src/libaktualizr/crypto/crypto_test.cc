@@ -75,7 +75,7 @@ TEST(crypto, sign_verify_rsa_p11) {
 }
 
 /* Generate RSA keypairs via PKCS#11. */
-TEST(crypto, generate_rsa_keypair_p11) {
+TEST(crypto, DISABLED_generate_rsa_keypair_p11) {
   P11Config config;
   config.module = TEST_PKCS11_MODULE_PATH;
   config.pass = "1234";
@@ -89,7 +89,7 @@ TEST(crypto, generate_rsa_keypair_p11) {
 }
 
 /* Read a TLS certificate via PKCS#11. */
-TEST(crypto, certificate_pkcs11) {
+TEST(crypto, DISABLED_certificate_pkcs11) {
   P11Config p11_conf;
   p11_conf.module = TEST_PKCS11_MODULE_PATH;
   p11_conf.pass = "1234";
