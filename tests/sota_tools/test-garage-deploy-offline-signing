@@ -17,8 +17,8 @@ chmod +x "$TEMP_DIR/garage-sign"
 export PATH=$PATH:$TEMP_DIR
 
 echo "$TREEHUB" > "$TEMP_DIR/treehub.json"
-./tests/sota_tools/treehub_server.py -p${PORT} -c &
-until curl -I localhost:${PORT} 2>/dev/null; do sleep 0.5; done
+./tests/sota_tools/treehub_server.py -p"${PORT}" -c &
+until curl -I localhost:"${PORT}" 2>/dev/null; do sleep 0.5; done
 
 cd "$TEMP_DIR"
 # Currently, if credentials do not support offline signing, this will fail. If

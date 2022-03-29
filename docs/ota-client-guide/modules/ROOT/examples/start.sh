@@ -4,7 +4,8 @@
 set -euo pipefail
 
 readonly KUBECTL=${KUBECTL:-kubectl}
-readonly CWD=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+CWD=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+readonly CWD
 readonly DNS_NAME=${DNS_NAME:-ota.local}
 export   SERVER_NAME=${SERVER_NAME:-ota.ce}
 readonly SERVER_DIR=${SERVER_DIR:-${CWD}/../generated/${SERVER_NAME}}
@@ -28,7 +29,7 @@ check_dependencies() {
 
 retry_command() {
   local name=${1}
-  local command=${@:2}
+  local command=${*:2}
   local n=0
   local max=100
   while true; do
@@ -54,7 +55,7 @@ wait_for_pods() {
 print_hosts() {
   retry_command "ingress" "${KUBECTL} get ingress -o json \
     | jq --exit-status '.items[0].status.loadBalancer.ingress'"
-  ${KUBECTL} get ingress --no-headers | awk -v ip=$(minikube ip) '{print ip " " $2}'
+  ${KUBECTL} get ingress --no-headers | awk -v ip="$(minikube ip)" '{print ip " " $2}'
 }
 
 kill_pid() {
@@ -71,7 +72,7 @@ skip_ingress() {
       config/resources.yaml \
       config/secrets.yaml \
       $local_yaml | grep ^create_ingress | tail -n1)
-  echo $value | grep "false"
+  echo "$value" | grep "false"
 }
 
 make_template() {
@@ -86,7 +87,7 @@ make_template() {
     --values config/images.yaml \
     --values config/resources.yaml \
     --values config/secrets.yaml \
-    ${extra} \
+    "${extra}" \
     --output "${output}"
 }
 
@@ -125,7 +126,7 @@ new_client() {
 
   ${KUBECTL} proxy --port "${PROXY_PORT}" &
   local pid=$!
-  trap "kill_pid ${pid}" EXIT
+  trap 'kill_pid ${pid}' EXIT
   sleep 3s
 
   local api="http://localhost:${PROXY_PORT}/api/v1/namespaces/${NAMESPACE}/services"
@@ -141,9 +142,9 @@ new_client() {
   local port=${DEVICE_PORT:-2222}
   local options="-o StrictHostKeyChecking=no"
 
-  ssh ${options} "root@${addr}" -p "${port}" "echo \"${gateway} ota.ce\" >> /etc/hosts"
-  scp -P "${port}" ${options} "${device_dir}/client.pem" "root@${addr}:/var/sota/client.pem"
-  scp -P "${port}" ${options} "${device_dir}/pkey.pem" "root@${addr}:/var/sota/pkey.pem"
+  ssh "${options}" "root@${addr}" -p "${port}" "echo \"${gateway} ota.ce\" >> /etc/hosts"
+  scp -P "${port}" "${options}" "${device_dir}/client.pem" "root@${addr}:/var/sota/client.pem"
+  scp -P "${port}" "${options}" "${device_dir}/pkey.pem" "root@${addr}:/var/sota/pkey.pem"
 }
 
 new_server() {
@@ -234,7 +235,7 @@ start_vaults() {
     pod=$(wait_for_pods "${vault}")
     ${KUBECTL} port-forward "${pod}" "${PROXY_PORT}:${PROXY_PORT}" &
     local pid=$!
-    trap "kill_pid ${pid}" EXIT
+    trap 'kill_pid ${pid}' EXIT
     sleep 3s
 
     init_vault "${vault}"
@@ -248,7 +249,8 @@ start_vaults() {
 
 start_weave() {
   [[ ${SKIP_WEAVE} == true ]] && return 0;
-  local version=$(${KUBECTL} version | base64 | tr -d '\n')
+  local version
+  version=$(${KUBECTL} version | base64 | tr -d '\n')
   ${KUBECTL} apply -f "https://cloud.weave.works/k8s/net?k8s-version=${version}"
 }
 
@@ -273,7 +275,7 @@ get_credentials() {
 
   ${KUBECTL} proxy --port "${PROXY_PORT}" &
   local pid=$!
-  trap "kill_pid ${pid}" EXIT
+  trap 'kill_pid ${pid}' EXIT
   sleep 3s
 
   local namespace="x-ats-namespace:default"
@@ -296,13 +298,13 @@ get_credentials() {
 
   retry_command "keys" "http --ignore-stdin --check-status GET ${keyserver}/api/v1/root/${id}"
   keys=$(http --ignore-stdin --check-status GET "${keyserver}/api/v1/root/${id}/keys/targets/pairs")
-  echo ${keys} | jq '.[0] | {keytype, keyval: {public: .keyval.public}}'   > "${SERVER_DIR}/targets.pub"
-  echo ${keys} | jq '.[0] | {keytype, keyval: {private: .keyval.private}}' > "${SERVER_DIR}/targets.sec"
+  echo "${keys}" | jq '.[0] | {keytype, keyval: {public: .keyval.public}}'   > "${SERVER_DIR}/targets.pub"
+  echo "${keys}" | jq '.[0] | {keytype, keyval: {private: .keyval.private}}' > "${SERVER_DIR}/targets.sec"
 
   retry_command "root.json" "http --ignore-stdin --check-status -d GET \
     ${reposerver}/api/v1/user_repo/root.json \"${namespace}\"" && \
     http --ignore-stdin --check-status -d -o "${SERVER_DIR}/root.json" GET \
-    ${reposerver}/api/v1/user_repo/root.json "${namespace}"
+    "${reposerver}"/api/v1/user_repo/root.json "${namespace}"
 
   echo "http://tuf-reposerver.${DNS_NAME}" > "${SERVER_DIR}/tufrepo.url"
   echo "https://${SERVER_NAME}:30443" > "${SERVER_DIR}/autoprov.url"
@@ -315,7 +317,7 @@ get_credentials() {
 }
 END
 
-  zip --quiet --junk-paths ${SERVER_DIR}/{credentials.zip,autoprov.url,server_ca.pem,tufrepo.url,targets.pub,targets.sec,treehub.json,root.json}
+  zip --quiet --junk-paths "${SERVER_DIR}"/{credentials.zip,autoprov.url,server_ca.pem,tufrepo.url,targets.pub,targets.sec,treehub.json,root.json}
 
   kill_pid "${pid}"
   ${KUBECTL} create secret generic "user-keys" --from-literal="id=${id}" --from-literal="keys=${keys}"
@@ -323,7 +325,7 @@ END
 
 
 [ $# -lt 1 ] && { echo "Usage: $0 <command> [<args>]"; exit 1; }
-command=$(echo "${1}" | sed 's/-/_/g')
+command="${1//-/_}"
 
 case "${command}" in
   "start_all")

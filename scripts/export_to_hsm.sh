@@ -6,7 +6,7 @@ TOKEN_DIR=${TOKEN_DIR:-/var/lib/softhsm/tokens}
 SOFTHSM2_CONF=${SOFTHSM2_CONF:-/etc/softhsm/softhsm2.conf}
 
 sed -i "s:^directories\\.tokendir = .*$:directories.tokendir = ${TOKEN_DIR}:" "${SOFTHSM2_CONF}"
-mkdir -p ${TOKEN_DIR}
+mkdir -p "${TOKEN_DIR}"
 
 softhsm2-util --init-token --slot 0 --label "Virtual token" --pin 1234 --so-pin 1234
 SLOT=$(softhsm2-util --show-slots | grep -m 1 -oP 'Slot \K[0-9]+')
