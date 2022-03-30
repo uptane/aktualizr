@@ -111,23 +111,39 @@ TEST(KeyManager, InitFileValid) {
 }
 
 #ifdef BUILD_P11
+
+class P11KeyManagerTest : virtual public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() {
+    p11_conf_.module = TEST_PKCS11_MODULE_PATH;
+    p11_conf_.pass = "1234";
+    p11_conf_.uptane_key_id = "03";
+
+    p11_ = std::make_shared<P11EngineGuard>(p11_conf_);
+  }
+
+  static void TearDownTestSuite() { p11_.reset(); }
+
+  static P11Config p11_conf_;
+  static std::shared_ptr<P11EngineGuard> p11_;
+};
+
+P11Config P11KeyManagerTest::p11_conf_;
+std::shared_ptr<P11EngineGuard> P11KeyManagerTest::p11_;
+
 /* Sign and verify a file with RSA via PKCS#11. */
-TEST(KeyManager, SignTufPkcs11) {
+TEST_F(P11KeyManagerTest, SignTufPkcs11) {
   Json::Value tosign_json;
   tosign_json["mykey"] = "value";
 
-  P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
-  p11_conf.uptane_key_id = "03";
   Config config;
-  config.p11 = p11_conf;
+  config.p11 = p11_conf_;
   config.uptane.key_source = CryptoSource::kPkcs11;
 
   TemporaryDirectory temp_dir;
   config.storage.path = temp_dir.Path();
   std::shared_ptr<INvStorage> storage = INvStorage::newStorage(config.storage);
-  KeyManager keys(storage, config.keymanagerConfig());
+  KeyManager keys(storage, config.keymanagerConfig(), p11_);
 
   EXPECT_GT(keys.UptanePublicKey().Value().size(), 0);
   Json::Value signed_json = keys.signTuf(tosign_json);
@@ -138,22 +154,18 @@ TEST(KeyManager, SignTufPkcs11) {
 }
 
 /* Generate Uptane keys, use them for signing, and verify them. */
-TEST(KeyManager, GenSignTufPkcs11) {
+TEST_F(P11KeyManagerTest, GenSignTufPkcs11) {
   Json::Value tosign_json;
   tosign_json["mykey"] = "value";
 
-  P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
-  p11_conf.uptane_key_id = "06";
   Config config;
-  config.p11 = p11_conf;
+  config.p11 = p11_conf_;
   config.uptane.key_source = CryptoSource::kPkcs11;
 
   TemporaryDirectory temp_dir;
   config.storage.path = temp_dir.Path();
   std::shared_ptr<INvStorage> storage = INvStorage::newStorage(config.storage);
-  KeyManager keys(storage, config.keymanagerConfig());
+  KeyManager keys(storage, config.keymanagerConfig(), p11_);
 
   P11EngineGuard p11(config.p11);
   EXPECT_TRUE(p11->generateUptaneKeyPair());
@@ -165,14 +177,9 @@ TEST(KeyManager, GenSignTufPkcs11) {
 }
 
 /* Generate RSA keypairs via PKCS#11. */
-TEST(KeyManager, InitPkcs11Valid) {
+TEST_F(P11KeyManagerTest, InitPkcs11Valid) {
   Config config;
-  P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
-  p11_conf.tls_pkey_id = "02";
-  p11_conf.tls_clientcert_id = "01";
-  config.p11 = p11_conf;
+  config.p11 = p11_conf_;
   config.tls.ca_source = CryptoSource::kFile;
   config.tls.pkey_source = CryptoSource::kPkcs11;
   config.tls.cert_source = CryptoSource::kPkcs11;
@@ -183,7 +190,7 @@ TEST(KeyManager, InitPkcs11Valid) {
   // Getting the CA from the HSM is not currently supported.
   std::string ca = Utils::readFile("tests/test_data/prov/root.crt");
   storage->storeTlsCa(ca);
-  KeyManager keys(storage, config.keymanagerConfig());
+  KeyManager keys(storage, config.keymanagerConfig(), p11_);
   EXPECT_TRUE(keys.getCaFile().empty());
   EXPECT_FALSE(keys.getPkeyFile().empty());
   EXPECT_FALSE(keys.getCertFile().empty());
