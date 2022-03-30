@@ -107,7 +107,7 @@ bool SecondaryTcpServer::HandleOneConnection(int socket) {
   while (keep_running_current_session) {  // Keep reading until we get an error
     // Read an incoming message
     AKIpUptaneMes_t *m = nullptr;
-    asn_dec_rval_t res;
+    asn_dec_rval_t res{};
     asn_codec_ctx_s context{};
     ssize_t received;
 
