@@ -57,7 +57,7 @@ TEST(DeviceCredProv, TlsFailure) {
 }
 
 /**
- * Verfiy that aktualizr halts when provided incomplete device provisioning
+ * Verify that aktualizr halts when provided incomplete device provisioning
  * credentials.
  */
 TEST(DeviceCredProv, Incomplete) {
@@ -224,7 +224,7 @@ TEST(DeviceCredProv, ReImportCert) {
   auto http = std::make_shared<HttpFake>(temp_dir.Path());
 
   {
-    /* prepare storage initialized with device_id from config where cert CN and device id are differen*/
+    /* prepare storage initialized with device_id from config where cert CN and device id are different */
     auto storage = INvStorage::newStorage(config.storage);
     storage->importData(config.import);
     auto keys = std::make_shared<KeyManager>(storage, config.keymanagerConfig());

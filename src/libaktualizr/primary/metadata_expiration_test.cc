@@ -15,16 +15,17 @@ class MetadataExpirationTest : public ::testing::Test {
     Process uptane_gen(uptane_generator_path.string());
     uptane_gen.run({"generate", "--path", meta_dir_.PathString()});
 
-    auto http = std::make_shared<HttpFake>(temp_dir_.Path(), "", meta_dir_.Path() / "repo");
-    Config conf = UptaneTestCommon::makeTestConfig(temp_dir_, http->tls_server);
-    conf.pacman.fake_need_reboot = true;
-    conf.uptane.force_install_completion = true;
-    conf.bootloader.reboot_sentinel_dir = temp_dir_.Path();
+    http_ = std::make_shared<HttpFake>(temp_dir_.Path(), "", meta_dir_.Path() / "repo");
+    conf_ = UptaneTestCommon::makeTestConfig(temp_dir_, http_->tls_server);
+    conf_.pacman.fake_need_reboot = true;
+    conf_.uptane.force_install_completion = true;
+    conf_.bootloader.reboot_sentinel_dir = temp_dir_.Path();
 
     logger_set_threshold(boost::log::trivial::trace);
 
-    storage_ = INvStorage::newStorage(conf.storage);
-    aktualizr_ = std::make_shared<UptaneTestCommon::TestAktualizr>(conf, storage_, http);
+    storage_ = INvStorage::newStorage(conf_.storage);
+    aktualizr_ = std::make_shared<UptaneTestCommon::TestAktualizr>(conf_, storage_, http_);
+    client_ = aktualizr_->uptane_client();
   }
 
   void addImage() {
@@ -68,6 +69,14 @@ class MetadataExpirationTest : public ::testing::Test {
     addTargetAndSign(target_filename_, expiration_delta);
   }
 
+  void simulateReboot() {
+    client_.reset();
+    aktualizr_->Shutdown();
+    aktualizr_ = std::make_shared<UptaneTestCommon::TestAktualizr>(conf_, storage_, http_);
+    aktualizr_->Initialize();
+    client_ = aktualizr_->uptane_client();
+  }
+
  protected:
   Process uptane_gen_;
   const std::string target_filename_ = "firmware.txt";
@@ -76,7 +85,10 @@ class MetadataExpirationTest : public ::testing::Test {
   TemporaryDirectory meta_dir_;
   TemporaryDirectory temp_dir_;
   std::shared_ptr<INvStorage> storage_;
+  Config conf_;
+  std::shared_ptr<HttpFake> http_;
   std::shared_ptr<UptaneTestCommon::TestAktualizr> aktualizr_;
+  std::shared_ptr<SotaUptaneClient> client_;
 };
 
 TEST_F(MetadataExpirationTest, MetadataExpirationBeforeInstallation) {
@@ -89,38 +101,38 @@ TEST_F(MetadataExpirationTest, MetadataExpirationBeforeInstallation) {
   // run the uptane cycle an try to install the target
   aktualizr_->UptaneCycle();
 
-  // check if the target has been installed and pending to be applied after a reboot
-  auto& client = aktualizr_->uptane_client();
-  ASSERT_FALSE(client->hasPendingUpdates());
-  ASSERT_FALSE(client->isInstallCompletionRequired());
+  ASSERT_FALSE(client_->hasPendingUpdates());
+  ASSERT_FALSE(client_->isInstallCompletionRequired());
 
-  auto currently_installed_target = client->getCurrent();
-
-  EXPECT_NE(target_image_hash_, currently_installed_target.sha256Hash());
-  EXPECT_NE(target_filename_, currently_installed_target.filename());
-
+  {
+    auto currently_installed_target = client_->getCurrent();
+    EXPECT_NE(target_image_hash_, currently_installed_target.sha256Hash());
+    EXPECT_NE(target_filename_, currently_installed_target.filename());
+  }
   refreshTargetsMetadata();
 
   // run the uptane cycle an try to install the target
   aktualizr_->UptaneCycle();
 
   // check if the target has been installed and pending to be applied after a reboot
-  ASSERT_TRUE(client->hasPendingUpdates());
-  ASSERT_TRUE(client->isInstallCompletionRequired());
+  ASSERT_TRUE(client_->hasPendingUpdates());
+  ASSERT_TRUE(client_->isInstallCompletionRequired());
 
   // force reboot
-  client->completeInstall();
+  client_->completeInstall();
 
   // emulate aktualizr fresh start
-  aktualizr_->Initialize();
+  simulateReboot();
+
   aktualizr_->UptaneCycle();
 
-  ASSERT_FALSE(client->hasPendingUpdates());
-  ASSERT_FALSE(client->isInstallCompletionRequired());
-
-  currently_installed_target = client->getCurrent();
-  EXPECT_EQ(target_image_hash_, currently_installed_target.sha256Hash());
-  EXPECT_EQ(target_filename_, currently_installed_target.filename());
+  ASSERT_FALSE(client_->hasPendingUpdates());
+  ASSERT_FALSE(client_->isInstallCompletionRequired());
+  {
+    auto currently_installed_target = client_->getCurrent();
+    EXPECT_EQ(target_image_hash_, currently_installed_target.sha256Hash());
+    EXPECT_EQ(target_filename_, currently_installed_target.filename());
+  }
 }
 
 TEST_F(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeReboot) {
@@ -137,9 +149,8 @@ TEST_F(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeReboo
   aktualizr_->UptaneCycle();
 
   // check if the target has been installed and pending to be applied after a reboot
-  auto& client = aktualizr_->uptane_client();
-  ASSERT_TRUE(client->hasPendingUpdates());
-  ASSERT_TRUE(client->isInstallCompletionRequired());
+  ASSERT_TRUE(client_->hasPendingUpdates());
+  ASSERT_TRUE(client_->isInstallCompletionRequired());
 
   // emulate the target metadata expiration while the uptane cycle is running
   std::this_thread::sleep_for(std::chrono::seconds(expiration_in_sec) -
@@ -148,21 +159,24 @@ TEST_F(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeReboo
 
   // since the installation happenned before the metadata expiration we expect that
   // the update is still pending and will be applied after a reboot
-  ASSERT_TRUE(client->hasPendingUpdates());
-  ASSERT_TRUE(client->isInstallCompletionRequired());
+  ASSERT_TRUE(client_->hasPendingUpdates());
+  ASSERT_TRUE(client_->isInstallCompletionRequired());
 
   // force reboot
-  client->completeInstall();
+  client_->completeInstall();
 
   // emulate aktualizr fresh start
-  aktualizr_->Initialize();
+  simulateReboot();
+
   aktualizr_->UptaneCycle();
 
   // check if the pending target has been applied. it should be applied in even if it's metadata are expired
   // as long as it was installed at the moment when they were not expired
-  auto currently_installed_target = client->getCurrent();
-  EXPECT_EQ(target_image_hash_, currently_installed_target.sha256Hash());
-  EXPECT_EQ(target_filename_, currently_installed_target.filename());
+  {
+    auto currently_installed_target = client_->getCurrent();
+    EXPECT_EQ(target_image_hash_, currently_installed_target.sha256Hash());
+    EXPECT_EQ(target_filename_, currently_installed_target.filename());
+  }
 }
 
 TEST_F(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeApplication) {
@@ -179,9 +193,8 @@ TEST_F(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeAppli
   aktualizr_->UptaneCycle();
 
   // check if the target has been installed and pending to be applied after a reboot
-  auto& client = aktualizr_->uptane_client();
-  ASSERT_TRUE(client->hasPendingUpdates());
-  ASSERT_TRUE(client->isInstallCompletionRequired());
+  ASSERT_TRUE(client_->hasPendingUpdates());
+  ASSERT_TRUE(client_->isInstallCompletionRequired());
 
   // wait until the target metadata are expired
   // emulate the target metadata expiration while the Uptane cycle is running
@@ -189,15 +202,15 @@ TEST_F(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeAppli
                               (std::chrono::system_clock::now() - target_init_time));
 
   // force reboot
-  client->completeInstall();
+  client_->completeInstall();
 
   // emulate aktualizr fresh start
-  aktualizr_->Initialize();
+  simulateReboot();
   aktualizr_->UptaneCycle();
 
   // check if the pending target has been applied. it should be applied in even if it's metadta are expired
   // as long as it was installed at the moment when they were not expired
-  auto currently_installed_target = client->getCurrent();
+  auto currently_installed_target = client_->getCurrent();
   EXPECT_EQ(target_image_hash_, currently_installed_target.sha256Hash());
   EXPECT_EQ(target_filename_, currently_installed_target.filename());
 }

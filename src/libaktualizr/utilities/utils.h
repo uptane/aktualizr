@@ -165,7 +165,7 @@ class CurlEasyWrapper {
 };
 
 template <typename... T>
-static void curlEasySetoptWrapper(CURL *curl_handle, CURLoption option, T &&... args) {
+static void curlEasySetoptWrapper(CURL *curl_handle, CURLoption option, T &&...args) {
   const CURLcode retval = curl_easy_setopt(curl_handle, option, std::forward<T>(args)...);
   if (retval != 0U) {
     throw std::runtime_error(std::string("curl_easy_setopt error: ") + curl_easy_strerror(retval));
@@ -193,7 +193,7 @@ struct _Unique_if<T[N]> {
 };
 
 template <class T, class... Args>
-typename _Unique_if<T>::_Single_object make_unique(Args &&... args) {
+typename _Unique_if<T>::_Single_object make_unique(Args &&...args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 

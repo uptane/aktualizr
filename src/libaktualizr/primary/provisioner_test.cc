@@ -11,6 +11,10 @@
 #include "storage/invstorage.h"
 #include "utilities/utils.h"
 
+using std::string;
+using Uptane::EcuSerial;
+using Uptane::HardwareIdentifier;
+
 /*
  * Check that aktualizr creates provisioning data if they don't exist already.
  */
@@ -78,7 +82,7 @@ TEST(Provisioner, InitializeTwice) {
   std::string private_key1;
   EXPECT_FALSE(storage->loadPrimaryKeys(&public_key1, &private_key1));
 
-  // Intialize and verify that the storage contains what we expect.
+  // Initialize and verify that the storage contains what we expect.
   {
     auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
 
@@ -93,7 +97,7 @@ TEST(Provisioner, InitializeTwice) {
     EXPECT_NE(private_key1, "");
   }
 
-  // Intialize again and verify that nothing has changed.
+  // Initialize again and verify that nothing has changed.
   {
     auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
     ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
@@ -401,7 +405,57 @@ TEST(Provisioner, HostnameAsHardwareID) {
 
     auto primaryHardwareID = ecu_serials[0].second;
     auto hostname = Utils::getHostname();
-    EXPECT_EQ(primaryHardwareID, Uptane::HardwareIdentifier(hostname));
+    EXPECT_EQ(primaryHardwareID, HardwareIdentifier(hostname));
+  }
+}
+
+TEST(Provisioner, StableEcuSerial) {
+  TemporaryDirectory temp_dir;
+  auto http = std::make_shared<HttpFakeEcuRegistration>(temp_dir.Path());
+  Config conf("tests/config/basic.toml");
+  conf.uptane.director_server = http->tls_server + "/director";
+  conf.uptane.repo_server = http->tls_server + "/repo";
+  conf.tls.server = http->tls_server;
+  conf.storage.path = temp_dir.Path();
+  conf.provision.primary_ecu_serial = "testecuserial";
+
+  auto storage = INvStorage::newStorage(conf.storage);
+  auto keys = std::make_shared<KeyManager>(storage, conf.keymanagerConfig());
+
+  EcuSerial orig_serial = EcuSerial::Unknown();
+  HardwareIdentifier orig_hwid = HardwareIdentifier::Unknown();
+  // Initial attempt is offline
+  {
+    http->retcode = InitRetCode::kServerFailure;
+    Provisioner dut(conf.provision, storage, http, keys, {});
+    dut.Attempt();
+
+    orig_hwid = dut.PrimaryHardwareIdentifier();
+    EXPECT_NE(orig_hwid, HardwareIdentifier::Unknown());
+    orig_serial = dut.PrimaryEcuSerial();
+    EXPECT_NE(orig_serial, EcuSerial::Unknown());
+  }
+
+  // Try again (on the next boot)
+  {
+    Provisioner dut(conf.provision, storage, http, keys, {});
+    dut.Attempt();
+
+    // The serial number of the primary ECU should be unchanged
+    EXPECT_EQ(orig_serial, dut.PrimaryEcuSerial());
+  }
+
+  // Don't force a failure and make sure it actually works this time.
+  {
+    http->retcode = InitRetCode::kOk;
+    ExpectProvisionOK(Provisioner(conf.provision, storage, http, keys, {}));
+
+    EcuSerials final_serials;
+    storage->loadEcuSerials(&final_serials);
+    ASSERT_EQ(final_serials.size(), 1);
+    EXPECT_EQ(final_serials[0].first, orig_serial);
+    EXPECT_EQ(final_serials[0].second, orig_hwid);
+    EXPECT_TRUE(storage->loadEcuRegistered());
   }
 }
 

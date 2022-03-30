@@ -283,10 +283,11 @@ int32_t IpUptaneSecondary::getRootVersion(bool director) const {
   auto resp = Asn1Rpc(req, getAddr());
   if (resp->present() != AKIpUptaneMes_PR_rootVerResp) {
     // v1 (and v2 until this was added) Secondaries won't understand this.
-    // Return -1 to indicate an invalid value. Sending intermediate Roots will
-    // be skipped, which will probably be fatal.
+    // Return 0 to indicate that this is unsupported. Sending intermediate Roots
+    // will be skipped, which could be fatal. There isn't a good way to
+    // distinguish this from real errors in the message protocol.
     LOG_ERROR << "Secondary " << getSerial() << " failed to respond to a Root version request.";
-    return -1;
+    return 0;
   }
   auto r = resp->rootVerResp();
   return static_cast<int32_t>(r->version);

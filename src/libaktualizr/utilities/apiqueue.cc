@@ -57,6 +57,7 @@ void CommandQueue::run() {
   std::lock_guard<std::mutex> g(thread_m_);
   if (!thread_.joinable()) {
     thread_ = std::thread([this] {
+      Context ctx{.flow_control = &token_};
       std::unique_lock<std::mutex> lock(m_);
       for (;;) {
         cv_.wait(lock, [this] { return (!queue_.empty() && !paused_) || shutdown_; });
@@ -66,7 +67,7 @@ void CommandQueue::run() {
         auto task = std::move(queue_.front());
         queue_.pop();
         lock.unlock();
-        task();
+        task->PerformTask(&ctx);
         lock.lock();
       }
     });
@@ -101,7 +102,7 @@ void CommandQueue::abort(bool restart_thread) {
     {
       // Flush the queue and reset to initial state
       std::lock_guard<std::mutex> g(m_);
-      std::queue<std::packaged_task<void()>>().swap(queue_);
+      std::queue<ICommand::Ptr>().swap(queue_);
       token_.reset();
       shutdown_ = false;
     }
@@ -110,4 +111,13 @@ void CommandQueue::abort(bool restart_thread) {
     run();
   }
 }
+
+void CommandQueue::enqueue(ICommand::Ptr&& task) {
+  {
+    std::lock_guard<std::mutex> lock(m_);
+    queue_.push(std::move(task));
+  }
+  cv_.notify_all();
+}
+
 }  // namespace api

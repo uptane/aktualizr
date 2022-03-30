@@ -20,9 +20,9 @@
 class HttpFake : public HttpInterface {
  public:
   // old style HttpFake with centralized multi repo and url rewriting
-  HttpFake(const boost::filesystem::path &test_dir_in, std::string flavor = "",
-           const boost::filesystem::path &meta_dir_in = "")
-      : test_dir(test_dir_in), flavor_(std::move(flavor)), meta_dir(meta_dir_in) {
+  explicit HttpFake(boost::filesystem::path test_dir_in, std::string flavor = "",
+                    boost::filesystem::path meta_dir_in = "")
+      : test_dir(std::move(test_dir_in)), flavor_(std::move(flavor)), meta_dir(std::move(meta_dir_in)) {
     if (meta_dir.empty()) {
       meta_dir = temp_meta_dir.Path();
       MetaFake meta(meta_dir);

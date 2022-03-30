@@ -21,9 +21,10 @@ void ExpectProvisionError(Provisioner&& provisioner, const std::string& match) {
   for (int attempt = 0; attempt < 3; attempt++) {
     EXPECT_TRUE(provisioner.ShouldAttemptAgain());
     last_attempt = provisioner.Attempt();
-    EXPECT_FALSE(last_attempt) << "Provisioner::Attempt() should return false iff ShouldAttemptAgain()";
+    ASSERT_FALSE(last_attempt) << "Expecting provisioning to fail with error " << match;
   }
-  EXPECT_TRUE(provisioner.ShouldAttemptAgain()) << "Expecting provisioning to fail";
+  EXPECT_TRUE(provisioner.ShouldAttemptAgain())
+      << "Provisioner::Attempt() should return false iff ShouldAttemptAgain()";
   auto err_message = provisioner.LastError();
   auto matches = err_message.find(match);
   EXPECT_NE(matches, std::string::npos) << "Error message didn't contain " << match << " actual:" << err_message;

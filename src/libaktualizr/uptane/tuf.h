@@ -173,7 +173,14 @@ class BaseMeta {
   TimeStamp expiry() const { return expiry_; }
   bool isExpired(const TimeStamp &now) const { return expiry_.IsExpiredAt(now); }
   Json::Value original() const { return original_object_; }
-
+  /**
+   * Get the first signature of a given meta.
+   *
+   * Assumption is that a given metadata includes "signatures" attribute that contains at least one signature.
+   * @return the first found signature or exception is thrown if not found.
+   */
+  std::string signature() const;
+  bool isInitialized() const { return !original_object_.isNull(); }
   bool operator==(const BaseMeta &rhs) const { return version_ == rhs.version() && expiry_ == rhs.expiry(); }
 
  protected:

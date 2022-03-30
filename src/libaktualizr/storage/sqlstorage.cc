@@ -1730,5 +1730,3 @@ void SQLStorage::deleteTargetInfo(const std::string& targetname) const {
     throw SQLException(std::string("Failed to clear Target filenames: ") + db.errmsg());
   }
 }
-
-void SQLStorage::cleanUp() { boost::filesystem::remove_all(dbPath()); }

@@ -29,6 +29,7 @@ if [ ! -f venv/bin/activate ]; then
   python3 -m venv venv
 fi
 
+# shellcheck disable=SC1091
 . venv/bin/activate
 
 TTV_DIR="$TESTS_SRC_DIR/tuf-test-vectors"
@@ -59,9 +60,9 @@ while ! curl -I -s -f "http://localhost:$PORT"; do
 done
 
 if [[ -n $VALGRIND ]]; then
-    "$VALGRIND" "$UPTANE_VECTOR_TEST" "$PORT" "$@"
+    "$VALGRIND" "$UPTANE_VECTOR_TEST" "$PORT" "$TESTS_SRC_DIR" "$@"
 else
-    "$UPTANE_VECTOR_TEST" "$PORT" "$@"
+    "$UPTANE_VECTOR_TEST" "$PORT" "$TESTS_SRC_DIR" "$@"
 fi
 
 RES=$?
