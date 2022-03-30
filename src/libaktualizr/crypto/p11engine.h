@@ -2,6 +2,7 @@
 #define P11ENGINE_H_
 
 #include <memory>
+#include <mutex>
 
 #include "libaktualizr/config.h"
 
@@ -87,6 +88,7 @@ class P11Engine {
 class P11EngineGuard {
  public:
   explicit P11EngineGuard(const P11Config &config) {
+    std::lock_guard<std::mutex> lock{mtx};
     if (instance == nullptr) {
       instance = new P11Engine(config);
     }
@@ -94,6 +96,7 @@ class P11EngineGuard {
   }
 
   ~P11EngineGuard() {
+    std::lock_guard<std::mutex> lock{mtx};
     if (ref_counter != 0) {
       --ref_counter;
     }
@@ -111,6 +114,7 @@ class P11EngineGuard {
   P11Engine *operator->() const { return instance; }
 
  private:
+  static std::mutex mtx;       // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
   static P11Engine *instance;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
   static int ref_counter;      // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 };

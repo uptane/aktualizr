@@ -17,6 +17,7 @@
 
 P11Engine* P11EngineGuard::instance = nullptr;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 int P11EngineGuard::ref_counter = 0;            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::mutex P11EngineGuard::mtx;                 // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 P11ContextWrapper::P11ContextWrapper(const boost::filesystem::path& module) {
   if (module.empty()) {
