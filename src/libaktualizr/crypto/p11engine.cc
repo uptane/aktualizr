@@ -60,8 +60,9 @@ P11SlotsWrapper::~P11SlotsWrapper() {
   }
 }
 
-P11Engine::P11Engine(P11Config config) : config_(std::move(config)), ctx_(config_.module), wslots_(ctx_.get()) {
-  if (config_.module.empty()) {
+P11Engine::P11Engine(boost::filesystem::path module_path, std::string pass)
+    : module_path_(std::move(module_path)), pass_{std::move(pass)}, ctx_(module_path_), wslots_(ctx_.get()) {
+  if (module_path_.empty()) {
     return;
   }
 
@@ -77,7 +78,7 @@ P11Engine::P11Engine(P11Config config) : config_(std::move(config)), ctx_(config
   LOG_DEBUG << "Slot token model.......: " << slot->token->model;
   LOG_DEBUG << "Slot token serialnr....: " << slot->token->serialnr;
 
-  uri_prefix_ = std::string("pkcs11:serial=") + slot->token->serialnr + ";pin-value=" + config_.pass + ";id=%";
+  uri_prefix_ = std::string("pkcs11:serial=") + slot->token->serialnr + ";pin-value=" + pass + ";id=%";
 
   ENGINE_load_builtin_engines();
   ENGINE* engine = ENGINE_by_id("dynamic");
@@ -105,11 +106,11 @@ P11Engine::P11Engine(P11Config config) : config_(std::move(config)), ctx_(config
       throw std::runtime_error("P11 engine command failed: LOAD");
     }
 
-    if (ENGINE_ctrl_cmd_string(engine, "MODULE_PATH", config_.module.c_str(), 0) == 0) {
-      throw std::runtime_error(std::string("P11 engine command failed: MODULE_PATH ") + config_.module.string());
+    if (ENGINE_ctrl_cmd_string(engine, "MODULE_PATH", module_path_.c_str(), 0) == 0) {
+      throw std::runtime_error(std::string("P11 engine command failed: MODULE_PATH ") + module_path_.string());
     }
 
-    if (ENGINE_ctrl_cmd_string(engine, "PIN", config_.pass.c_str(), 0) == 0) {
+    if (ENGINE_ctrl_cmd_string(engine, "PIN", pass_.c_str(), 0) == 0) {
       throw std::runtime_error(std::string("P11 engine command failed: PIN"));
     }
 
@@ -156,7 +157,7 @@ PKCS11_SLOT* P11Engine::findTokenSlot() const {
       LOG_ERROR << "Error creating rw session in to the slot: " << ERR_error_string(ERR_get_error(), nullptr);
     }
 
-    if (PKCS11_login(slot, 0, config_.pass.c_str()) != 0) {
+    if (PKCS11_login(slot, 0, pass_.c_str()) != 0) {
       LOG_ERROR << "Error logging in to the token: " << ERR_error_string(ERR_get_error(), nullptr);
       return nullptr;
     }
@@ -164,11 +165,11 @@ PKCS11_SLOT* P11Engine::findTokenSlot() const {
   return slot;
 }
 
-bool P11Engine::readUptanePublicKey(std::string* key_out) {
-  if (config_.module.empty()) {
+bool P11Engine::readUptanePublicKey(const std::string& uptane_key_id, std::string* key_out) {
+  if (module_path_.empty()) {
     return false;
   }
-  if ((config_.uptane_key_id.length() % 2) != 0U) {
+  if ((uptane_key_id.length() % 2) != 0U) {
     return false;  // id is a hex string
   }
 
@@ -187,13 +188,13 @@ bool P11Engine::readUptanePublicKey(std::string* key_out) {
   PKCS11_KEY* key = nullptr;
   {
     std::vector<unsigned char> id_hex;
-    boost::algorithm::unhex(config_.uptane_key_id, std::back_inserter(id_hex));
+    boost::algorithm::unhex(uptane_key_id, std::back_inserter(id_hex));
 
     for (unsigned int i = 0; i < nkeys; i++) {
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-      if ((keys[i].id_len == config_.uptane_key_id.length() / 2) &&
+      if ((keys[i].id_len == uptane_key_id.length() / 2) &&
           // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-          (memcmp(keys[i].id, id_hex.data(), config_.uptane_key_id.length() / 2) == 0)) {
+          (memcmp(keys[i].id, id_hex.data(), uptane_key_id.length() / 2) == 0)) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         key = &keys[i];
         break;
@@ -216,14 +217,14 @@ bool P11Engine::readUptanePublicKey(std::string* key_out) {
   return true;
 }
 
-bool P11Engine::generateUptaneKeyPair() {
+bool P11Engine::generateUptaneKeyPair(const std::string& uptane_key_id) {
   PKCS11_SLOT* slot = findTokenSlot();
   if (slot == nullptr) {
     return false;
   }
 
   std::vector<unsigned char> id_hex;
-  boost::algorithm::unhex(config_.uptane_key_id, std::back_inserter(id_hex));
+  boost::algorithm::unhex(uptane_key_id, std::back_inserter(id_hex));
 
   // Manually generate a key and store it on the HSM
   // Note that libp11 has a dedicated function marked as deprecated, it
@@ -248,10 +249,8 @@ bool P11Engine::generateUptaneKeyPair() {
   return true;
 }
 
-bool P11Engine::readTlsCert(std::string* cert_out) const {
-  const std::string& id = config_.tls_clientcert_id;
-
-  if (config_.module.empty()) {
+bool P11Engine::readTlsCert(const std::string& id, std::string* cert_out) const {
+  if (module_path_.empty()) {
     return false;
   }
   if ((id.length() % 2) != 0U) {

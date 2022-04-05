@@ -74,6 +74,6 @@ RUN ./configure CFLAGS='-Wno-error=missing-prototypes' --with-libarchive --disab
 RUN make VERBOSE=1 -j4
 RUN make install
 
-RUN useradd testuser
+RUN useradd -m testuser
 
 WORKDIR /

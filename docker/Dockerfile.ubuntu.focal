@@ -72,6 +72,6 @@ RUN apt-get update && apt-get -y install --no-install-suggests --no-install-reco
 RUN ln -s clang-11 /usr/bin/clang && \
     ln -s clang++-11 /usr/bin/clang++
 
-RUN useradd testuser
+RUN useradd -m testuser
 
 WORKDIR /
