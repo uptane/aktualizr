@@ -367,7 +367,7 @@ void DirectorRepository::transformOfflineTargets(INvStorage& storage) {
   // TODO: This method may not be foolproof should check and see if this causes issues.
 
   EcuSerials serials;
-  if (!storage.loadEcuSerials(&serials) || serials.empty()) {
+  if (!storage.getEcuSerialsForHwId(&serials) || serials.empty()) {
     throw std::runtime_error("Unable to load ECU serials");
   }
 

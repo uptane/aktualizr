@@ -597,6 +597,13 @@ class SecondaryInterfaceMock : public SecondaryInterface {
   virtual data::InstallationResult install(const Uptane::Target &, const InstallInfo &) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
+  data::InstallationResult putMetadataOffUpd(const Uptane::Target &target,
+                                             const Uptane::OfflineUpdateFetcher &fetcher) override {
+    (void)target;
+    (void)fetcher;
+    return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                    "SecondaryInterfaceMock::putMetadataOffUpd not implemented");
+  }
 
   std::shared_ptr<SecondaryProvider> secondary_provider_;
   PublicKey public_key_;

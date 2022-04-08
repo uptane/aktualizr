@@ -88,6 +88,14 @@ class Provisioner {
    */
   std::string DeviceId();
 
+  /**
+   * Get ECU serials and corresponding hardware IDs; this prioritizes the data stored
+   * into non-volatile storage and falls back to returning the current (volatile) list
+   * of ECU serials.
+   * @return Array of (ECU serial, hardware ID) pairs
+   */
+  bool GetEcuSerials(EcuSerials* serials) const;
+
  private:
   class Error : public std::runtime_error {
    public:

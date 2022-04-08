@@ -17,7 +17,7 @@ class SecondaryProvider {
   bool getMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const;
   bool getDirectorMetadata(Uptane::MetaBundle* meta_bundle) const;
   bool getImageRepoMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const;
-  bool getEcuSerials(EcuSerials* serials) const;
+  bool getEcuSerialsForHwId(EcuSerials* serials) const;
   std::string getTreehubCredentials() const;
   std::ifstream getTargetFileHandle(const Uptane::Target& target) const;
 

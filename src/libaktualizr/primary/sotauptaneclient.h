@@ -92,6 +92,7 @@ class SotaUptaneClient {
   std::vector<Uptane::Target> getStoredTargets() const { return package_manager_->getTargetFiles(); }
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
   std::ifstream openStoredTarget(const Uptane::Target &target);
+  bool getEcuSerials(EcuSerials *serials) const { return provisioner_.GetEcuSerials(serials); }
 
   // TODO: [OFFUPD] Protect with an #ifdef:
   //       For this to work correctly the compilation options should be exactly

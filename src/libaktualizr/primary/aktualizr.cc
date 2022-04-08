@@ -101,19 +101,23 @@ std::future<void> Aktualizr::RunForever() {
           }
         }
       } catch (SotaUptaneClient::ProvisioningFailed &e) {
-        LOG_DEBUG << "Not provisioned yet:" << e.what();
+        LOG_DEBUG << "Not provisioned yet: " << e.what();
       }
 
-      // TODO: [OFFUPD] Consider moving the following code inside the try block.
 #if 1  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
       if (config_.uptane.enable_offline_updates) {
         // Check update directory while waiting for next polling cycle.
         bool quit = false;
         for (auto loop = config_.uptane.polling_sec; loop > 0; loop--) {
-          if (OfflineUpdateAvailable()) {
-            if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
-              quit = true;
+          try {
+            if (OfflineUpdateAvailable()) {
+              if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
+                quit = true;
+              }
             }
+          } catch (SotaUptaneClient::ProvisioningFailed &e) {
+            // This should never happen in the offline-updates call-chain.
+            LOG_INFO << "Offline-update loop: Not provisioned yet: " << e.what();
           }
           if (exit_cond_.cv.wait_for(l, std::chrono::seconds(1), [this] { return exit_cond_.flag; })) {
             quit = true;
@@ -260,7 +264,7 @@ Aktualizr::InstallationLog Aktualizr::GetInstallationLog() {
   std::vector<Aktualizr::InstallationLogEntry> ilog;
 
   EcuSerials serials;
-  if (!storage_->loadEcuSerials(&serials)) {
+  if (!uptane_client_->getEcuSerials(&serials)) {
     throw std::runtime_error("Could not load ECU serials");
   }
 
@@ -331,6 +335,7 @@ std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane:
 bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_path) {
   // TODO: [OFFUPD] Handle interaction between offline and online modes.
 
+  LOG_TRACE << "CheckAndInstallOffline: call CheckUpdatesOffline";
   result::UpdateCheck update_result = CheckUpdatesOffline(source_path).get();
   if (update_result.updates.empty() || updates_disabled_) {
     // TODO: [OFFUPD] Do we need this?
@@ -341,6 +346,7 @@ bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_pat
     return true;
   }
 
+  LOG_TRACE << "CheckAndInstallOffline: call FetchImagesOffline";
   result::Download download_result = FetchImagesOffline(update_result.updates).get();
   if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
     // TODO: [OFFUPD] Do we need this?
@@ -351,6 +357,7 @@ bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_pat
     return true;
   }
 
+  LOG_TRACE << "CheckAndInstallOffline: call InstallOffline";
   InstallOffline(download_result.updates).get();
 
   // TODO: [OFFUPD] Do we need this?

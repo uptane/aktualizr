@@ -241,6 +241,20 @@ void Provisioner::initEcuSerials() {
     new_ecu_serials_.emplace_back(s.first, s.second->getHwId());
   }
 
+#ifdef BUILD_OFFLINE_UPDATES
+  // TODO: Review this idea.
+  //
+  // Here we are "stashing" the ECU for use by the offline-update logic which
+  // requires this information to map hardware IDs into ECU serials; Such
+  // information is being taken from the INvStorage class at the moment but
+  // in the future we should consider taking it from somewhere else or ensure
+  // that the information is actually in the storage.
+  //
+  // NOTE: The code following this seems to consider `new_ecu_serials_` as
+  // the source of truth for the current list of ECUs - confirm this.
+  storage_->stashEcuSerialsForHwId(new_ecu_serials_);
+#endif
+
   register_ecus_ = stored_ecu_serials.empty();
   if (!register_ecus_) {
     // We should probably clear the misconfigured_ecus table once we have
@@ -284,6 +298,15 @@ void Provisioner::initEcuSerials() {
       }
     }
   }
+}
+
+bool Provisioner::GetEcuSerials(EcuSerials* serials) const {
+  // TODO: Prioritizing data from non-volatile storage for now; review this later.
+#ifdef BUILD_OFFLINE_UPDATES
+  return (storage_->loadEcuSerials(serials) || storage_->getEcuSerialsForHwId(serials));
+#else
+  return storage_->loadEcuSerials(serials))
+#endif
 }
 
 void Provisioner::initSecondaryInfo() {
@@ -361,7 +384,9 @@ void Provisioner::initEcuRegister() {
     throw ServerError(err);
   }
 
+  // TODO: [OFFUPD] Should we remove this block?
   // Only store the changes if we successfully registered the ECUs.
+  LOG_DEBUG << "Storing " << new_ecu_serials_.size() << " ECU serials (after registering)";
   storage_->storeEcuSerials(new_ecu_serials_);
   for (const auto& info : sec_info_) {
     storage_->saveSecondaryInfo(info.serial, info.type, info.pub_key);

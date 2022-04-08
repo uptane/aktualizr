@@ -94,6 +94,13 @@ class INvStorage {
   virtual bool loadEcuSerials(EcuSerials* serials) const = 0;
   virtual void clearEcuSerials() = 0;
 
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  virtual void stashEcuSerialsForHwId(const EcuSerials& serials) = 0;
+  virtual bool getEcuSerialsForHwId(EcuSerials* serials) const = 0;
+#endif
+  // }}
+
   virtual void storeCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, const std::string& manifest) = 0;
   virtual bool loadCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, std::string* manifest) const = 0;
 

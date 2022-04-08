@@ -420,8 +420,6 @@ void SotaUptaneClient::requiresAlreadyProvisioned() {
 }
 
 void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
-  // TODO: [OFFUPD] Move this inside condition?
-  requiresProvision();
   try {
     if (utype == UpdateType::kOffline) {
       // Use the offline-update logic with a fetcher that knows about the
@@ -432,6 +430,7 @@ void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
       LOG_WARNING << "updateDirectorMeta: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresProvision();
       director_repo.updateMeta(*storage, *uptane_fetcher);
     }
   } catch (const std::exception &e) {
@@ -441,8 +440,6 @@ void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
 }
 
 void SotaUptaneClient::updateImageMeta(UpdateType utype) {
-  // TODO: [OFFUPD] Move this inside condition?
-  requiresProvision();
   try {
     if (utype == UpdateType::kOffline) {
       // Use the offline-update logic with a fetcher that knows about the
@@ -453,6 +450,7 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
       LOG_WARNING << "updateImageMeta: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresProvision();
       image_repo.updateMeta(*storage, *uptane_fetcher);
     }
   } catch (const std::exception &e) {
@@ -462,8 +460,6 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
 }
 
 void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
-  // TODO: [OFFUPD] Move this inside condition?
-  requiresAlreadyProvisioned();
   try {
     if (utype == UpdateType::kOffline) {
 #ifdef BUILD_OFFLINE_UPDATES
@@ -472,6 +468,7 @@ void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
       LOG_WARNING << "checkDirectorMetaOffline: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresAlreadyProvisioned();
       director_repo.checkMetaOffline(*storage);
     }
   } catch (const std::exception &e) {
@@ -482,7 +479,6 @@ void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
 
 void SotaUptaneClient::checkImageMetaOffline(UpdateType utype) {
   // TODO: [OFFUPD] Move this inside condition?
-  requiresAlreadyProvisioned();
   try {
     if (utype == UpdateType::kOffline) {
 #ifdef BUILD_OFFLINE_UPDATES
@@ -491,6 +487,7 @@ void SotaUptaneClient::checkImageMetaOffline(UpdateType utype) {
       LOG_WARNING << "checkImageMetaOffline: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresAlreadyProvisioned();
       image_repo.checkMetaOffline(*storage);
     }
   } catch (const std::exception &e) {
@@ -714,8 +711,9 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetInDelegationTree(con
 
 result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Target> &targets,
                                                   const api::FlowControlToken *token, UpdateType utype) {
-  // TODO: [OFFUPD] Move this inside condition?
-  requiresAlreadyProvisioned();
+  if (utype != UpdateType::kOffline) {
+    requiresAlreadyProvisioned();
+  }
   // Uptane step 4 - download all the images and verify them against the metadata (for OSTree - pull without
   // deploying)
   std::lock_guard<std::mutex> guard(download_mutex);
@@ -1067,9 +1065,11 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
 }
 
 result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target> &updates, UpdateType utype) {
+  if (utype != UpdateType::kOffline) {
+    requiresAlreadyProvisioned();
+  }
+
   // TODO: [OFFUPD] How should we deal with the correlationId?
-  // TODO: [OFFUPD] Move this inside condition?
-  requiresAlreadyProvisioned();
   const std::string &correlation_id = director_repo.getCorrelationId();
 
   // put most of the logic in a lambda so that we can take care of common
