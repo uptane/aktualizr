@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "garage_common.h"
 #include "ostree_hash.h"

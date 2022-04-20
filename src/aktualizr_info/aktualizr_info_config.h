@@ -1,9 +1,10 @@
 #ifndef AKTUALIZR_INFO_CONFIG_H_
 #define AKTUALIZR_INFO_CONFIG_H_
 
-#include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
-#include <boost/property_tree/ini_parser.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/property_tree/ptree_fwd.hpp>
+#include <iosfwd>
 
 #include "libaktualizr/config.h"
 #include "utilities/config_utils.h"

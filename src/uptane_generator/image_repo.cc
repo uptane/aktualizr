@@ -1,5 +1,10 @@
 #include "image_repo.h"
 
+#include <boost/filesystem.hpp>
+
+#include "crypto/crypto.h"
+#include "utilities/utils.h"
+
 void ImageRepo::addImage(const std::string &name, Json::Value &target, const std::string &hardware_id,
                          const Delegation &delegation) {
   boost::filesystem::path repo_dir(path_ / ImageRepo::dir);
@@ -33,8 +38,8 @@ void ImageRepo::addBinaryImage(const boost::filesystem::path &image_path, const 
 
   Json::Value target;
   target["length"] = Json::UInt64(image.size());
-  target["hashes"]["sha256"] = boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(image)));
-  target["hashes"]["sha512"] = boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha512digest(image)));
+  target["hashes"]["sha256"] = Crypto::sha256digestHex(image);
+  target["hashes"]["sha512"] = Crypto::sha512digestHex(image);
   target["custom"] = custom;
   if (!target["custom"].isMember("targetFormat")) {
     target["custom"]["targetFormat"] = "BINARY";

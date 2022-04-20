@@ -1,7 +1,6 @@
 #ifndef SQLSTORAGE_H_
 #define SQLSTORAGE_H_
 
-#include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
 #include <sqlite3.h>

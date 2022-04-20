@@ -1,20 +1,11 @@
 #include "uptane/uptanerepository.h"
 
-#include <cstdio>
-#include <utility>
-
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <boost/algorithm/hex.hpp>
-#include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-#include "bootstrap/bootstrap.h"
-#include "crypto/crypto.h"
-#include "crypto/openssl_compat.h"
+#include "fetcher.h"
 #include "logging/logging.h"
 #include "storage/invstorage.h"
+#include "uptane/exceptions.h"
 #include "utilities/utils.h"
 
 namespace Uptane {

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include "json/json.h"
 
 #include "libaktualizr/secondaryinterface.h"

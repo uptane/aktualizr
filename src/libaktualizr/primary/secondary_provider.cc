@@ -1,8 +1,11 @@
 #include "libaktualizr/secondary_provider.h"
 
+#include <fstream>
+
 #include "logging/logging.h"
 #include "storage/invstorage.h"
 #include "uptane/tuf.h"
+#include "utilities/utils.h"
 
 bool SecondaryProvider::getMetadata(Uptane::MetaBundle* meta_bundle, const Uptane::Target& target) const {
   if (!getDirectorMetadata(meta_bundle)) {

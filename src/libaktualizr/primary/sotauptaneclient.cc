@@ -1,6 +1,7 @@
 #include "primary/sotauptaneclient.h"
 
 #include <fnmatch.h>
+#include <fstream>
 #include <memory>
 #include <utility>
 

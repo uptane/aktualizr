@@ -4,7 +4,6 @@
 #include <sstream>
 
 #include <curl/curl.h>
-#include <boost/filesystem.hpp>
 
 #include "ostree_hash.h"
 #include "ostree_repo.h"

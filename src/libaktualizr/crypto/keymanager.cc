@@ -3,10 +3,14 @@
 #include <stdexcept>
 #include <utility>
 
+#include <boost/filesystem.hpp>
 #include <boost/scoped_array.hpp>
 
+#include "crypto/crypto.h"
 #include "crypto/openssl_compat.h"
+#include "http/httpinterface.h"
 #include "libaktualizr/types.h"
+#include "p11engine.h"
 #include "storage/invstorage.h"
 
 // by using constexpr the compiler can optimize out method calls when the

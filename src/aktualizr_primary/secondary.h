@@ -1,7 +1,7 @@
 #ifndef SECONDARY_H_
 #define SECONDARY_H_
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "libaktualizr/aktualizr.h"
 

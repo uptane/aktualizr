@@ -1,14 +1,18 @@
 #ifndef KEYMANAGER_H_
 #define KEYMANAGER_H_
 
-#include "libaktualizr/config.h"
+#include <memory>
+#include <string>
 
-#include "crypto.h"
-#include "http/httpinterface.h"
-#include "p11engine.h"
-#include "utilities/utils.h"
+#include "json/json.h"
 
+#include "libaktualizr/config.h"  // for KeyManagerConfig
+#include "libaktualizr/types.h"   // for KeyType, PublicKey
+#include "utilities/utils.h"      // for TemporaryFile
+
+class HttpInterface;
 class INvStorage;
+class P11EngineGuard;
 
 class KeyManager {
  public:

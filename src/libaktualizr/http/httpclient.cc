@@ -3,7 +3,6 @@
 #include <cassert>
 #include <sstream>
 
-#include "utilities/aktualizr_version.h"
 #include "utilities/utils.h"
 
 struct WriteStringArg {

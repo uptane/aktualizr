@@ -1,6 +1,10 @@
+#include "uptane/tuf.h"
+
+#include <boost/algorithm/string/case_conv.hpp>
+
 #include "logging/logging.h"
 #include "uptane/exceptions.h"
-#include "uptane/tuf.h"
+#include "utilities/utils.h"
 
 using Uptane::MetaWithKeys;
 

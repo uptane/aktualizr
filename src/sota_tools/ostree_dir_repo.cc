@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
 #include "logging/logging.h"

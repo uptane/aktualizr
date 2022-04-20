@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "logging/logging.h"
 #include "uptane_repo.h"

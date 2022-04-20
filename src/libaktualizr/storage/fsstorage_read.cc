@@ -7,6 +7,7 @@
 #include <iostream>
 #include <utility>
 
+#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/scoped_array.hpp>
 #include "json/json.h"
