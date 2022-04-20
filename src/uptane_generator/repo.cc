@@ -1,6 +1,7 @@
 #include "repo.h"
 
 #include <array>
+#include <boost/filesystem.hpp>
 #include <ctime>
 #include <regex>
 
@@ -8,7 +9,6 @@
 #include "director_repo.h"
 #include "image_repo.h"
 #include "libaktualizr/campaign.h"
-#include "logging/logging.h"
 
 Repo::Repo(Uptane::RepositoryType repo_type, boost::filesystem::path path, const std::string &expires,
            std::string correlation_id)
@@ -36,8 +36,7 @@ void Repo::addDelegationToSnapshot(Json::Value *snapshot, const Uptane::Role &ro
 
   (*snapshot)["meta"][role_file_name]["version"] = role_json["version"].asUInt();
   (*snapshot)["meta"][role_file_name]["length"] = signed_role.size();
-  (*snapshot)["meta"][role_file_name]["hashes"]["sha256"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(signed_role)));
+  (*snapshot)["meta"][role_file_name]["hashes"]["sha256"] = Crypto::sha256digestHex(signed_role);
 
   if (role_json["delegations"].isObject()) {
     auto delegations_list = role_json["delegations"]["roles"];
@@ -65,10 +64,8 @@ void Repo::updateRepo() {
 
   Json::Value timestamp = Utils::parseJSONFile(repo_dir_ / "timestamp.json")["signed"];
   timestamp["version"] = (timestamp["version"].asUInt()) + 1;
-  timestamp["meta"]["snapshot.json"]["hashes"]["sha256"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(signed_snapshot)));
-  timestamp["meta"]["snapshot.json"]["hashes"]["sha512"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha512digest(signed_snapshot)));
+  timestamp["meta"]["snapshot.json"]["hashes"]["sha256"] = Crypto::sha256digestHex(signed_snapshot);
+  timestamp["meta"]["snapshot.json"]["hashes"]["sha512"] = Crypto::sha512digestHex(signed_snapshot);
   timestamp["meta"]["snapshot.json"]["length"] = static_cast<Json::UInt>(signed_snapshot.length());
   timestamp["meta"]["snapshot.json"]["version"] = snapshot["version"].asUInt();
   Utils::writeFile(repo_dir_ / "timestamp.json",
@@ -211,10 +208,8 @@ void Repo::generateRepo(KeyType key_type) {
   snapshot["_type"] = "Snapshot";
   snapshot["expires"] = expiration_time_;
   snapshot["version"] = 1;
-  snapshot["meta"]["root.json"]["hashes"]["sha256"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(signed_root)));
-  snapshot["meta"]["root.json"]["hashes"]["sha512"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha512digest(signed_root)));
+  snapshot["meta"]["root.json"]["hashes"]["sha256"] = Crypto::sha256digestHex(signed_root);
+  snapshot["meta"]["root.json"]["hashes"]["sha512"] = Crypto::sha512digestHex(signed_root);
   snapshot["meta"]["root.json"]["length"] = static_cast<Json::UInt>(signed_root.length());
   snapshot["meta"]["root.json"]["version"] = 1;
   snapshot["meta"]["targets.json"]["version"] = 1;
@@ -225,10 +220,8 @@ void Repo::generateRepo(KeyType key_type) {
   timestamp["_type"] = "Timestamp";
   timestamp["expires"] = expiration_time_;
   timestamp["version"] = 1;
-  timestamp["meta"]["snapshot.json"]["hashes"]["sha256"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(signed_snapshot)));
-  timestamp["meta"]["snapshot.json"]["hashes"]["sha512"] =
-      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha512digest(signed_snapshot)));
+  timestamp["meta"]["snapshot.json"]["hashes"]["sha256"] = Crypto::sha256digestHex(signed_snapshot);
+  timestamp["meta"]["snapshot.json"]["hashes"]["sha512"] = Crypto::sha512digestHex(signed_snapshot);
   timestamp["meta"]["snapshot.json"]["length"] = static_cast<Json::UInt>(signed_snapshot.length());
   timestamp["meta"]["snapshot.json"]["version"] = 1;
   Utils::writeFile(repo_dir_ / "timestamp.json",

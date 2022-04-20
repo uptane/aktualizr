@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/optional.hpp>
 
 #include "libaktualizr/config.h"

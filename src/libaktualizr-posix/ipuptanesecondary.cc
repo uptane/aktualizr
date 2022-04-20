@@ -4,10 +4,12 @@
 #include <netinet/tcp.h>
 
 #include <array>
+#include <fstream>
 #include <memory>
 
 #include "asn1/asn1_message.h"
 #include "der_encoder.h"
+#include "libaktualizr/secondary_provider.h"
 #include "logging/logging.h"
 #include "uptane/tuf.h"
 #include "utilities/utils.h"

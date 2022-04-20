@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+#include "utilities/config_utils.h"
+
 template <>
 inline void CopyFromConfig(VerificationType& dest, const std::string& option_name,
                            const boost::property_tree::ptree& pt) {

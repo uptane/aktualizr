@@ -1,22 +1,23 @@
 #ifndef CRYPTO_H_
 #define CRYPTO_H_
 
+#include <openssl/ossl_typ.h>           // for X509, BIO, ENGINE, EVP_PKEY
+#include <sodium/crypto_hash_sha256.h>  // for crypto_hash_sha256_init, cryp...
+#include <sodium/crypto_hash_sha512.h>  // for crypto_hash_sha512_init, cryp...
+
+#include <algorithm>  // for copy
+#include <array>      // for array
+#include <cstdint>    // for uint64_t
+#include <memory>     // for shared_ptr
+#include <string>     // for string
+
+#include "libaktualizr/types.h"  // for Hash, KeyType, Hash::Type
+#include "utilities/utils.h"     // for StructGuard
+
 #include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
-#include <openssl/pkcs12.h>
-#include <openssl/rsa.h>
-#include <sodium.h>
-#include <boost/algorithm/hex.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/case_conv.hpp>
-
-#include <string>
-#include <utility>
-
-#include "libaktualizr/types.h"
-#include "utilities/utils.h"
 
 // some older versions of openssl have BIO_new_mem_buf defined with first parameter of type (void*)
 //   which is not true and breaks our build
@@ -51,12 +52,7 @@ class MultiPartSHA512Hasher : public MultiPartHasher {
   MultiPartSHA512Hasher &operator=(MultiPartSHA512Hasher &&) = delete;
   void update(const unsigned char *part, uint64_t size) override { crypto_hash_sha512_update(&state_, part, size); }
   void reset() override { crypto_hash_sha512_init(&state_); }
-  std::string getHexDigest() override {
-    std::array<unsigned char, crypto_hash_sha512_BYTES> sha512_hash{};
-    crypto_hash_sha512_final(&state_, sha512_hash.data());
-    return boost::algorithm::hex(std::string(reinterpret_cast<char *>(sha512_hash.data()), crypto_hash_sha512_BYTES));
-  }
-
+  std::string getHexDigest() override;
   Hash getHash() override { return Hash(Hash::Type::kSha512, getHexDigest()); }
 
  private:
@@ -73,11 +69,7 @@ class MultiPartSHA256Hasher : public MultiPartHasher {
   MultiPartSHA256Hasher &operator=(MultiPartSHA256Hasher &&) = delete;
   void update(const unsigned char *part, uint64_t size) override { crypto_hash_sha256_update(&state_, part, size); }
   void reset() override { crypto_hash_sha256_init(&state_); }
-  std::string getHexDigest() override {
-    std::array<unsigned char, crypto_hash_sha256_BYTES> sha256_hash{};
-    crypto_hash_sha256_final(&state_, sha256_hash.data());
-    return boost::algorithm::hex(std::string(reinterpret_cast<char *>(sha256_hash.data()), crypto_hash_sha256_BYTES));
-  }
+  std::string getHexDigest() override;
 
   Hash getHash() override { return Hash(Hash::Type::kSha256, getHexDigest()); }
 
@@ -88,7 +80,11 @@ class MultiPartSHA256Hasher : public MultiPartHasher {
 class Crypto {
  public:
   static std::string sha256digest(const std::string &text);
+  /** A lower case, hexadecimal version of sha256digest */
+  static std::string sha256digestHex(const std::string &text);
   static std::string sha512digest(const std::string &text);
+  /** A lower case, hexadecimal version of sha512digest */
+  static std::string sha512digestHex(const std::string &text);
   static std::string RSAPSSSign(ENGINE *engine, const std::string &private_key, const std::string &message);
   static std::string Sign(KeyType key_type, ENGINE *engine, const std::string &private_key, const std::string &message);
   static std::string ED25519Sign(const std::string &private_key, const std::string &message);

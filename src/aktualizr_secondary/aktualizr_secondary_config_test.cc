@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
 #include "aktualizr_secondary_config.h"
+
+#include <fstream>
+
 #include "utilities/utils.h"
 
 TEST(aktualizr_secondary_config, config_initialized_values) {

@@ -6,7 +6,7 @@
 #include <sstream>
 
 #include <curl/curl.h>
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/intrusive_ptr.hpp>
 #include "gtest/gtest_prod.h"
 

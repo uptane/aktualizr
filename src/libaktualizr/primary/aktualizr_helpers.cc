@@ -1,6 +1,12 @@
-#include <set>
-
 #include "aktualizr_helpers.h"
+
+#include <algorithm>                 // for find_if
+#include <cstddef>                   // for size_t
+#include <string>                    // for operator==, string
+#include <vector>                    // for vector, vector<>::reference, _Bi...
+#include "libaktualizr/aktualizr.h"  // for Aktualizr, Aktualizr::Installati...
+#include "libaktualizr/events.h"     // for AllInstallsComplete, BaseEvent
+#include "libaktualizr/types.h"      // for Target
 
 void targets_autoclean_cb(Aktualizr &aktualizr, const std::shared_ptr<event::BaseEvent> &event) {
   if (!event->isTypeOf<event::AllInstallsComplete>()) {

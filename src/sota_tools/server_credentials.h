@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 enum class AuthMethod { kNone = 0, kBasic, kOauth2, kTls };
 

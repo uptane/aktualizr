@@ -1,8 +1,18 @@
 #include "libaktualizr/config.h"
 
+#include <boost/filesystem.hpp>
+
 #include "logging/logging.h"
 #include "utilities/config_utils.h"
 #include "utilities/utils.h"
+
+void BaseConfig::checkDirs(const std::vector<boost::filesystem::path>& configs) {
+  for (const auto& config : configs) {
+    if (!boost::filesystem::exists(config)) {
+      throw std::runtime_error("Config directory " + config.string() + " does not exist.");
+    }
+  }
+}
 
 void BaseConfig::updateFromToml(const boost::filesystem::path& filename) {
   LOG_INFO << "Reading config: " << filename;

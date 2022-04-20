@@ -12,6 +12,7 @@
 
 #include <boost/algorithm/hex.hpp>
 #include <boost/archive/iterators/dataflow_exception.hpp>
+#include <boost/filesystem.hpp>
 
 #include "libaktualizr/types.h"
 #include "utilities/utils.h"

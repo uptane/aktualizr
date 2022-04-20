@@ -9,8 +9,6 @@
 #include "json/json.h"
 
 #include "httpinterface.h"
-#include "logging/logging.h"
-#include "utilities/utils.h"
 
 /**
  * Helper class to manage curl_global_init/curl_global_cleanup calls

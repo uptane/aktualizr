@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
+
 #include <memory>
 
+#include <boost/filesystem.hpp>
 #include "json/json.h"
 
 #include "crypto/keymanager.h"
+#include "crypto/p11engine.h"
 #include "libaktualizr/config.h"
 #include "storage/sqlstorage.h"
 #include "utilities/utils.h"

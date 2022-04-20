@@ -1,7 +1,7 @@
 #ifndef FSSTORAGE_READ_H_
 #define FSSTORAGE_READ_H_
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include "invstorage.h"
 
 class FSStorageRead {

@@ -1,6 +1,10 @@
 #include "imagerepository.h"
 
+#include "crypto/crypto.h"
+#include "fetcher.h"
+#include "logging/logging.h"
 #include "storage/invstorage.h"
+#include "uptane/exceptions.h"
 
 namespace Uptane {
 
@@ -55,7 +59,7 @@ void ImageRepository::verifySnapshot(const std::string& snapshot_raw, bool prefe
   for (const auto& it : timestamp.snapshot_hashes()) {
     switch (it.type()) {
       case Hash::Type::kSha256:
-        if (Hash(Hash::Type::kSha256, boost::algorithm::hex(Crypto::sha256digest(canonical))) != it) {
+        if (Hash(Hash::Type::kSha256, Crypto::sha256digestHex(canonical)) != it) {
           if (!prefetch) {
             LOG_ERROR << "Hash verification for Snapshot metadata failed";
           }
@@ -64,7 +68,7 @@ void ImageRepository::verifySnapshot(const std::string& snapshot_raw, bool prefe
         hash_exists = true;
         break;
       case Hash::Type::kSha512:
-        if (Hash(Hash::Type::kSha512, boost::algorithm::hex(Crypto::sha512digest(canonical))) != it) {
+        if (Hash(Hash::Type::kSha512, Crypto::sha512digestHex(canonical)) != it) {
           if (!prefetch) {
             LOG_ERROR << "Hash verification for Snapshot metadata failed";
           }
@@ -130,7 +134,7 @@ void ImageRepository::verifyRoleHashes(const std::string& role_data, const Uptan
   for (const auto& it : snapshot.role_hashes(role)) {
     switch (it.type()) {
       case Hash::Type::kSha256:
-        if (Hash(Hash::Type::kSha256, boost::algorithm::hex(Crypto::sha256digest(canonical))) != it) {
+        if (Hash(Hash::Type::kSha256, Crypto::sha256digestHex(canonical)) != it) {
           if (!prefetch) {
             LOG_ERROR << "Hash verification for " << role << " metadata failed";
           }
@@ -138,7 +142,7 @@ void ImageRepository::verifyRoleHashes(const std::string& role_data, const Uptan
         }
         break;
       case Hash::Type::kSha512:
-        if (Hash(Hash::Type::kSha512, boost::algorithm::hex(Crypto::sha512digest(canonical))) != it) {
+        if (Hash(Hash::Type::kSha512, Crypto::sha512digestHex(canonical)) != it) {
           if (!prefetch) {
             LOG_ERROR << "Hash verification for " << role << " metadata failed";
           }

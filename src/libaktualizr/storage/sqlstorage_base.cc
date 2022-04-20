@@ -2,6 +2,8 @@
 #include "storage_exception.h"
 
 #include <sys/stat.h>
+#include <boost/filesystem.hpp>
+#include <fstream>
 
 #include "utilities/utils.h"
 

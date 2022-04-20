@@ -1,14 +1,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <boost/process.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/optional/optional_io.hpp>
 
 #include "aktualizr_secondary_file.h"
 #include "crypto/keymanager.h"
 #include "libaktualizr/types.h"
 #include "storage/invstorage.h"
-#include "test_utils.h"
-#include "update_agent.h"
 #include "update_agent_file.h"
 #include "uptane_repo.h"
 #include "utilities/utils.h"

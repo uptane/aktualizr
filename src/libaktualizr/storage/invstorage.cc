@@ -1,10 +1,13 @@
 #include "invstorage.h"
 
 #include <unistd.h>
+#include <boost/filesystem.hpp>
 
+#include "crypto/crypto.h"
 #include "fsstorage_read.h"
 #include "logging/logging.h"
 #include "sqlstorage.h"
+#include "uptane/exceptions.h"
 #include "utilities/utils.h"
 
 void INvStorage::importUpdateSimple(const boost::filesystem::path& base_path, store_data_t store_func,

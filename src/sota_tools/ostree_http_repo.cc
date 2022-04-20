@@ -1,9 +1,9 @@
 #include "ostree_http_repo.h"
 
 #include <fcntl.h>
-
 #include <string>
 
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
 namespace pt = boost::property_tree;

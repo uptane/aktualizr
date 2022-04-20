@@ -1,4 +1,7 @@
 #include "update_agent_file.h"
+
+#include <boost/filesystem.hpp>
+
 #include <fstream>
 #include "crypto/crypto.h"
 #include "logging/logging.h"

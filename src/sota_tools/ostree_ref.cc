@@ -1,8 +1,7 @@
 #include "ostree_ref.h"
 
 #include <algorithm>
-#include <fstream>
-#include <iomanip>
+#include <boost/filesystem.hpp>
 #include <iostream>
 #include <iterator>
 #include <utility>

@@ -1,13 +1,15 @@
 #ifndef AKTUALIZR_SECONDARY_CONFIG_H_
 #define AKTUALIZR_SECONDARY_CONFIG_H_
 
-#include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
-#include <boost/property_tree/ini_parser.hpp>
+#include <netinet/in.h>                             // for in_port_t
+#include <boost/filesystem/path.hpp>                // for path
+#include <boost/program_options/variables_map.hpp>  // for variables_map
+#include <boost/property_tree/ptree_fwd.hpp>        // for ptree
+#include <iosfwd>                                   // for ostream
+#include <string>                                   // for string
 
-#include "libaktualizr/config.h"
-#include "libaktualizr/types.h"
-#include "utilities/config_utils.h"
+#include "libaktualizr/config.h"  // for BaseConfig, Bootl...
+#include "libaktualizr/types.h"   // for CryptoSource, Key...
 
 // Try to keep the order of config options the same as in
 // AktualizrSecondaryConfig::writeToStream() and

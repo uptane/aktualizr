@@ -1,19 +1,20 @@
 #ifndef REPORTQUEUE_H_
 #define REPORTQUEUE_H_
 
+#include <json/json.h>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <utility>  // for move
 
-#include <json/json.h>
+#include "libaktualizr/types.h"  // for EcuSerial (ptr only), TimeStamp
+#include "utilities/utils.h"     // for Utils
 
-#include "http/httpclient.h"
-#include "libaktualizr/config.h"
-#include "logging/logging.h"
-#include "storage/invstorage.h"
-#include "uptane/tuf.h"
+class Config;
+class HttpInterface;
+class INvStorage;
 
 class ReportEvent {
  public:
