@@ -124,6 +124,7 @@ if [[ $TEST_DRYRUN != 1 ]]; then
     fi
 
     set -x
+    git config --global --add safe.directory "${GITREPO_ROOT}"
     cmake "${CMAKE_ARGS[@]}" "${GITREPO_ROOT}" || add_fatal_failure "cmake configure"
     )
 fi
