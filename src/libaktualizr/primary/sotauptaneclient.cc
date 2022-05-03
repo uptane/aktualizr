@@ -928,6 +928,8 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
+    storeInstallationFailure(
+        data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     return result;
   }
 
@@ -935,6 +937,8 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   if (utype == UpdateType::kOnline &&
       !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
+    storeInstallationFailure(
+        data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     return result;
   } else if (utype == UpdateType::kOffline &&
              !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(),
