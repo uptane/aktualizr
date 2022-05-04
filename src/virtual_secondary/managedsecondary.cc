@@ -53,6 +53,7 @@ ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) :
   }
   public_key_ = PublicKey(public_key_string, sconfig.key_type);
 
+  // FIXME: This should probably be inside the condition above.
   storeKeys(public_key_.Value(), private_key);
 
   storage_config_.path = sconfig.full_client_dir;
@@ -154,10 +155,10 @@ data::InstallationResult ManagedSecondary::putMetadataOffUpd(const Uptane::Targe
   // Get ECU serials from primary to allow translation of targets specified
   // only by their HWIDs into a form based on serials.
   EcuSerials serials;
-  if (!secondary_provider_->getEcuSerials(&serials) || serials.empty()) {
+  if (!secondary_provider_->getEcuSerialsForHwId(&serials) || serials.empty()) {
     throw std::runtime_error("Unable to get ECU serials from primary");
   }
-  storage_->storeEcuSerials(serials);
+  storage_->stashEcuSerialsForHwId(serials);
 
   // 2. Download and check the Root metadata file from the Director repository.
   // 3. Download and check the offline Snapshot metadata file from the Director repository.

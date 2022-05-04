@@ -188,7 +188,8 @@ int main(int argc, char *argv[]) {
       try {
         aktualizr.RunForever().get();
       } catch (const std::exception &ex) {
-        LOG_ERROR << ex.what();
+        LOG_ERROR << "Aktualizr::RunForever exiting: " << ex.what();
+        return EXIT_FAILURE;
       }
 
       LOG_DEBUG << "Aktualizr daemon exiting...";

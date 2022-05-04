@@ -1,4 +1,4 @@
-#include "sotauptaneclient.h"
+#include "primary/sotauptaneclient.h"
 
 #include <fnmatch.h>
 #include <memory>
@@ -21,10 +21,22 @@ static void report_progress_cb(event::Channel *channel, const Uptane::Target &ta
   (*channel)(event);
 }
 
+/**
+ * A utility class to compare targets between Image and Director repositories.
+ * The definition of 'sameness' is in Target::MatchTarget().
+ */
+class TargetCompare {
+ public:
+  explicit TargetCompare(const Uptane::Target &target_in) : target(target_in) {}
+  bool operator()(const Uptane::Target &in) const { return (in.MatchTarget(target)); }
+
+ private:
+  const Uptane::Target &target;
+};
+
 SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in,
                                    std::shared_ptr<HttpInterface> http_in,
-                                   std::shared_ptr<event::Channel> events_channel_in, Uptane::EcuSerial primary_serial,
-                                   Uptane::HardwareIdentifier hwid)
+                                   std::shared_ptr<event::Channel> events_channel_in)
     : config(config_in),
       storage(std::move(storage_in)),
       http(std::move(http_in)),
@@ -32,8 +44,6 @@ SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage
       key_manager_(std::make_shared<KeyManager>(storage, config.keymanagerConfig())),
       uptane_fetcher(new Uptane::Fetcher(config, http)),
       events_channel(std::move(events_channel_in)),
-      primary_ecu_serial_(std::move(primary_serial)),
-      primary_ecu_hw_id_(std::move(hwid)),
       provisioner_(config.provision, storage, http, key_manager_, secondaries) {
   report_queue = std_::make_unique<ReportQueue>(config, http, storage);
   secondary_provider_ = SecondaryProviderBuilder::Build(config, storage, package_manager_);
@@ -50,6 +60,33 @@ void SotaUptaneClient::addSecondary(const std::shared_ptr<SecondaryInterface> &s
   secondaries.emplace(serial, sec);
   sec->init(secondary_provider_);
   provisioner_.SecondariesWereChanged();
+}
+
+bool SotaUptaneClient::attemptProvision() {
+  bool already_provisioned = provisioner_.CurrentState() == Provisioner::State::kOk;
+  if (already_provisioned) {
+    return true;
+  }
+  if (!provisioner_.Attempt()) {
+    return false;
+  }
+  // If we got here, provisioning occurred in this run, dump some debugging information
+  LOG_INFO << "Primary ECU serial: " << provisioner_.PrimaryEcuSerial()
+           << " with hardware ID: " << provisioner_.PrimaryHardwareIdentifier();
+
+  LOG_INFO << "Device ID: " << provisioner_.DeviceId();
+  LOG_INFO << "Device Gateway URL: " << config.tls.server;
+
+  std::string subject;
+  std::string issuer;
+  std::string not_before;
+  std::string not_after;
+  key_manager_->getCertInfo(&subject, &issuer, &not_before, &not_after);
+  LOG_INFO << "Certificate subject: " << subject;
+  LOG_INFO << "Certificate issuer: " << issuer;
+  LOG_INFO << "Certificate valid from: " << not_before << " until: " << not_after;
+  LOG_DEBUG << "... provisioned OK";
+  return true;
 }
 
 std::vector<Uptane::Target> SotaUptaneClient::findForEcu(const std::vector<Uptane::Target> &targets,
@@ -83,7 +120,7 @@ void SotaUptaneClient::finalizeAfterReboot() {
 
   LOG_INFO << "Checking for a pending update to apply for Primary ECU";
 
-  const Uptane::EcuSerial &primary_ecu_serial = primaryEcuSerial();
+  const Uptane::EcuSerial primary_ecu_serial = primaryEcuSerial();
   boost::optional<Uptane::Target> pending_target;
   storage->loadInstalledVersions(primary_ecu_serial.ToString(), nullptr, &pending_target);
 
@@ -361,49 +398,25 @@ Json::Value SotaUptaneClient::AssembleManifest() {
 bool SotaUptaneClient::hasPendingUpdates() const { return storage->hasPendingInstall(); }
 
 void SotaUptaneClient::initialize() {
-  LOG_DEBUG << "Checking if device is provisioned...";
+  provisioner_.Prepare();
 
-  bool provisioned = false;
-  for (int i = 0; i < 3 && !provisioned; i++) {
-    provisioned = provisioner_.Attempt();
-  }
+  uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, provisioner_.PrimaryEcuSerial());
 
-  // This is temporary. For offline updates it will be necessary to
-  // run updates before provisioning has completed.
-  if (!provisioned) {
-    throw std::runtime_error("Initialization failed after 3 attempts");
-  }
-
-  EcuSerials serials;
-  /* unlikely, post-condition of Provisioner::Attempt() returning true */
-  if (!storage->loadEcuSerials(&serials) || serials.empty()) {
-    throw std::runtime_error("Unable to load ECU serials after device registration.");
-  }
-
-  uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, serials[0].first);
-  // TODO: Move this debug logging out to somewhere else
-  primary_ecu_serial_ = serials[0].first;
-  primary_ecu_hw_id_ = serials[0].second;
-  LOG_INFO << "Primary ECU serial: " << primary_ecu_serial_ << " with hardware ID: " << primary_ecu_hw_id_;
-
-  std::string device_id;
-  if (!storage->loadDeviceId(&device_id)) {
-    throw std::runtime_error("Unable to load device ID after device registration.");
-  }
-  LOG_INFO << "Device ID: " << device_id;
-  LOG_INFO << "Device Gateway URL: " << config.tls.server;
-
-  std::string subject;
-  std::string issuer;
-  std::string not_before;
-  std::string not_after;
-  key_manager_->getCertInfo(&subject, &issuer, &not_before, &not_after);
-  LOG_INFO << "Certificate subject: " << subject;
-  LOG_INFO << "Certificate issuer: " << issuer;
-  LOG_INFO << "Certificate valid from: " << not_before << " until: " << not_after;
-
-  LOG_DEBUG << "... provisioned OK";
   finalizeAfterReboot();
+
+  attemptProvision();
+}
+
+void SotaUptaneClient::requiresProvision() {
+  if (!attemptProvision()) {
+    throw ProvisioningFailed();
+  }
+}
+
+void SotaUptaneClient::requiresAlreadyProvisioned() {
+  if (provisioner_.CurrentState() != Provisioner::State::kOk) {
+    throw NotProvisionedYet();
+  }
 }
 
 void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
@@ -417,6 +430,7 @@ void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
       LOG_WARNING << "updateDirectorMeta: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresProvision();
       director_repo.updateMeta(*storage, *uptane_fetcher);
     }
   } catch (const std::exception &e) {
@@ -436,6 +450,7 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
       LOG_WARNING << "updateImageMeta: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresProvision();
       image_repo.updateMeta(*storage, *uptane_fetcher);
     }
   } catch (const std::exception &e) {
@@ -453,6 +468,7 @@ void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
       LOG_WARNING << "checkDirectorMetaOffline: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresAlreadyProvisioned();
       director_repo.checkMetaOffline(*storage);
     }
   } catch (const std::exception &e) {
@@ -462,6 +478,7 @@ void SotaUptaneClient::checkDirectorMetaOffline(UpdateType utype) {
 }
 
 void SotaUptaneClient::checkImageMetaOffline(UpdateType utype) {
+  // TODO: [OFFUPD] Move this inside condition?
   try {
     if (utype == UpdateType::kOffline) {
 #ifdef BUILD_OFFLINE_UPDATES
@@ -470,6 +487,7 @@ void SotaUptaneClient::checkImageMetaOffline(UpdateType utype) {
       LOG_WARNING << "checkImageMetaOffline: offline-updates feature is disabled!";
 #endif
     } else {
+      requiresAlreadyProvisioned();
       image_repo.checkMetaOffline(*storage);
     }
   } catch (const std::exception &e) {
@@ -478,7 +496,7 @@ void SotaUptaneClient::checkImageMetaOffline(UpdateType utype) {
 }
 
 void SotaUptaneClient::computeDeviceInstallationResult(data::InstallationResult *result,
-                                                       std::string *raw_installation_report) const {
+                                                       std::string *raw_installation_report) {
   data::InstallationResult device_installation_result =
       data::InstallationResult(data::ResultCode::Numeric::kOk, "Device has been successfully installed");
   std::string raw_ir = "Installation succesful";
@@ -693,6 +711,9 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetInDelegationTree(con
 
 result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Target> &targets,
                                                   const api::FlowControlToken *token, UpdateType utype) {
+  if (utype != UpdateType::kOffline) {
+    requiresAlreadyProvisioned();
+  }
   // Uptane step 4 - download all the images and verify them against the metadata (for OSTree - pull without
   // deploying)
   std::lock_guard<std::mutex> guard(download_mutex);
@@ -765,7 +786,7 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
   }
 
   // Note: handle exceptions from here so that we can send reports and
-  // DownloadTargetComple events in all cases. We might want to move these to
+  // DownloadTargetComplete events in all cases. We might want to move these to
   // downloadImages but aktualizr-lite currently calls this method directly.
 
   bool success = false;
@@ -882,6 +903,8 @@ void SotaUptaneClient::uptaneOfflineIteration(std::vector<Uptane::Target> *targe
 }
 
 void SotaUptaneClient::sendDeviceData() {
+  requiresProvision();
+
   reportHwInfo();
   reportInstalledPackages();
   reportNetworkInfo();
@@ -890,6 +913,8 @@ void SotaUptaneClient::sendDeviceData() {
 }
 
 result::UpdateCheck SotaUptaneClient::fetchMeta() {
+  requiresProvision();
+
   result::UpdateCheck result;
 
   reportNetworkInfo();
@@ -1044,6 +1069,10 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
 }
 
 result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target> &updates, UpdateType utype) {
+  if (utype != UpdateType::kOffline) {
+    requiresAlreadyProvisioned();
+  }
+
   // TODO: [OFFUPD] How should we deal with the correlationId?
   const std::string &correlation_id = director_repo.getCorrelationId();
 
@@ -1161,6 +1190,8 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
 }
 
 result::CampaignCheck SotaUptaneClient::campaignCheck() {
+  requiresProvision();
+
   auto campaigns = campaign::Campaign::fetchAvailableCampaigns(*http, config.tls.server);
   for (const auto &c : campaigns) {
     LOG_INFO << "Campaign: " << c.name;
@@ -1175,32 +1206,39 @@ result::CampaignCheck SotaUptaneClient::campaignCheck() {
 }
 
 void SotaUptaneClient::campaignAccept(const std::string &campaign_id) {
+  requiresAlreadyProvisioned();
+
   sendEvent<event::CampaignAcceptComplete>();
   report_queue->enqueue(std_::make_unique<CampaignAcceptedReport>(campaign_id));
 }
 
 void SotaUptaneClient::campaignDecline(const std::string &campaign_id) {
+  requiresAlreadyProvisioned();
+
   sendEvent<event::CampaignDeclineComplete>();
   report_queue->enqueue(std_::make_unique<CampaignDeclinedReport>(campaign_id));
 }
 
 void SotaUptaneClient::campaignPostpone(const std::string &campaign_id) {
+  requiresAlreadyProvisioned();
+
   sendEvent<event::CampaignPostponeComplete>();
   report_queue->enqueue(std_::make_unique<CampaignPostponedReport>(campaign_id));
 }
 
-bool SotaUptaneClient::isInstallCompletionRequired() const {
+bool SotaUptaneClient::isInstallCompletionRequired() {
   std::vector<std::pair<Uptane::EcuSerial, Hash>> pending_ecus;
   storage->getPendingEcus(&pending_ecus);
+  auto primary_ecu_serial = provisioner_.PrimaryEcuSerial();
   bool pending_for_ecu = std::find_if(pending_ecus.begin(), pending_ecus.end(),
-                                      [this](const std::pair<Uptane::EcuSerial, Hash> &ecu) -> bool {
-                                        return ecu.first == primary_ecu_serial_;
+                                      [&primary_ecu_serial](const std::pair<Uptane::EcuSerial, Hash> &ecu) -> bool {
+                                        return ecu.first == primary_ecu_serial;
                                       }) != pending_ecus.end();
 
   return pending_for_ecu && config.uptane.force_install_completion;
 }
 
-void SotaUptaneClient::completeInstall() const {
+void SotaUptaneClient::completeInstall() {
   if (isInstallCompletionRequired()) {
     package_manager_->completeInstall();
   }
@@ -1246,6 +1284,8 @@ bool SotaUptaneClient::putManifestSimple(const Json::Value &custom) {
 }
 
 bool SotaUptaneClient::putManifest(const Json::Value &custom) {
+  requiresProvision();
+
   bool success = putManifestSimple(custom);
   sendEvent<event::PutManifestComplete>(success);
   return success;
@@ -1326,6 +1366,9 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
   data::InstallationResult result{data::ResultCode::Numeric::kOk, ""};
   const int last_root_version = Uptane::extractVersionUntrusted(latest_root);
   const int sec_root_version = secondary.getRootVersion((repo == Uptane::RepositoryType::Director()));
+  // If sec_root_version is 0, assume either the Secondary doesn't have Root
+  // metadata or doesn't support the Root version request. Continue on and hope
+  // for the best.
   if (sec_root_version < 0) {
     LOG_WARNING << "Secondary with serial " << secondary.getSerial() << " reported an invalid " << repo
                 << " repo Root version: " << sec_root_version;
@@ -1585,12 +1628,14 @@ void SotaUptaneClient::checkAndUpdatePendingSecondaries() {
   }
 }
 
-boost::optional<Uptane::HardwareIdentifier> SotaUptaneClient::getEcuHwId(const Uptane::EcuSerial &serial) const {
-  if (serial == primary_ecu_serial_ || serial.ToString().empty()) {
-    if (primary_ecu_hw_id_ == Uptane::HardwareIdentifier::Unknown()) {
+boost::optional<Uptane::HardwareIdentifier> SotaUptaneClient::getEcuHwId(const Uptane::EcuSerial &serial) {
+  auto primary_ecu_serial = provisioner_.PrimaryEcuSerial();
+  if (serial == primary_ecu_serial || serial.ToString().empty()) {
+    auto primary_ecu_hw_id = provisioner_.PrimaryHardwareIdentifier();
+    if (primary_ecu_hw_id == Uptane::HardwareIdentifier::Unknown()) {
       return boost::none;
     }
-    return primary_ecu_hw_id_;
+    return primary_ecu_hw_id;
   }
 
   const auto it = secondaries.find(serial);

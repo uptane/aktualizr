@@ -10,7 +10,7 @@ DEST_DIR="$1"
 
 mkdir -p "$DEST_DIR"
 trap 'rm -rf "$DEST_DIR"' ERR
-cd $DEST_DIR
+cd "$DEST_DIR"
 
 cat << 'EOF' > intermediate.ext
 subjectKeyIdentifier=hash

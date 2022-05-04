@@ -65,6 +65,12 @@ class SQLStorage : public SQLStorageBase, public INvStorage {
   void storeEcuSerials(const EcuSerials& serials) override;
   bool loadEcuSerials(EcuSerials* serials) const override;
   void clearEcuSerials() override;
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  virtual void stashEcuSerialsForHwId(const EcuSerials& serials) override;
+  virtual bool getEcuSerialsForHwId(EcuSerials* serials) const override;
+#endif
+  // }}
   void storeCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, const std::string& manifest) override;
   bool loadCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, std::string* manifest) const override;
   void saveMisconfiguredEcu(const MisconfiguredEcu& ecu) override;
@@ -110,11 +116,14 @@ class SQLStorage : public SQLStorageBase, public INvStorage {
   std::vector<std::string> getAllTargetNames() const override;
   void deleteTargetInfo(const std::string& targetname) const override;
 
-  void cleanUp() override;
   StorageType type() override { return StorageType::kSqlite; };
 
  private:
   void cleanMetaVersion(Uptane::RepositoryType repo, const Uptane::Role& role);
+
+  // BUILD_OFFLINE_UPDATES {{
+  EcuSerials stashed_ecu_serials_;
+  // }}
 };
 
 #endif  // SQLSTORAGE_H_

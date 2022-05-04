@@ -5,12 +5,12 @@
 
 #include "libaktualizr/aktualizr.h"
 #include "libaktualizr/events.h"
-
-#include "sotauptaneclient.h"
+#include "primary/sotauptaneclient.h"
 #include "utilities/apiqueue.h"
 #include "utilities/timer.h"
 
 using std::make_shared;
+using std::move;
 using std::shared_ptr;
 
 namespace bf = boost::filesystem;
@@ -20,12 +20,12 @@ Aktualizr::Aktualizr(const Config &config)
 
 Aktualizr::Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in,
                      const std::shared_ptr<HttpInterface> &http_in)
-    : config_{std::move(config)}, sig_{new event::Channel()}, api_queue_(new api::CommandQueue()) {
+    : config_{move(config)}, sig_{new event::Channel()}, api_queue_{new api::CommandQueue()} {
   if (sodium_init() == -1) {  // Note that sodium_init doesn't require a matching 'sodium_deinit'
     throw std::runtime_error("Unable to initialize libsodium");
   }
 
-  storage_ = std::move(storage_in);
+  storage_ = move(storage_in);
   storage_->importData(config_.import);
 
   uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_);
@@ -81,16 +81,27 @@ bool Aktualizr::UptaneCycle() {
 
 std::future<void> Aktualizr::RunForever() {
   std::future<void> future = std::async(std::launch::async, [this]() {
+    // TODO: [OFFUPD] Move to inside the loop if throwing an error (hopefully not needed).
     CompleteSecondaryUpdates().get();
-    SendDeviceData().get();
 
     std::unique_lock<std::mutex> l(exit_cond_.m);
+    bool have_sent_device_data = false;
     while (true) {
-      // TODO: [OFFUPD] The "!enable_offline_updates" below should be removed after the MVP.
-      if (config_.uptane.enable_online_updates && !config_.uptane.enable_offline_updates) {
-        if (!UptaneCycle()) {
-          break;
+      try {
+        if (!have_sent_device_data) {
+          // Can throw SotaUptaneClient::ProvisioningFailed
+          SendDeviceData().get();
+          have_sent_device_data = true;
         }
+
+        // TODO: [OFFUPD] The "!enable_offline_updates" below should be removed after the MVP.
+        if (config_.uptane.enable_online_updates && !config_.uptane.enable_offline_updates) {
+          if (!UptaneCycle()) {
+            break;
+          }
+        }
+      } catch (SotaUptaneClient::ProvisioningFailed &e) {
+        LOG_DEBUG << "Not provisioned yet: " << e.what();
       }
 
 #if 1  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
@@ -98,10 +109,15 @@ std::future<void> Aktualizr::RunForever() {
         // Check update directory while waiting for next polling cycle.
         bool quit = false;
         for (auto loop = config_.uptane.polling_sec; loop > 0; loop--) {
-          if (OfflineUpdateAvailable()) {
-            if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
-              quit = true;
+          try {
+            if (OfflineUpdateAvailable()) {
+              if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
+                quit = true;
+              }
             }
+          } catch (SotaUptaneClient::ProvisioningFailed &e) {
+            // This should never happen in the offline-updates call-chain.
+            LOG_INFO << "Offline-update loop: Not provisioned yet: " << e.what();
           }
           if (exit_cond_.cv.wait_for(l, std::chrono::seconds(1), [this] { return exit_cond_.flag; })) {
             quit = true;
@@ -152,7 +168,7 @@ std::vector<SecondaryInfo> Aktualizr::GetSecondaries() const {
 
 std::future<result::CampaignCheck> Aktualizr::CampaignCheck() {
   std::function<result::CampaignCheck()> task([this] { return uptane_client_->campaignCheck(); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<void> Aktualizr::CampaignControl(const std::string &campaign_id, campaign::Cmd cmd) {
@@ -171,43 +187,43 @@ std::future<void> Aktualizr::CampaignControl(const std::string &campaign_id, cam
         break;
     }
   });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
-void Aktualizr::SetCustomHardwareInfo(Json::Value hwinfo) { uptane_client_->setCustomHardwareInfo(std::move(hwinfo)); }
+void Aktualizr::SetCustomHardwareInfo(Json::Value hwinfo) { uptane_client_->setCustomHardwareInfo(move(hwinfo)); }
 std::future<void> Aktualizr::SendDeviceData() {
   std::function<void()> task([this] { uptane_client_->sendDeviceData(); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 // FIXME: [TDX] This solution must be reviewed (we should probably have a method to be used just for the data proxy).
 std::future<void> Aktualizr::SendDeviceData(const Json::Value &hwinfo) {
   std::function<void()> task([this, hwinfo] {
-    uptane_client_->setCustomHardwareInfo(std::move(hwinfo));
+    uptane_client_->setCustomHardwareInfo(move(hwinfo));
     uptane_client_->sendDeviceData();
   });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<void> Aktualizr::CompleteSecondaryUpdates() {
   std::function<void()> task([this] { return uptane_client_->completePreviousSecondaryUpdates(); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<result::UpdateCheck> Aktualizr::CheckUpdates() {
   std::function<result::UpdateCheck()> task([this] { return uptane_client_->fetchMeta(); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<result::Download> Aktualizr::Download(const std::vector<Uptane::Target> &updates) {
   std::function<result::Download(const api::FlowControlToken *)> task(
       [this, updates](const api::FlowControlToken *token) { return uptane_client_->downloadImages(updates, token); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<result::Install> Aktualizr::Install(const std::vector<Uptane::Target> &updates) {
   std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstall(updates); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 bool Aktualizr::SetInstallationRawReport(const std::string &custom_raw_report) {
@@ -216,7 +232,7 @@ bool Aktualizr::SetInstallationRawReport(const std::string &custom_raw_report) {
 
 std::future<bool> Aktualizr::SendManifest(const Json::Value &custom) {
   std::function<bool()> task([this, custom]() { return uptane_client_->putManifest(custom); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 result::Pause Aktualizr::Pause() {
@@ -248,7 +264,7 @@ Aktualizr::InstallationLog Aktualizr::GetInstallationLog() {
   std::vector<Aktualizr::InstallationLogEntry> ilog;
 
   EcuSerials serials;
-  if (!storage_->loadEcuSerials(&serials)) {
+  if (!uptane_client_->getEcuSerials(&serials)) {
     throw std::runtime_error("Could not load ECU serials");
   }
 
@@ -260,7 +276,7 @@ Aktualizr::InstallationLog Aktualizr::GetInstallationLog() {
     std::vector<Uptane::Target> log;
     storage_->loadInstallationLog(serial.ToString(), &log, true);
 
-    ilog.emplace_back(Aktualizr::InstallationLogEntry{serial, std::move(log)});
+    ilog.emplace_back(Aktualizr::InstallationLogEntry{serial, move(log)});
   }
 
   return ilog;
@@ -300,7 +316,7 @@ bool Aktualizr::OfflineUpdateAvailable() {
 std::future<result::UpdateCheck> Aktualizr::CheckUpdatesOffline(const boost::filesystem::path &source_path) {
   std::function<result::UpdateCheck()> task(
       [this, source_path] { return uptane_client_->fetchMetaOffUpd(source_path); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Uptane::Target> &updates) {
@@ -308,17 +324,18 @@ std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Up
       [this, updates](const api::FlowControlToken *token) {
         return uptane_client_->fetchImagesOffUpd(updates, token);
       });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane::Target> &updates) {
   std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstallOffUpd(updates); });
-  return api_queue_->enqueue(task);
+  return api_queue_->enqueue(move(task));
 }
 
 bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_path) {
   // TODO: [OFFUPD] Handle interaction between offline and online modes.
 
+  LOG_TRACE << "CheckAndInstallOffline: call CheckUpdatesOffline";
   result::UpdateCheck update_result = CheckUpdatesOffline(source_path).get();
   if (update_result.updates.empty() || updates_disabled_) {
     // TODO: [OFFUPD] Do we need this?
@@ -329,6 +346,7 @@ bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_pat
     return true;
   }
 
+  LOG_TRACE << "CheckAndInstallOffline: call FetchImagesOffline";
   result::Download download_result = FetchImagesOffline(update_result.updates).get();
   if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
     // TODO: [OFFUPD] Do we need this?
@@ -339,6 +357,7 @@ bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_pat
     return true;
   }
 
+  LOG_TRACE << "CheckAndInstallOffline: call InstallOffline";
   InstallOffline(download_result.updates).get();
 
   // TODO: [OFFUPD] Do we need this?

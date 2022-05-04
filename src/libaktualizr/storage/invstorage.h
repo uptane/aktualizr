@@ -94,6 +94,13 @@ class INvStorage {
   virtual bool loadEcuSerials(EcuSerials* serials) const = 0;
   virtual void clearEcuSerials() = 0;
 
+  // BUILD_OFFLINE_UPDATES {{
+#if 1
+  virtual void stashEcuSerialsForHwId(const EcuSerials& serials) = 0;
+  virtual bool getEcuSerialsForHwId(EcuSerials* serials) const = 0;
+#endif
+  // }}
+
   virtual void storeCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, const std::string& manifest) = 0;
   virtual bool loadCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, std::string* manifest) const = 0;
 
@@ -147,8 +154,6 @@ class INvStorage {
   virtual std::vector<std::string> getAllTargetNames() const = 0;
   virtual void deleteTargetInfo(const std::string& targetname) const = 0;
 
-  virtual void cleanUp() = 0;
-
   // Special constructors and utilities
   static std::shared_ptr<INvStorage> newStorage(const StorageConfig& config, bool readonly = false);
   static void FSSToSQLS(FSStorageRead& fs_storage, SQLStorage& sql_storage);
@@ -170,13 +175,22 @@ class INvStorage {
   void importInstalledVersions(const boost::filesystem::path& base_path);
 
  private:
-  void importSimple(const boost::filesystem::path& base_path, store_data_t store_func, load_data_t load_func,
-                    const utils::BasedPath& imported_data_path, const std::string& data_name);
   void importUpdateSimple(const boost::filesystem::path& base_path, store_data_t store_func, load_data_t load_func,
                           const utils::BasedPath& imported_data_path, const std::string& data_name);
   void importUpdateCertificate(const boost::filesystem::path& base_path, const utils::BasedPath& imported_data_path);
   void importPrimaryKeys(const boost::filesystem::path& base_path, const utils::BasedPath& import_pubkey_path,
                          const utils::BasedPath& import_privkey_path);
+
+  /**
+   * Import initial image and director root.json from the filesystem.
+   * These would be loaded onto the device during provisioning at a well-known
+   * location such as /var/sota/import/repo/root.json (image repo) and
+   * /var/sota/import/director/root.json for the director repo.
+   *
+   * @param base_path e.g. '/var/sota/import'
+   */
+  void importInitialRoot(const boost::filesystem::path& base_path);
+  void importInitialRootFile(const boost::filesystem::path& root_path, Uptane::RepositoryType repo_type);
 
  protected:
   const StorageConfig config_;

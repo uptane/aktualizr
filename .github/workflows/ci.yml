@@ -112,3 +112,13 @@ jobs:
             ubuntu-focal-
       - name: Test
         run: docker run -v "$PWD:$PWD" -w "$PWD" $DARGS -t "$DOCKER_TAG" ./scripts/test.sh
+
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+      with:
+        ignore_paths: third_party

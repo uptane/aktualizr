@@ -38,6 +38,13 @@ class Provisioner {
   void SecondariesWereChanged();
 
   /**
+   * Perform as much of provisioning as is possible without contacting a
+   * remote server. Secondaries are still contacted over the local networking.
+   * This is safe to call redundantly.
+   */
+  void Prepare();
+
+  /**
    * Make one attempt at provisioning, if the provisioning hasn't already completed.
    * If provisioning is already successful this is a no-op.
    * use like:
@@ -63,6 +70,31 @@ class Provisioner {
    * @return
    */
   bool ShouldAttemptAgain() const;
+
+  /**
+   * Get the ECU Serial for the Primary, lazily creating and storing it if necessary
+   */
+  Uptane::EcuSerial PrimaryEcuSerial();
+
+  /**
+   * Get the Hardware Identifier for the Primary, lazily creating and storing it if necessary
+   */
+  Uptane::HardwareIdentifier PrimaryHardwareIdentifier();
+
+  /**
+   * Get the Device ID for this vehicle, lazily creating and storing it if necessary.
+   * One Device ID covers a set of ECUs.
+   * @return The Device ID
+   */
+  std::string DeviceId();
+
+  /**
+   * Get ECU serials and corresponding hardware IDs; this prioritizes the data stored
+   * into non-volatile storage and falls back to returning the current (volatile) list
+   * of ECU serials.
+   * @return Array of (ECU serial, hardware ID) pairs
+   */
+  bool GetEcuSerials(EcuSerials* serials) const;
 
  private:
   class Error : public std::runtime_error {
@@ -104,19 +136,57 @@ class Provisioner {
     const Uptane::HardwareIdentifier hardware_id;
   };
 
-  void initDeviceId();
-  bool loadSetTlsCreds();
-  void initTlsCreds();
-  void initPrimaryEcuKeys();
+  /**
+   * Requires an Uptane key pair
+   * Failure modes:
+   *  - Can't contact secondaries
+   */
   void initEcuSerials();
+
+  /**
+   * Failure modes:
+   *  -  Can't contact secondaries
+   */
   void initSecondaryInfo();
+
+  /**
+   * Failure modes:
+   *  - Can't contact server / offline
+   */
+  void initTlsCreds();
+
+  /**
+   * Update http_client_ with the TLS certs from key_manager_
+   * @return Whether the keys were available and loaded
+   */
+  bool loadSetTlsCreds();
+
+  /**
+   * Registers the ECUs with the server.
+   * Stores ECU information locally
+   *
+   * Failure modes:
+   *   - Can't contact server / offline
+   */
   void initEcuRegister();
+
+  /**
+   * Initializes the 'ecu_report_counter' table to zero
+   * Requires the ECU serials are setup
+   * Requires the ECUs are registered on the server
+   */
   void initEcuReportCounter();
 
   const ProvisionConfig& config_;
   std::shared_ptr<INvStorage> storage_;
   std::shared_ptr<HttpInterface> http_client_;
   std::shared_ptr<KeyManager> key_manager_;
+  // Lazily initialized by DeviceId()
+  std::string device_id_;
+  // Lazily initialized by PrimaryEcuSerial()
+  Uptane::EcuSerial primary_ecu_serial_{Uptane::EcuSerial::Unknown()};
+  // Lazily initialized by PrimaryHardwareIdentifier()
+  Uptane::HardwareIdentifier primary_ecu_hardware_id_{Uptane::HardwareIdentifier::Unknown()};
   const std::map<Uptane::EcuSerial, SecondaryInterface::Ptr>& secondaries_;
   std::vector<SecondaryInfo> sec_info_;
   EcuSerials new_ecu_serials_;

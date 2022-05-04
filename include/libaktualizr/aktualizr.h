@@ -41,8 +41,12 @@ class Aktualizr {
 
   /**
    * Initialize aktualizr. Any Secondaries should be added before making this
-   * call. This will provision with the server if required. This must be called
-   * before using any other aktualizr functions except AddSecondary.
+   * call. This must be called before using any other aktualizr functions
+   * except AddSecondary.
+   *
+   * Provisioning will be attempted once if it hasn't already been completed.
+   * If that fails (for example because there is no network), then provisioning
+   * will be automatically re-attempted ahead of any operation that requires it.
    *
    * @throw Initializer::Error and subclasses
    * @throw SQLException
@@ -86,6 +90,7 @@ class Aktualizr {
    *
    * @throw std::bad_alloc (memory allocation failure)
    * @throw std::runtime_error (curl failure)
+   * @throw SotaUptaneClient::ProvisioningFailed (on-line provisioning failed)
    */
   std::future<result::CampaignCheck> CampaignCheck();
 
@@ -114,6 +119,7 @@ class Aktualizr {
    * @throw std::bad_alloc (memory allocation failure)
    * @throw std::runtime_error (curl and filesystem failures)
    * @throw std::system_error (failure to lock a mutex)
+   * @throw SotaUptaneClient::ProvisioningFailed (on-line provisioning failed)
    */
   std::future<void> SendDeviceData();
 
@@ -139,6 +145,7 @@ class Aktualizr {
    * @throw std::runtime_error (curl and filesystem failures; database
    *                            inconsistency with pending updates)
    * @throw std::system_error (failure to lock a mutex)
+   * @throw SotaUptaneClient::ProvisioningFailed (on-line provisioning failed)
    */
   std::future<result::UpdateCheck> CheckUpdates();
 
@@ -150,6 +157,7 @@ class Aktualizr {
    * @throw SQLException
    * @throw std::bad_alloc (memory allocation failure)
    * @throw std::system_error (failure to lock a mutex)
+   * @throw SotaUptaneClient::NotProvisionedYet (called before provisioning complete)
    */
   std::future<result::Download> Download(const std::vector<Uptane::Target>& updates);
 
@@ -216,6 +224,7 @@ class Aktualizr {
    * @throw std::bad_alloc (memory allocation failure)
    * @throw std::runtime_error (error getting metadata from database or filesystem)
    * @throw std::system_error (failure to lock a mutex)
+   * @throw SotaUptaneClient::NotProvisionedYet (called before provisioning complete)
    */
   std::future<result::Install> Install(const std::vector<Uptane::Target>& updates);
 
@@ -283,6 +292,7 @@ class Aktualizr {
    * @throw std::bad_alloc (memory allocation failure)
    * @throw std::runtime_error (curl failure; database inconsistency with pending updates)
    * @throw std::system_error (failure to lock a mutex)
+   * @throw SotaUptaneClient::ProvisioningFailed (on-line provisioning failed)
    */
   std::future<bool> SendManifest(const Json::Value& custom = Json::nullValue);
 
@@ -333,6 +343,7 @@ class Aktualizr {
    *                            inconsistency with pending updates; error
    *                            getting metadata from database or filesystem)
    * @throw std::system_error (failure to lock a mutex)
+   * @throw SotaUptaneClient::ProvisioningFailed (on-line provisioning failed)
    */
   bool UptaneCycle();
 

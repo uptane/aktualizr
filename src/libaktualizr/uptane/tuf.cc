@@ -318,6 +318,27 @@ Uptane::BaseMeta::BaseMeta(RepositoryType repo, const Role &role, const Json::Va
   init(json);
 }
 
+std::string Uptane::BaseMeta::signature() const {
+  if (!original_object_.isMember("signatures")) {
+    throw Uptane::InvalidMetadata("", "", "invalid metadata json, missing signatures");
+  }
+  if (!original_object_["signatures"].isArray()) {
+    throw Uptane::InvalidMetadata("", "", "invalid metadata json, signatures are not an array");
+  }
+  const auto signs{original_object_["signatures"]};
+  if (signs.empty()) {
+    throw Uptane::InvalidMetadata("", "", "invalid metadata json, no any signatures found");
+  }
+  if (signs.size() > 1) {
+    LOG_WARNING << "Metadata contains more than one signature\n" << original_object_;
+  }
+  if (!signs[0].isMember("sig")) {
+    throw Uptane::InvalidMetadata("", "", "invalid metadata json, missing signature");
+  }
+
+  return signs[0]["sig"].asString();
+}
+
 void Uptane::Targets::init(const Json::Value &json) {
   if (!json.isObject() || (json["signed"]["_type"] != "Targets" && json["signed"]["_type"] != "Offline-Updates")) {
     throw Uptane::InvalidMetadata("", "targets", "invalid targets.json");

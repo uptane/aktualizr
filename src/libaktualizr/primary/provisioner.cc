@@ -24,25 +24,24 @@ Provisioner::Provisioner(const ProvisionConfig& config, shared_ptr<INvStorage> s
 
 void Provisioner::SecondariesWereChanged() { current_state_ = State::kUnknown; }
 
+void Provisioner::Prepare() {
+  initEcuSerials();
+  initSecondaryInfo();
+}
+
 bool Provisioner::Attempt() {
   try {
-    initDeviceId();
-
+    Prepare();
     try {
       initTlsCreds();
     } catch (const ServerOccupied& e) {
       // if a device with the same ID has already been registered to the server,
       // generate a new one
       storage_->clearDeviceId();
+      device_id_.clear();
       LOG_ERROR << "Device name is already registered. Retrying.";
       throw;
     }
-
-    initPrimaryEcuKeys();
-
-    initEcuSerials();
-
-    initSecondaryInfo();
 
     initEcuRegister();
 
@@ -66,28 +65,82 @@ bool Provisioner::ShouldAttemptAgain() const {
   return current_state_ == State::kUnknown || current_state_ == State::kTemporaryError;
 }
 
-// Postcondition: device_id is in the storage
-void Provisioner::initDeviceId() {
-  // If device_id is already stored, just return.
-  std::string device_id;
-  if (storage_->loadDeviceId(&device_id)) {
-    return;
+Uptane::EcuSerial Provisioner::PrimaryEcuSerial() {
+  if (primary_ecu_serial_ != Uptane::EcuSerial::Unknown()) {
+    return primary_ecu_serial_;
+  }
+
+  std::string key_pair;
+  try {
+    // If the key pair already exists, this loads it from storage.
+    key_pair = key_manager_->generateUptaneKeyPair();
+  } catch (const std::exception& e) {
+    throw KeyGenerationError(e.what());
+  }
+
+  if (key_pair.empty()) {
+    throw KeyGenerationError("Unknown error");
+  }
+
+  std::string primary_ecu_serial_str = config_.primary_ecu_serial;
+  if (primary_ecu_serial_str.empty()) {
+    primary_ecu_serial_str = key_manager_->UptanePublicKey().KeyId();
+  }
+  primary_ecu_serial_ = Uptane::EcuSerial(primary_ecu_serial_str);
+
+  // assert that the new serial is sane
+  if (primary_ecu_serial_ == Uptane::EcuSerial::Unknown()) {
+    throw std::logic_error("primary_ecu_serial_ is still Unknown");
+  }
+
+  return primary_ecu_serial_;
+}
+
+Uptane::HardwareIdentifier Provisioner::PrimaryHardwareIdentifier() {
+  if (primary_ecu_hardware_id_ != Uptane::HardwareIdentifier::Unknown()) {
+    return primary_ecu_hardware_id_;
+  }
+  std::string primary_ecu_hardware_id_str = config_.primary_ecu_hardware_id;
+  if (primary_ecu_hardware_id_str.empty()) {
+    primary_ecu_hardware_id_str = Utils::getHostname();
+    if (primary_ecu_hardware_id_str.empty()) {
+      throw Error("Could not get current host name, please configure an hardware ID explicitly");
+    }
+  }
+
+  primary_ecu_hardware_id_ = Uptane::HardwareIdentifier(primary_ecu_hardware_id_str);
+
+  // Assert the new value is sane
+  if (primary_ecu_hardware_id_ == Uptane::HardwareIdentifier::Unknown()) {
+    throw std::logic_error("primary_ecu_hardware_id_ is still Unknown");
+  }
+
+  return primary_ecu_hardware_id_;
+}
+
+std::string Provisioner::DeviceId() {
+  if (device_id_.empty()) {
+    // Try loading it
+    storage_->loadDeviceId(&device_id_);
+  }
+
+  if (!device_id_.empty()) {
+    return device_id_;
   }
 
   LOG_WARNING << "No device ID yet...";
-
   // If device_id is specified in the config, use that.
-  device_id = config_.device_id;
-  if (device_id.empty()) {
+  device_id_ = config_.device_id;
+  if (device_id_.empty()) {
     LOG_WARNING << "device_id is empty... generating";
     // Otherwise, try to read the device certificate if it is available.
     try {
-      device_id = key_manager_->getCN();
+      device_id_ = key_manager_->getCN();
     } catch (const std::exception& e) {
       // No certificate: for device credential provisioning, abort. For shared
       // credential provisioning, generate a random name.
       if (config_.mode == ProvisionMode::kSharedCred || config_.mode == ProvisionMode::kSharedCredReuse) {
-        device_id = Utils::genPrettyName();
+        device_id_ = Utils::genPrettyName();
       } else if (config_.mode == ProvisionMode::kDeviceCred) {
         throw e;
       } else {
@@ -95,8 +148,10 @@ void Provisioner::initDeviceId() {
       }
     }
   }
-
-  storage_->storeDeviceId(device_id);
+  if (!device_id_.empty()) {
+    storage_->storeDeviceId(device_id_);
+  }
+  return device_id_;
 }
 
 bool Provisioner::loadSetTlsCreds() {
@@ -125,11 +180,7 @@ void Provisioner::initTlsCreds() {
                          CryptoSource::kFile);
 
   Json::Value data;
-  std::string device_id;
-  if (!storage_->loadDeviceId(&device_id)) {
-    throw StorageError("Unable to load device_id during shared credential provisioning");
-  }
-  data["deviceId"] = device_id;
+  data["deviceId"] = DeviceId();
   data["ttl"] = config_.expiry_days;
   HttpResponse response = http_client_->post(config_.server + "/devices", data);
   if (!response.isOk()) {
@@ -137,11 +188,11 @@ void Provisioner::initTlsCreds() {
     try {
       resp_code = response.getJson()["code"];
     } catch (const std::exception& ex) {
-      LOG_ERROR << "Unable to parse reponse code from device registration: " << ex.what();
+      LOG_ERROR << "Unable to parse response code from device registration: " << ex.what();
       throw ServerError(ex.what());
     }
     if (resp_code.isString() && resp_code.asString() == "device_already_registered") {
-      LOG_ERROR << "Device ID " << device_id << " is already registered.";
+      LOG_ERROR << "Device ID " << DeviceId() << " is already registered.";
       throw ServerOccupied();
     }
     const auto err = std::string("Shared credential provisioning failed: ") +
@@ -179,47 +230,33 @@ void Provisioner::initTlsCreds() {
   LOG_INFO << "Provisioned successfully on Device Gateway.";
 }
 
-// Postcondition: (public, private) is in the storage. It should not be stored until Secondaries are provisioned
-void Provisioner::initPrimaryEcuKeys() {
-  std::string key_pair;
-  try {
-    key_pair = key_manager_->generateUptaneKeyPair();
-  } catch (const std::exception& e) {
-    throw KeyGenerationError(e.what());
-  }
-
-  if (key_pair.empty()) {
-    throw KeyGenerationError("Unknown error");
-  }
-}
-
 // Postcondition [(serial, hw_id)] is in the storage
 void Provisioner::initEcuSerials() {
   EcuSerials stored_ecu_serials;
   storage_->loadEcuSerials(&stored_ecu_serials);
 
-  std::string primary_ecu_serial_local = config_.primary_ecu_serial;
-  if (primary_ecu_serial_local.empty()) {
-    primary_ecu_serial_local = key_manager_->UptanePublicKey().KeyId();
-  }
-
-  std::string primary_ecu_hardware_id = config_.primary_ecu_hardware_id;
-  if (primary_ecu_hardware_id.empty()) {
-    primary_ecu_hardware_id = Utils::getHostname();
-    if (primary_ecu_hardware_id.empty()) {
-      throw Error("Could not get current host name, please configure an hardware ID explicitly");
-    }
-  }
-
   new_ecu_serials_.clear();
-  new_ecu_serials_.emplace_back(Uptane::EcuSerial(primary_ecu_serial_local),
-                                Uptane::HardwareIdentifier(primary_ecu_hardware_id));
+  new_ecu_serials_.emplace_back(PrimaryEcuSerial(), PrimaryHardwareIdentifier());
   for (const auto& s : secondaries_) {
     new_ecu_serials_.emplace_back(s.first, s.second->getHwId());
   }
 
+#ifdef BUILD_OFFLINE_UPDATES
+  // TODO: Review this idea.
+  //
+  // Here we are "stashing" the ECU for use by the offline-update logic which
+  // requires this information to map hardware IDs into ECU serials; Such
+  // information is being taken from the INvStorage class at the moment but
+  // in the future we should consider taking it from somewhere else or ensure
+  // that the information is actually in the storage.
+  //
+  // NOTE: The code following this seems to consider `new_ecu_serials_` as
+  // the source of truth for the current list of ECUs - confirm this.
+  storage_->stashEcuSerialsForHwId(new_ecu_serials_);
+#endif
+
   register_ecus_ = stored_ecu_serials.empty();
-  if (!stored_ecu_serials.empty()) {
+  if (!register_ecus_) {
     // We should probably clear the misconfigured_ecus table once we have
     // consent working.
     std::vector<bool> found(stored_ecu_serials.size(), false);
@@ -261,6 +298,15 @@ void Provisioner::initEcuSerials() {
       }
     }
   }
+}
+
+bool Provisioner::GetEcuSerials(EcuSerials* serials) const {
+  // TODO: Prioritizing data from non-volatile storage for now; review this later.
+#ifdef BUILD_OFFLINE_UPDATES
+  return (storage_->loadEcuSerials(serials) || storage_->getEcuSerialsForHwId(serials));
+#else
+  return storage_->loadEcuSerials(serials))
+#endif
 }
 
 void Provisioner::initSecondaryInfo() {
@@ -338,11 +384,17 @@ void Provisioner::initEcuRegister() {
     throw ServerError(err);
   }
 
+  // TODO: [OFFUPD] Should we remove this block?
   // Only store the changes if we successfully registered the ECUs.
+  LOG_DEBUG << "Storing " << new_ecu_serials_.size() << " ECU serials (after registering)";
   storage_->storeEcuSerials(new_ecu_serials_);
   for (const auto& info : sec_info_) {
     storage_->saveSecondaryInfo(info.serial, info.type, info.pub_key);
   }
+  // Create a DeviceId if it hasn't been done already. This is necessary
+  // because storeDeviceId() resets the is_registered flag and storeEcuRegistered()
+  // requires there to be a DeviceID in the device_info table already.
+  DeviceId();
   storage_->storeEcuRegistered();
 
   LOG_INFO << "ECUs have been successfully registered with the server.";

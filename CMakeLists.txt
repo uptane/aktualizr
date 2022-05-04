@@ -39,8 +39,6 @@ set(SOTA_PACKED_CREDENTIALS "" CACHE STRING "Credentials.zip for tests involving
 set(TESTSUITE_ONLY "" CACHE STRING "Only run tests matching this list of labels")
 set(TESTSUITE_EXCLUDE "" CACHE STRING "Exclude tests matching this list of labels")
 
-set(STORAGE_TYPE "sqlite" CACHE STRING "")
-
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     message(FATAL_ERROR "Aktualizr does not support building in the source tree. Please remove CMakeCache.txt and the CMakeFiles/ directory, then create a subdirectory to build in: mkdir build; cd build; cmake ..")
 endif()
@@ -224,8 +222,8 @@ if(TESTSUITE_VALGRIND)
 endif()
 add_custom_target(build_tests)
 
-find_program(CLANG_FORMAT NAMES clang-format-10)
-find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-11 clang-tidy-10)
+find_program(CLANG_FORMAT NAMES clang-format-11)
+find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-11)
 
 if(CLANG_FORMAT)
     function(aktualizr_clang_format)
@@ -248,7 +246,7 @@ if(CLANG_FORMAT)
         endforeach()
     endfunction()
 else()
-    message(WARNING "clang-format-10 not found, skipping")
+    message(WARNING "clang-format-11 not found, skipping")
     function(aktualizr_clang_format)
     endfunction()
 endif()

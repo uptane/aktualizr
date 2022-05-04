@@ -44,7 +44,7 @@ void ImageRepository::fetchSnapshot(INvStorage& storage, const IMetadataFetcher&
 
   if (local_version > remote_version) {
     throw Uptane::SecurityException(RepositoryType::IMAGE, "Rollback attempt");
-  } else if (local_version < remote_version) {
+  } else {
     storage.storeNonRoot(image_snapshot, RepositoryType::Image(), Role::Snapshot());
   }
 }
@@ -119,7 +119,7 @@ void ImageRepository::fetchTargets(INvStorage& storage, const IMetadataFetcher& 
 
   if (local_version > remote_version) {
     throw Uptane::SecurityException(RepositoryType::IMAGE, "Rollback attempt");
-  } else if (local_version < remote_version) {
+  } else {
     storage.storeNonRoot(image_targets, RepositoryType::Image(), targets_role);
   }
 }
@@ -224,11 +224,15 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
       local_version = -1;
     }
 
+    const auto timestamp_stored_signature{timestamp.isInitialized() ? timestamp.signature() : ""};
     verifyTimestamp(image_timestamp);
 
     if (local_version > remote_version) {
       throw Uptane::SecurityException(RepositoryType::IMAGE, "Rollback attempt");
-    } else if (local_version < remote_version) {
+    } else if (local_version < remote_version || timestamp_stored_signature != timestamp.signature()) {
+      // If local and remote versions are the same but their content actually differ then store/update the metadata in
+      // DB We assume that the metadata contains just one signature, otherwise the comparison might not always work
+      // correctly.
       storage.storeNonRoot(image_timestamp, RepositoryType::Image(), Role::Timestamp());
     }
 

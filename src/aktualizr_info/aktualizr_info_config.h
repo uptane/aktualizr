@@ -22,10 +22,11 @@ class AktualizrInfoConfig : public BaseConfig {
   void writeToStream(std::ostream& sink) const;
 
   // from Primary config
-  BootloaderConfig bootloader;
   LoggerConfig logger;
+  BootloaderConfig bootloader;
   PackageConfig pacman;
   StorageConfig storage;
+  UptaneConfig uptane;
 
  private:
   void updateFromCommandLine(const boost::program_options::variables_map& cmd);

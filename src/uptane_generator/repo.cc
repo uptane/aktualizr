@@ -14,11 +14,7 @@ Repo::Repo(Uptane::RepositoryType repo_type, boost::filesystem::path path, const
            std::string correlation_id)
     : repo_type_(repo_type), path_(std::move(path)), correlation_id_(std::move(correlation_id)) {
   expiration_time_ = getExpirationTime(expires);
-  if (boost::filesystem::exists(path_)) {
-    if (boost::filesystem::directory_iterator(path_) != boost::filesystem::directory_iterator()) {
-      readKeys();
-    }
-  }
+  readKeys();
 
   if (repo_type_ == Uptane::RepositoryType::Director()) {
     repo_dir_ = path_ / DirectorRepo::dir;
@@ -39,6 +35,9 @@ void Repo::addDelegationToSnapshot(Json::Value *snapshot, const Uptane::Role &ro
   std::string signed_role = Utils::readFile(repo_dir / role_file_name);
 
   (*snapshot)["meta"][role_file_name]["version"] = role_json["version"].asUInt();
+  (*snapshot)["meta"][role_file_name]["length"] = signed_role.size();
+  (*snapshot)["meta"][role_file_name]["hashes"]["sha256"] =
+      boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(signed_role)));
 
   if (role_json["delegations"].isObject()) {
     auto delegations_list = role_json["delegations"]["roles"];
@@ -281,6 +280,9 @@ Json::Value Repo::getTarget(const std::string &target_name) {
 
 void Repo::readKeys() {
   auto keys_path = path_ / "keys" / repo_type_.ToString();
+  if (!boost::filesystem::exists(keys_path)) {
+    return;
+  }
   for (auto &p : boost::filesystem::directory_iterator(keys_path)) {
     std::string public_key_string = Utils::readFile(p / "public.key");
     std::istringstream key_type_str(Utils::readFile(p / "key_type"));

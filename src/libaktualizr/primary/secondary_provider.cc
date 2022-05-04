@@ -67,7 +67,9 @@ bool SecondaryProvider::getImageRepoMetadata(Uptane::MetaBundle* meta_bundle, co
   return true;
 }
 
-bool SecondaryProvider::getEcuSerials(EcuSerials* serials) const { return storage_->loadEcuSerials(serials); }
+bool SecondaryProvider::getEcuSerialsForHwId(EcuSerials* serials) const {
+  return storage_->getEcuSerialsForHwId(serials);
+}
 
 std::string SecondaryProvider::getTreehubCredentials() const {
   if (config_.tls.pkey_source != CryptoSource::kFile || config_.tls.cert_source != CryptoSource::kFile ||

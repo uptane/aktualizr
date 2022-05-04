@@ -36,16 +36,40 @@
 
 class SotaUptaneClient {
  public:
+  /**
+   * Provisioning was needed, attempted and failed.
+   * Thrown by requiresProvision().
+   */
+  class ProvisioningFailed : public std::runtime_error {
+   public:
+    explicit ProvisioningFailed() : std::runtime_error("Device was not able provision on-line") {}
+  };
+
+  /**
+   * Device must be provisioned before calling this operation.
+   * Thrown by requiresAlreadyProvisioned().
+   */
+  class NotProvisionedYet : public std::runtime_error {
+   public:
+    explicit NotProvisionedYet() : std::runtime_error("Device is not provisioned on-line yet") {}
+  };
+
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
-                   std::shared_ptr<event::Channel> events_channel_in,
-                   Uptane::EcuSerial primary_serial = Uptane::EcuSerial::Unknown(),
-                   Uptane::HardwareIdentifier hwid = Uptane::HardwareIdentifier::Unknown());
+                   std::shared_ptr<event::Channel> events_channel_in);
 
   SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in)
       : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr) {}
 
   void initialize();
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
+
+  /**
+   * Make one attempt at provisioning on-line.
+   * If the device is already provisioned then this is a no-op.
+   * @return True if the device has completed on-line provisioning
+   */
+  bool attemptProvision();
+
   result::Download downloadImages(const std::vector<Uptane::Target> &targets,
                                   const api::FlowControlToken *token = nullptr, UpdateType utype = UpdateType::kOnline);
 
@@ -61,14 +85,14 @@ class SotaUptaneClient {
   void campaignAccept(const std::string &campaign_id);
   void campaignDecline(const std::string &campaign_id);
   void campaignPostpone(const std::string &campaign_id);
-
   bool hasPendingUpdates() const;
-  bool isInstallCompletionRequired() const;
-  void completeInstall() const;
+  bool isInstallCompletionRequired();
+  void completeInstall();
   void completePreviousSecondaryUpdates();
   std::vector<Uptane::Target> getStoredTargets() const { return package_manager_->getTargetFiles(); }
   void deleteStoredTarget(const Uptane::Target &target) { package_manager_->removeTargetFile(target); }
   std::ifstream openStoredTarget(const Uptane::Target &target);
+  bool getEcuSerials(EcuSerials *serials) const { return provisioner_.GetEcuSerials(serials); }
 
   // TODO: [OFFUPD] Protect with an #ifdef:
   //       For this to work correctly the compilation options should be exactly
@@ -117,6 +141,20 @@ class SotaUptaneClient {
   friend class CheckForUpdate;       // for load tests
   friend class ProvisionDeviceTask;  // for load tests
 
+  /**
+   * This operation requires that the device is provisioned.
+   * Make one attempt at provisioning on-line, and if it fails throw a
+   * ProvisioningFailed exception.
+   */
+  void requiresProvision();
+
+  /**
+   * This operation requires that the device is already provisioned.
+   * If it isn't then immediately throw a NotProvisionedYet exception without
+   * attempting any network communications.
+   */
+  void requiresAlreadyProvisioned();
+
   result::UpdateCheck checkUpdates(UpdateType utype = UpdateType::kOnline);
   result::UpdateStatus checkUpdatesOffline(const std::vector<Uptane::Target> &targets,
                                            UpdateType utype = UpdateType::kOnline);
@@ -124,6 +162,7 @@ class SotaUptaneClient {
                        UpdateType utype = UpdateType::kOnline);
   void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
                               UpdateType utype = UpdateType::kOnline);
+
   std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
                                                 const api::FlowControlToken *token = nullptr,
                                                 UpdateType utype = UpdateType::kOnline);
@@ -171,7 +210,7 @@ class SotaUptaneClient {
   void checkDirectorMetaOffline(UpdateType utype = UpdateType::kOnline);
   void checkImageMetaOffline(UpdateType utype = UpdateType::kOnline);
 
-  void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report) const;
+  void computeDeviceInstallationResult(data::InstallationResult *result, std::string *raw_installation_report);
   std::unique_ptr<Uptane::Target> findTargetInDelegationTree(const Uptane::Target &target, bool offline,
                                                              UpdateType utype = UpdateType::kOnline);
   std::unique_ptr<Uptane::Target> findTargetHelper(const Uptane::Targets &cur_targets,
@@ -179,11 +218,11 @@ class SotaUptaneClient {
                                                    bool offline, UpdateType utype);
   Uptane::LazyTargetsList allTargets() const;
   void checkAndUpdatePendingSecondaries();
-  const Uptane::EcuSerial &primaryEcuSerial() const { return primary_ecu_serial_; }
-  boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial) const;
+  Uptane::EcuSerial primaryEcuSerial() { return provisioner_.PrimaryEcuSerial(); }
+  boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial);
 
   template <class T, class... Args>
-  void sendEvent(Args &&... args) {
+  void sendEvent(Args &&...args) {
     std::shared_ptr<event::BaseEvent> event = std::make_shared<T>(std::forward<Args>(args)...);
     if (events_channel) {
       (*events_channel)(std::move(event));
@@ -205,24 +244,12 @@ class SotaUptaneClient {
   std::unique_ptr<ReportQueue> report_queue;
   std::shared_ptr<SecondaryProvider> secondary_provider_;
   std::shared_ptr<event::Channel> events_channel;
-  boost::signals2::scoped_connection conn;
   std::exception_ptr last_exception;
   // ecu_serial => secondary*
   std::map<Uptane::EcuSerial, SecondaryInterface::Ptr> secondaries;
   std::mutex download_mutex;
-  Uptane::EcuSerial primary_ecu_serial_;
-  Uptane::HardwareIdentifier primary_ecu_hw_id_;
   Provisioner provisioner_;
   Json::Value custom_hardware_info_{Json::nullValue};
-};
-
-class TargetCompare {
- public:
-  explicit TargetCompare(const Uptane::Target &target_in) : target(target_in) {}
-  bool operator()(const Uptane::Target &in) const { return (in.MatchTarget(target)); }
-
- private:
-  const Uptane::Target &target;
 };
 
 #endif  // SOTA_UPTANE_CLIENT_H_

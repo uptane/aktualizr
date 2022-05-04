@@ -1,8 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <stdio.h>
-#include <unistd.h>
-#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -15,14 +12,17 @@
 #include "storage/invstorage.h"
 #include "utilities/utils.h"
 
-std::string address;
+using std::string;
+
+string address;     // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+string tests_path;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 class VectorWrapper {
  public:
-  VectorWrapper(Json::Value vector) : vector_(std::move(vector)) {}
+  explicit VectorWrapper(Json::Value vector) : vector_(std::move(vector)) {}
 
   bool matchError(const Uptane::Exception& e) {
-    auto me = [this, &e](const std::string r) {
+    auto me = [this, &e](const string r) {
       if (vector_[r]["update"]["err_msg"].asString() == e.what()) {
         return true;
       }
@@ -81,7 +81,26 @@ class VectorWrapper {
   Json::Value vector_;
 };
 
-class UptaneVector : public ::testing::TestWithParam<std::string> {};
+class UptaneVector : public ::testing::TestWithParam<string> {};
+
+class HttpWrapper : public HttpClient {
+ public:
+  HttpResponse post(const string& url, const string& content_type, const string& data) override {
+    if (url.find("/devices") != string::npos) {
+      LOG_TRACE << " HttpWrapper intercepting device registration";
+      return {Utils::readFile(tests_path + "/test_data/cred.p12"), 200, CURLE_OK, ""};
+    }
+
+    if (url.find("/director/ecus") != string::npos) {
+      LOG_TRACE << " HttpWrapper intercepting Uptane ECU registration";
+      return {"", 200, CURLE_OK, ""};
+    }
+
+    LOG_TRACE << "HttpWrapper letting " << url << " pass";
+    return HttpClient::post(url, content_type, data);
+  }
+  HttpResponse post(const string& url, const Json::Value& data) override { return HttpClient::post(url, data); }
+};
 
 /**
  * Check that aktualizr fails on expired metadata.
@@ -90,34 +109,39 @@ class UptaneVector : public ::testing::TestWithParam<std::string> {};
  * RecordProperty("zephyr_key", "REQ-153,TST-52");
  */
 TEST_P(UptaneVector, Test) {
-  const std::string test_name = GetParam();
+  const string test_name = GetParam();
   std::cout << "Running test vector " << test_name << "\n";
 
   TemporaryDirectory temp_dir;
   Config config;
   config.provision.primary_ecu_serial = "test_primary_ecu_serial";
   config.provision.primary_ecu_hardware_id = "test_primary_hardware_id";
+  config.provision.provision_path = tests_path + "/test_data/cred.zip";
+  config.provision.mode = ProvisionMode::kSharedCredReuse;
   config.uptane.director_server = address + test_name + "/director";
   config.uptane.repo_server = address + test_name + "/image_repo";
   config.storage.path = temp_dir.Path();
   config.storage.uptane_metadata_path = utils::BasedPath(temp_dir.Path() / "metadata");
   config.pacman.images_path = temp_dir.Path() / "images";
   config.pacman.type = PACKAGE_MANAGER_NONE;
+  config.postUpdateValues();
   logger_set_threshold(boost::log::trivial::trace);
 
   auto storage = INvStorage::newStorage(config.storage);
-  auto uptane_client = std_::make_unique<SotaUptaneClient>(config, storage);
-  Uptane::EcuSerial ecu_serial(config.provision.primary_ecu_serial);
-  Uptane::HardwareIdentifier hw_id(config.provision.primary_ecu_hardware_id);
-  uptane_client->primary_ecu_serial_ = ecu_serial;
-  uptane_client->primary_ecu_hw_id_ = hw_id;
+  auto http_client = std::make_shared<HttpWrapper>();
+  auto uptane_client = std_::make_unique<SotaUptaneClient>(config, storage, http_client, nullptr);
+  auto ecu_serial = uptane_client->provisioner_.PrimaryEcuSerial();
+  auto hw_id = uptane_client->provisioner_.PrimaryHardwareIdentifier();
+  EXPECT_EQ(ecu_serial.ToString(), config.provision.primary_ecu_serial);
+  EXPECT_EQ(hw_id.ToString(), config.provision.primary_ecu_hardware_id);
   Uptane::EcuMap ecu_map{{ecu_serial, hw_id}};
   Uptane::Target target("test_filename", ecu_map, {{Hash::Type::kSha256, "sha256"}}, 1, "");
   storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kCurrent);
 
-  HttpClient http_client;
+  uptane_client->initialize();
+  ASSERT_TRUE(uptane_client->attemptProvision()) << "Provisioning Failed. Can't continue test";
   while (true) {
-    HttpResponse response = http_client.post(address + test_name + "/step", Json::Value());
+    HttpResponse response = http_client->post(address + test_name + "/step", Json::Value());
     if (response.http_status_code == 204) {
       return;
     }
@@ -172,10 +196,10 @@ TEST_P(UptaneVector, Test) {
   FAIL() << "Step sequence unexpectedly aborted.";
 }
 
-std::vector<std::string> GetVectors() {
+std::vector<string> GetVectors() {
   HttpClient http_client;
   const Json::Value json_vectors = http_client.get(address, HttpInterface::kNoLimit).getJson();
-  std::vector<std::string> vectors;
+  std::vector<string> vectors;
   for (Json::ValueConstIterator it = json_vectors.begin(); it != json_vectors.end(); it++) {
     vectors.emplace_back((*it).asString());
   }
@@ -188,7 +212,7 @@ int main(int argc, char* argv[]) {
   logger_init();
   logger_set_threshold(boost::log::trivial::trace);
 
-  if (argc < 2) {
+  if (argc < 3) {
     std::cerr << "This program is intended to be run from run_vector_tests.sh!\n";
     return 1;
   }
@@ -196,8 +220,10 @@ int main(int argc, char* argv[]) {
   /* Use ports to distinguish both the server connection and local storage so
    * that parallel runs of this code don't cause problems that are difficult to
    * debug. */
-  const std::string port = argv[1];
+  const string port = argv[1];
   address = "http://localhost:" + port + "/";
+
+  tests_path = argv[2];
 
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
