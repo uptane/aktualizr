@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <boost/filesystem.hpp>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <utility>
