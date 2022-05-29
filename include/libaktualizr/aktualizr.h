@@ -413,7 +413,7 @@ class Aktualizr {
     SourceExistsNoContent,
     SourceExists,
   };
-  OffUpdSourceState offupd_source_state_{OffUpdSourceState::SourceDoesNotExist};
+  OffUpdSourceState offupd_source_state_{OffUpdSourceState::Unknown};
 
  protected:
   Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in, const std::shared_ptr<HttpInterface>& http_in);
