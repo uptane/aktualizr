@@ -191,7 +191,7 @@ using base64_to_bin = boost::archive::iterators::transform_width<
     8, 6>;
 
 std::string Utils::fromBase64(std::string base64_string) {
-  int64_t paddingChars = std::count(base64_string.begin(), base64_string.end(), '=');
+  std::ptrdiff_t paddingChars = std::count(base64_string.begin(), base64_string.end(), '=');
   std::replace(base64_string.begin(), base64_string.end(), '=', 'A');
   std::string result(base64_to_bin(base64_string.begin()), base64_to_bin(base64_string.end()));
   result.erase(result.end() - paddingChars, result.end());
