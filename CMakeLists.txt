@@ -119,7 +119,8 @@ if(BUILD_P11)
         endif()
         foreach(engine IN ITEMS "/usr/lib/engines-1.1/pkcs11.so"
                 "/usr/lib/engines/pkcs11.so"
-                "/usr/lib/x86_64-linux-gnu/engines-1.1/pkcs11.so")
+                "/usr/lib/x86_64-linux-gnu/engines-1.1/pkcs11.so"
+                "/usr/lib/arm-linux-gnueabihf/engines-1.1/pkcs11.so")
 
             if(EXISTS ${engine})
                 message(STATUS "Detected pkcs11 engine path: ${engine}")
