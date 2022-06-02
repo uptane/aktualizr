@@ -666,7 +666,7 @@ void DockerComposeFile::backwardTransform() {
   if (compose_lines_.size()) {
     const std::string first_line = compose_lines_.front();
     if (! std::regex_match(first_line, offline_mode_header_re)) {
-      LOG_INFO << "Offline-mode header not found: skipping backward transform";
+      LOG_DEBUG << "Offline-mode header not found: skipping backward transform";
       return;
     }
   }
