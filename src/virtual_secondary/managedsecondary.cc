@@ -107,11 +107,15 @@ data::InstallationResult ManagedSecondary::putMetadata(const Uptane::Target &tar
   }
 
   // 10. Verify that Targets metadata from the Director and Image repositories match.
+  // FIXME: [TORIZON] Skip this check since it does not support delegations which we use.
+  // See here: https://github.com/uptane/aktualizr/issues/80
+  /*
   if (!director_repo_->matchTargetsWithImageTargets(image_repo_->getTargets())) {
     detected_attack = "Targets metadata from the Director and Image repositories do not match";
     LOG_ERROR << detected_attack;
     return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
   }
+  */
 
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
@@ -183,11 +187,15 @@ data::InstallationResult ManagedSecondary::putMetadataOffUpd(const Uptane::Targe
   }
 
   // 9. Verify that Targets metadata from the Director and Image repositories match.
+  // FIXME: [TORIZON] Skip this check since it does not support delegations which we use.
+  // See here: https://github.com/uptane/aktualizr/issues/80
+  /*
   if (!director_repo_->matchTargetsWithImageTargets(image_repo_->getTargets())) {
     detected_attack = "Targets metadata from the Director and Image repositories do not match";
     LOG_ERROR << detected_attack;
     return data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, detected_attack);
   }
+  */
 
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
