@@ -270,7 +270,7 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   std::string offline_target_name;
   int offline_snapshot_version = -1;
   bool found = false;
-  for (auto role_name : offline_snapshot.role_names()) {
+  for (const auto& role_name : offline_snapshot.role_names()) {
     std::string filename = role_name + ".json";
     offline_target_file = fetcher.getMetadataPath() / "director" / filename;
     if (boost::filesystem::exists(offline_target_file)) {

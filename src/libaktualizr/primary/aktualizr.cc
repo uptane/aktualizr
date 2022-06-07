@@ -199,7 +199,7 @@ std::future<void> Aktualizr::SendDeviceData() {
 // FIXME: [TDX] This solution must be reviewed (we should probably have a method to be used just for the data proxy).
 std::future<void> Aktualizr::SendDeviceData(const Json::Value &hwinfo) {
   std::function<void()> task([this, hwinfo] {
-    uptane_client_->setCustomHardwareInfo(move(hwinfo));
+    uptane_client_->setCustomHardwareInfo(hwinfo);
     uptane_client_->sendDeviceData();
   });
   return api_queue_->enqueue(move(task));

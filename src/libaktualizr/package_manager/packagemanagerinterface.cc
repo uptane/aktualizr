@@ -216,20 +216,20 @@ bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target,
       throw std::runtime_error("Can't read file " + source_path.string());
     }
 
-    typedef std::vector<uint8_t> BufferType;
+    using BufferType = std::vector<uint8_t>;
     auto buffer = std_::make_unique<BufferType>(std::min(uint64_t(64 * 1024), target.length() + 1));
 
     for (;;) {
-      source.read(reinterpret_cast<char*>(buffer->data()), buffer->size());
+      source.read(reinterpret_cast<char*>(buffer->data()), static_cast<std::streamsize>(buffer->size()));
 
       // This is equivalent to the work done by DownloadHandler in the online case.
-      if ((ds->downloaded_length + source.gcount()) > target.length()) {
+      if ((ds->downloaded_length + static_cast<uint64_t>(source.gcount())) > target.length()) {
         LOG_WARNING << "File " << target.filename() << " is bigger than expected";
         break;
       }
       ds->fhandle.write(reinterpret_cast<char*>(buffer->data()), source.gcount());
-      ds->hasher().update(reinterpret_cast<unsigned char*>(buffer->data()), source.gcount());
-      ds->downloaded_length += source.gcount();
+      ds->hasher().update(reinterpret_cast<unsigned char*>(buffer->data()), static_cast<uint64_t>(source.gcount()));
+      ds->downloaded_length += static_cast<uint64_t>(source.gcount());
 
       // This is equivalent to the work done by ProgressHandler in the online case.
       auto progress = static_cast<unsigned int>((ds->downloaded_length * 100) / target.length());
@@ -238,7 +238,7 @@ bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target,
         ds->progress_cb(ds->target, "Fetching", progress);
       }
 
-      if (!source.gcount()) {
+      if (source.gcount() == 0) {
         break;
       }
       if (!token->canContinue()) {

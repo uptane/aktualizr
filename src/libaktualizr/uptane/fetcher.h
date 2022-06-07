@@ -57,7 +57,7 @@ class Fetcher : public IMetadataFetcher {
 
 class OfflineUpdateFetcher : public IMetadataFetcher {
  public:
-  explicit OfflineUpdateFetcher(const boost::filesystem::path& source_path) : source_path_(source_path) {
+  explicit OfflineUpdateFetcher(boost::filesystem::path source_path) : source_path_(std::move(source_path)) {
     if (source_path_.empty()) {
       throw std::runtime_error("Source path for offline-updates is not defined");
     }
