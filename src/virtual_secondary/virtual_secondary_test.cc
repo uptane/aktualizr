@@ -88,6 +88,41 @@ TEST(VirtualSecondary, RootRotation) {
   EXPECT_TRUE(install_result.dev_report.success);
 }
 
+/**
+ * The secondary generates a key pair on first run, and re-uses it afterwards
+ */
+TEST_F(VirtualSecondaryTest, GeneratesPublicKey) {
+  auto priv_key_path = temp_dir_ / "sec.priv";
+  auto pub_key_path = temp_dir_ / "sec.pub";
+
+  // Shouldn't exist before
+  EXPECT_FALSE(boost::filesystem::exists(priv_key_path));
+  EXPECT_FALSE(boost::filesystem::exists(pub_key_path));
+  {
+    Primary::VirtualSecondary first_run(config_);
+    // Does exist after the first run
+    EXPECT_TRUE(boost::filesystem::exists(priv_key_path));
+    EXPECT_TRUE(boost::filesystem::exists(pub_key_path));
+    EXPECT_EQ(first_run.storeKeysCount(), 1);
+  }
+
+  std::string old_priv_key = Utils::readFile(priv_key_path);
+  std::string old_pub_key = Utils::readFile(pub_key_path);
+  // After a reboot...
+  Primary::VirtualSecondary second_run(config_);
+  EXPECT_EQ(second_run.storeKeysCount(), 0);
+
+  // The files still exist
+  EXPECT_TRUE(boost::filesystem::exists(priv_key_path));
+  EXPECT_TRUE(boost::filesystem::exists(pub_key_path));
+
+  // And their contents are unchanged
+  std::string new_priv_key = Utils::readFile(priv_key_path);
+  std::string new_pub_key = Utils::readFile(pub_key_path);
+  EXPECT_EQ(old_pub_key, new_pub_key);
+  EXPECT_EQ(old_priv_key, new_priv_key);
+}
+
 #ifdef FIU_ENABLE
 
 #include "utilities/fault_injection.h"

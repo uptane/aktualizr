@@ -1,7 +1,6 @@
 #include "managedsecondary.h"
 
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include <boost/algorithm/hex.hpp>
@@ -14,8 +13,6 @@
 #include "uptane/imagerepository.h"
 #include "uptane/manifest.h"
 #include "uptane/tuf.h"
-#include "utilities/exceptions.h"
-#include "utilities/fault_injection.h"
 #include "utilities/utils.h"
 
 namespace Primary {
@@ -44,16 +41,17 @@ ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) :
   }
 
   std::string public_key_string;
-  if (!loadKeys(&public_key_string, &private_key)) {
-    if (!Crypto::generateKeyPair(sconfig.key_type, &public_key_string, &private_key)) {
+  bool did_load_keys = loadKeys(&public_key_string, &private_key);
+  if (!did_load_keys) {
+    bool generated_keys_ok = Crypto::generateKeyPair(sconfig.key_type, &public_key_string, &private_key);
+    if (!generated_keys_ok) {
       LOG_ERROR << "Could not generate RSA keys for secondary " << ManagedSecondary::getSerial() << "@"
                 << sconfig.ecu_hardware_id;
       throw std::runtime_error("Unable to generate secondary RSA keys");
     }
+    storeKeys(public_key_string, private_key);
   }
   public_key_ = PublicKey(public_key_string, sconfig.key_type);
-
-  storeKeys(public_key_.Value(), private_key);
 
   storage_config_.path = sconfig.full_client_dir;
   storage_ = INvStorage::newStorage(storage_config_);
@@ -218,6 +216,8 @@ bool ManagedSecondary::getFirmwareInfo(Uptane::InstalledImageInfo &firmware_info
 void ManagedSecondary::storeKeys(const std::string &pub_key, const std::string &priv_key) {
   Utils::writeFile((sconfig.full_client_dir / sconfig.ecu_private_key), priv_key);
   Utils::writeFile((sconfig.full_client_dir / sconfig.ecu_public_key), pub_key);
+  sync();
+  did_store_keys++;  // For testing
 }
 
 bool ManagedSecondary::loadKeys(std::string *pub_key, std::string *priv_key) {
