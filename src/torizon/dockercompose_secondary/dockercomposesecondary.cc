@@ -104,6 +104,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
   std::string compose_new = compose_cur + ".tmp";
 
   ComposeManager compose = ComposeManager(compose_cur, compose_new);
+  bool sync_update = pendingPrimaryUpdate();
 
   // Save new compose file in a temporary file.
   std::ofstream out_file(compose_new, std::ios::binary);
@@ -113,7 +114,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
 
   if (info.getUpdateType() == UpdateType::kOnline) {
     // Run online update method.
-    update_status = compose.update(false);
+    update_status = compose.update(false, sync_update);
 
   } else if (info.getUpdateType() == UpdateType::kOffline) {
     auto img_path = info.getImagesPathOffline() / (target.sha256Hash() + ".images");
@@ -125,7 +126,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
       // Overwrite the new compose file with that "offline" version.
       boost::filesystem::rename(compose_out, compose_new);
 
-      update_status = compose.update(true);
+      update_status = compose.update(true, sync_update);
     }
 
   } else {
@@ -134,7 +135,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
 
   if (update_status == true) {
     Utils::writeFile(sconfig.target_name_path, target.filename());
-    if (compose.sync_update) {
+    if (sync_update) {
       return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
     } else {
       return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
@@ -175,6 +176,25 @@ bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path &com
   if (compose_out != nullptr) { *compose_out = compose_new; }
 
   return true;
+}
+
+bool DockerComposeSecondary::pendingPrimaryUpdate() {
+  // TODO: Consider adding a method to perform this check as part of the `SecondaryProvider` in libaktualizr.
+  // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
+
+  EcuSerials serials;
+  bpo::variables_map vm;
+  Config config(vm);
+  std::shared_ptr<INvStorage> storage;
+  storage = INvStorage::newStorage(config.storage);
+  boost::optional<Uptane::Target> pending;
+
+  if (!secondary_provider_->getEcuSerialsForHwId(&serials) || serials.empty()) {
+    throw std::runtime_error("Unable to get ECU serials from primary");
+  }
+
+  storage->loadInstalledVersions((serials[0].first).ToString(), nullptr, &pending);
+  return !!pending;
 }
 
 bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const {

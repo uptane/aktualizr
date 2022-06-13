@@ -4,7 +4,6 @@
 #include "compose_manager.h"
 #include "logging/logging.h"
 #include "libaktualizr/config.h"
-#include "storage/invstorage.h"
 
 namespace bpo = boost::program_options;
 
@@ -67,14 +66,13 @@ bool ComposeManager::checkRollback() {
   }
 }
 
-bool ComposeManager::update(bool offline) {
+bool ComposeManager::update(bool offline, bool sync) {
   LOG_INFO << "Updating containers via docker-compose";
 
-  sync_update = false;
+  sync_update = sync;
   reboot = false;
 
-  if (pendingPrimaryUpdate()) {
-    sync_update = true;
+  if (sync_update) {
     LOG_INFO << "OSTree update pending. This is a synchronous update transaction.";
   }
 
@@ -95,18 +93,6 @@ bool ComposeManager::update(bool offline) {
   }
 
   return true;
-}
-
-bool ComposeManager::pendingPrimaryUpdate() {
-  // TODO: Consider adding a method to perform this check as part of the `SecondaryProvider` in libaktualizr.
-  // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
-  bpo::variables_map vm;
-  Config config(vm);
-  std::shared_ptr<INvStorage> storage;
-  storage = INvStorage::newStorage(config.storage);
-  boost::optional<Uptane::Target> pending;
-  storage->loadPrimaryInstalledVersions(nullptr, &pending);
-  return !!pending;
 }
 
 bool ComposeManager::pendingUpdate() {

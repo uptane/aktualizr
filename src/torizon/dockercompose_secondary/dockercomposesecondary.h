@@ -47,6 +47,7 @@ class DockerComposeSecondary : public ManagedSecondary {
                         const boost::filesystem::path &images_path,
                         const boost::filesystem::path &manifests_path,
                         boost::filesystem::path *compose_out = nullptr);
+  bool pendingPrimaryUpdate();
 
 };
 
