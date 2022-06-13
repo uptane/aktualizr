@@ -21,25 +21,25 @@
 namespace Primary {
 
 ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) : sconfig(std::move(sconfig_in)) {
-  struct stat st {};
+  struct stat stat_buf {};
   if (!boost::filesystem::is_directory(sconfig.metadata_path)) {
     Utils::createDirectories(sconfig.metadata_path, S_IRWXU);
   }
-  if (stat(sconfig.metadata_path.c_str(), &st) < 0) {
+  if (stat(sconfig.metadata_path.c_str(), &stat_buf) < 0) {
     throw std::runtime_error(std::string("Could not check metadata directory permissions: ") + std::strerror(errno));
   }
-  if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+  if ((stat_buf.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
     throw std::runtime_error("Secondary metadata directory has unsafe permissions");
   }
 
   if (!boost::filesystem::is_directory(sconfig.full_client_dir)) {
     Utils::createDirectories(sconfig.full_client_dir, S_IRWXU);
   }
-  if (stat(sconfig.full_client_dir.c_str(), &st) < 0) {
+  if (stat(sconfig.full_client_dir.c_str(), &stat_buf) < 0) {
     throw std::runtime_error(std::string("Could not check Secondary storage directory permissions: ") +
                              std::strerror(errno));
   }
-  if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+  if ((stat_buf.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
     throw std::runtime_error("Secondary storage directory has unsafe permissions");
   }
 
