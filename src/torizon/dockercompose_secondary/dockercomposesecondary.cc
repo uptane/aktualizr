@@ -127,6 +127,8 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
       boost::filesystem::rename(compose_out, compose_new);
 
       update_status = compose.update(true, sync_update);
+    } else {
+      compose.sync_update = sync_update;
     }
 
   } else {

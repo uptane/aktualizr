@@ -11,6 +11,9 @@ ComposeManager::ComposeManager(const std::string &compose_file_current, const st
   compose_file_current_ = compose_file_current;
   compose_file_new_ = compose_file_new;
   compose_cmd_  = compose_program_ + " --file ";
+  containers_stopped = false;
+  reboot = false;
+  sync_update = false;
 }
 
 bool ComposeManager::pull(const std::string &compose_file) {
