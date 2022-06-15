@@ -3,6 +3,7 @@
 /** \file */
 
 #include <algorithm>
+#include <istream>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -175,6 +176,7 @@ class Hash {
   enum class Type { kSha256, kSha512, kUnknownAlgorithm };
 
   static Hash generate(Type type, const std::string &data);
+  static Hash generate(Type type, std::istream &source, ssize_t *nread = nullptr);
   Hash(const std::string &type, const std::string &hash);
   Hash(Type type, const std::string &hash);
 

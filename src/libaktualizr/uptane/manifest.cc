@@ -75,9 +75,17 @@ Manifest ManifestIssuer::assembleManifest(const InstalledImageInfo &installed_im
 
 Hash ManifestIssuer::generateVersionHash(const std::string &data) { return Hash::generate(Hash::Type::kSha256, data); }
 
+Hash ManifestIssuer::generateVersionHash(std::istream &source, ssize_t *nread) {
+  return Hash::generate(Hash::Type::kSha256, source, nread);
+}
+
 std::string ManifestIssuer::generateVersionHashStr(const std::string &data) {
   // think of unifying a hash case,we use both lower and upper cases
   return boost::algorithm::to_lower_copy(generateVersionHash(data).HashString());
+}
+
+std::string ManifestIssuer::generateVersionHashStr(std::istream &source, ssize_t *nread) {
+  return boost::algorithm::to_lower_copy(generateVersionHash(source, nread).HashString());
 }
 
 Manifest ManifestIssuer::assembleManifest(const InstalledImageInfo &installed_image_info) const {

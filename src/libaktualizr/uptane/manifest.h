@@ -1,6 +1,7 @@
 #ifndef AKTUALIZR_UPTANE_MANIFEST_H
 #define AKTUALIZR_UPTANE_MANIFEST_H
 
+#include <istream>
 #include <memory>
 
 #include "json/json.h"
@@ -19,7 +20,9 @@ class ManifestIssuer {
 
   static Manifest assembleManifest(const InstalledImageInfo &installed_image_info, const Uptane::EcuSerial &ecu_serial);
   static Hash generateVersionHash(const std::string &data);
+  static Hash generateVersionHash(std::istream &source, ssize_t *nread = nullptr);
   static std::string generateVersionHashStr(const std::string &data);
+  static std::string generateVersionHashStr(std::istream &source, ssize_t *nread = nullptr);
 
   Manifest sign(const Manifest &manifest, const std::string &report_counter = "") const;
 

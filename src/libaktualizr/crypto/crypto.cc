@@ -2,6 +2,7 @@
 
 #include <array>
 #include <iostream>
+#include <memory>
 #include <random>
 
 #include <sodium.h>
@@ -699,6 +700,42 @@ Hash Hash::generate(Type type, const std::string &data) {
   }
 
   return Hash(type, hash);
+}
+
+Hash Hash::generate(Type type, std::istream &source, ssize_t *nread) {
+  std::unique_ptr<MultiPartHasher> hasher;
+
+  switch (type) {
+    case Type::kSha256: {
+      hasher = std_::make_unique<MultiPartSHA256Hasher>();
+      break;
+    }
+    case Type::kSha512: {
+      hasher = std_::make_unique<MultiPartSHA512Hasher>();
+      break;
+    }
+    default: {
+      throw std::invalid_argument("Unsupported hash type");
+    }
+  }
+
+  // Process file in blocks.
+  using BufferType = std::array<uint8_t, 64 * 1024>;
+  auto buffer = std_::make_unique<BufferType>();
+
+  // Determine the digest of the whole stream.
+  ssize_t count = 0;
+  do {
+    source.read(reinterpret_cast<char *>(buffer->data()), static_cast<std::streamsize>(buffer->size()));
+    hasher->update(buffer->data(), static_cast<uint64_t>(source.gcount()));
+    count += static_cast<ssize_t>(source.gcount());
+  } while (source.gcount() > 0);
+
+  if (nread != nullptr) {
+    *nread = count;
+  }
+
+  return hasher->getHash();
 }
 
 Hash::Hash(const std::string &type, const std::string &hash) : hash_(boost::algorithm::to_upper_copy(hash)) {
