@@ -232,6 +232,8 @@ bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmwar
 
 // TODO: Consider a more general mechanism to allow all secondaries to complete a previous installation.
 // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
+// TODO: Consider implementing `completePendingInstall()` instead; consider also returning a different
+// result code to ask for a reboot OR giving a delay for the reboot: `shutdown +1`.
 void DockerComposeSecondary::validateInstall() {
   std::string compose_file = sconfig.firmware_path.string();
   std::string compose_file_new = compose_file + ".tmp";
