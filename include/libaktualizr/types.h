@@ -503,6 +503,23 @@ static inline std::string VerificationTypeToString(const VerificationType vtype)
   return type_s;
 }
 
+// NOLINTNEXTLINE(clang-diagnostic-unused-function)
+static inline std::string UpdateTypeToString(const UpdateType utype) {
+  std::string utype_str;
+  switch (utype) {
+    case UpdateType::kOnline:
+      utype_str = "online";
+      break;
+    case UpdateType::kOffline:
+      utype_str = "offline";
+      break;
+    default:
+      utype_str = "<unknown>";
+      break;
+  }
+  return utype_str;
+}
+
 }  // namespace Uptane
 
 struct SecondaryInfo {

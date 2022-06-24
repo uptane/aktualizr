@@ -54,18 +54,7 @@ std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
 }
 
 std::ostream &operator<<(std::ostream &os, UpdateType utype) {
-  std::string utype_str;
-  switch (utype) {
-    case UpdateType::kOnline:
-      utype_str = "online";
-      break;
-    case UpdateType::kOffline:
-      utype_str = "offline";
-      break;
-    default:
-      utype_str = "<unknown>";
-      break;
-  }
+  std::string utype_str = Uptane::UpdateTypeToString(utype);
   os << '"' << utype_str << '"';
   return os;
 }
