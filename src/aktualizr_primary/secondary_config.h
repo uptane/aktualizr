@@ -11,6 +11,10 @@
 #include "primary/secondary_config.h"
 #include "virtualsecondary.h"
 
+#ifdef BUILD_GENERIC_SECONDARY
+#include "torizongenericsecondary.h"
+#endif
+
 namespace Primary {
 
 class IPSecondaryConfig {
@@ -75,12 +79,19 @@ class JsonConfigParser : public SecondaryConfigParser {
  private:
   static void createIPSecondariesCfg(Configs& configs, const Json::Value& json_ip_sec_cfg);
   static void createVirtualSecondariesCfg(Configs& configs, const Json::Value& json_virtual_sec_cfg);
+#ifdef BUILD_GENERIC_SECONDARY
+  static void createTorizonGenericSecondariesCfg(Configs& configs, const Json::Value& json_torgen_sec_cfg);
+#endif
   // add here a factory method for another type of secondary config
 
   using SecondaryConfigFactoryRegistry = std::unordered_map<std::string, std::function<void(Configs&, Json::Value&)>>;
 
   SecondaryConfigFactoryRegistry sec_cfg_factory_registry_ = {
-      {IPSecondariesConfig::Type, createIPSecondariesCfg}, {VirtualSecondaryConfig::Type, createVirtualSecondariesCfg}
+      {IPSecondariesConfig::Type, createIPSecondariesCfg},
+      {VirtualSecondaryConfig::Type, createVirtualSecondariesCfg},
+#ifdef BUILD_GENERIC_SECONDARY
+      {TorizonGenericSecondaryConfig::Type, createTorizonGenericSecondariesCfg},
+#endif
       // add here factory method for another type of secondary config
   };
 

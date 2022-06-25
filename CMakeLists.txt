@@ -24,6 +24,7 @@ option(BUILD_WITH_CODE_COVERAGE "Enable gcov code coverage" OFF)
 option(BUILD_OSTREE "Set to ON to compile with OSTree support" OFF)
 # TODO: Set to OFF by default later or remove option completely
 option(BUILD_OFFLINE_UPDATES "Set to ON to compile with offline-updates support" ON)
+option(BUILD_GENERIC_SECONDARY "Set to ON to enable generic secondary support" ON)
 option(BUILD_DEB "Set to ON to compile with debian packages support" OFF)
 option(BUILD_P11 "Support for key storage in a HSM via PKCS#11" OFF)
 option(BUILD_SOTA_TOOLS "Set to ON to build SOTA tools" OFF)
@@ -114,6 +115,10 @@ endif(BUILD_OSTREE)
 if(BUILD_OFFLINE_UPDATES)
     add_definitions(-DBUILD_OFFLINE_UPDATES)
 endif(BUILD_OFFLINE_UPDATES)
+
+if(BUILD_GENERIC_SECONDARY)
+    add_definitions(-DBUILD_GENERIC_SECONDARY)
+endif(BUILD_GENERIC_SECONDARY)
 
 if(BUILD_P11)
     find_package(LibP11 REQUIRED)

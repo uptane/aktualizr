@@ -14,3 +14,5 @@ add_subdirectory("uptane_generator")
 
 add_subdirectory("cert_provider")
 add_subdirectory("aktualizr_get")
+
+add_subdirectory("torizon")

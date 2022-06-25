@@ -122,4 +122,13 @@ void JsonConfigParser::createVirtualSecondariesCfg(Configs& configs, const Json:
   }
 }
 
+#ifdef BUILD_GENERIC_SECONDARY
+void JsonConfigParser::createTorizonGenericSecondariesCfg(Configs& configs, const Json::Value& json_torgen_sec_cfg) {
+  for (const auto& json_config : json_torgen_sec_cfg) {
+    auto torgen_config = std::make_shared<TorizonGenericSecondaryConfig>(json_config);
+    configs.push_back(torgen_config);
+  }
+}
+#endif
+
 }  // namespace Primary

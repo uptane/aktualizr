@@ -34,6 +34,13 @@ static SecondaryFactoryRegistry sec_factory_registry = {
        auto virtual_sec_cgf = dynamic_cast<const VirtualSecondaryConfig&>(config);
        return Secondaries({std::make_shared<VirtualSecondary>(virtual_sec_cgf)});
      }},
+#ifdef BUILD_GENERIC_SECONDARY
+    {TorizonGenericSecondaryConfig::Type,
+     [](const SecondaryConfig& config, Aktualizr& /* unused */) {
+       auto generic_sec_cfg = dynamic_cast<const TorizonGenericSecondaryConfig&>(config);
+       return Secondaries({std::make_shared<TorizonGenericSecondary>(generic_sec_cfg)});
+     }},
+#endif
     //  {
     //     Add another secondary factory here
     //  }

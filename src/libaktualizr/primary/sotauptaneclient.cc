@@ -998,6 +998,7 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
       if (target.uri().empty() && !image_target->uri().empty()) {
         target.setUri(image_target->uri());
       }
+      // TODO: [TORIZON] Maybe here we could consider merging director and image custom metadata.
     }
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
