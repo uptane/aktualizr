@@ -175,4 +175,38 @@ boost::filesystem::path utils::BasedPath::get(const boost::filesystem::path &bas
   return Utils::absolutePath(base, p_);
 }
 
+Json::Value utils::MergeJson(const Json::Value &main, const Json::Value &other,
+                             const std::vector<std::string> *other_ignore) {
+  if (!main.isObject() || !other.isObject()) {
+    return Json::Value(main.isNull() ? other : main);
+  }
+
+  Json::Value res;
+
+  // Process elements in 'main' possibly existing also in 'other'.
+  for (Json::Value::const_iterator it = main.begin(); it != main.end(); it++) {
+    if (!other.isMember(it.name()) ||
+        (other_ignore != nullptr &&
+         std::find(other_ignore->cbegin(), other_ignore->cend(), it.name()) != other_ignore->cend())) {
+      res[it.name()] = *it;
+    } else {
+      // Element exists both in 'main' and 'other': merge them recursively.
+      res[it.name()] = MergeJson(*it, other[it.name()]);
+    }
+  }
+
+  // Process elements only in 'other'.
+  for (Json::Value::const_iterator it = other.begin(); it != other.end(); it++) {
+    if (other_ignore != nullptr &&
+        std::find(other_ignore->cbegin(), other_ignore->cend(), it.name()) != other_ignore->cend()) {
+      continue;
+    }
+    if (!main.isMember(it.name())) {
+      res[it.name()] = *it;
+    }
+  }
+
+  return res;
+}
+
 // vim: set tabstop=2 shiftwidth=2 expandtab:

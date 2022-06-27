@@ -54,6 +54,9 @@ class BasedPath {
   boost::filesystem::path p_;
 };
 
+Json::Value MergeJson(const Json::Value &main, const Json::Value &other,
+                      const std::vector<std::string> *other_ignore = nullptr);
+
 }  // namespace utils
 
 // Keep these in sync with AKIpUptaneKeyType ASN.1 definitions.
