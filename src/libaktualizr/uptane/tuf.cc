@@ -101,15 +101,19 @@ void Target::updateCustom(const Json::Value &custom) {
   // Image repo provides an array of hardware IDs.
   if (custom_.isMember("hardwareIds")) {
     Json::Value hwids = custom_["hardwareIds"];
+    hwids_.clear();
     for (auto i = hwids.begin(); i != hwids.end(); ++i) {
       hwids_.emplace_back(HardwareIdentifier((*i).asString()));
     }
   }
 
   // Director provides a map of ECU serials to hardware IDs.
-  Json::Value ecus = custom_["ecuIdentifiers"];
-  for (auto i = ecus.begin(); i != ecus.end(); ++i) {
-    ecus_.insert({EcuSerial(i.key().asString()), HardwareIdentifier((*i)["hardwareId"].asString())});
+  if (custom_.isMember("ecuIdentifiers")) {
+    Json::Value ecus = custom_["ecuIdentifiers"];
+    ecus_.clear();
+    for (auto i = ecus.begin(); i != ecus.end(); ++i) {
+      ecus_.insert({EcuSerial(i.key().asString()), HardwareIdentifier((*i)["hardwareId"].asString())});
+    }
   }
 
   if (custom_.isMember("targetFormat")) {

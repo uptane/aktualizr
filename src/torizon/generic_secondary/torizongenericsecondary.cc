@@ -204,12 +204,11 @@ void TorizonGenericSecondary::getInstallVars(VarMap& vars, const Uptane::Target&
   }
   // Use lower-case hash string to match manifest:
   vars["SECONDARY_FIRMWARE_SHA256"] = boost::algorithm::to_lower_copy(target.hashes().at(0).HashString());
+  vars["SECONDARY_CUSTOM_METADATA"] = Utils::jsonToCanonicalStr(target.custom_data());
+  // TODO: [TORIZON] Should we also pass the target URI?
   // TODO: [TORIZON] Handle offline-updates on a generic secondary.
   // vars["SECONDARY_IMAGE_PATH_OFFLINE"] = "{}";
   // vars["SECONDARY_METADATA_PATH_OFFLINE"] = "{}";
-  // TODO: [TORIZON] Fill in custom director/image meta.
-  vars["SECONDARY_CUSTOM_DIRECTOR_META"] = Utils::jsonToCanonicalStr(target.custom_data());
-  vars["SECONDARY_CUSTOM_IMAGE_META"] = "{}";
 }
 
 data::InstallationResult TorizonGenericSecondary::install(const Uptane::Target& target, const InstallInfo& info) {
@@ -312,9 +311,7 @@ void TorizonGenericSecondary::getCompleteInstallVars(VarMap& vars, const Uptane:
   }
   // Use lower-case hash string to match manifest:
   vars["SECONDARY_FIRMWARE_SHA256"] = boost::algorithm::to_lower_copy(target.hashes().at(0).HashString());
-  // TODO: [TORIZON] Fill in custom director/image meta.
-  vars["SECONDARY_CUSTOM_DIRECTOR_META"] = Utils::jsonToCanonicalStr(target.custom_data());
-  vars["SECONDARY_CUSTOM_IMAGE_META"] = "{}";
+  vars["SECONDARY_CUSTOM_METADATA"] = Utils::jsonToCanonicalStr(target.custom_data());
 }
 
 data::InstallationResult TorizonGenericSecondary::completeInstall(const Uptane::Target& target) {
