@@ -241,19 +241,26 @@ void DockerComposeSecondary::validateInstall() {
   std::string compose_file = sconfig.firmware_path.string();
   std::string compose_file_new = compose_file + ".tmp";
   ComposeManager pending_check(compose_file, compose_file_new);
+
+  Uptane::EcuSerial serial = getSerial();
+  std::shared_ptr<INvStorage> storage;
+  bpo::variables_map vm;
+  Config config(vm);
+  storage = INvStorage::newStorage(config.storage);
+  boost::optional<Uptane::Target> pending_target;
+  storage->loadInstalledVersions(serial.ToString(), nullptr, &pending_target);
+  if (!pending_target && !access(compose_file_new.c_str(), F_OK)) {
+    LOG_INFO << "Incomplete update detected.";
+    pending_check.containers_stopped = true;
+    pending_check.rollback();
+  }
+
   if (!pending_check.pendingUpdate()) {
     LOG_ERROR << "Unable to complete pending container update";
 
     // TODO: Consider providing a method for clearing the pending flag via the `SecondaryProvider` in libaktualizr.
     // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
     // Pending compose update failed, unset pending flag so that the rest of the Uptane process can go forward again
-    Uptane::EcuSerial serial = getSerial();
-    std::shared_ptr<INvStorage> storage;
-    bpo::variables_map vm;
-    Config config(vm);
-    storage = INvStorage::newStorage(config.storage);
-    boost::optional<Uptane::Target> pending_target;
-    storage->loadInstalledVersions(serial.ToString(), nullptr, &pending_target);
     storage->saveEcuInstallationResult(serial, data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, ""));
     storage->saveInstalledVersion(serial.ToString(), *pending_target, InstalledVersionUpdateMode::kNone);
 
