@@ -102,15 +102,18 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
   bool update_status = false;
   std::string compose_cur = sconfig.firmware_path.string();
   std::string compose_new = compose_cur + ".tmp";
+  // Just a temp file used to atomically write the "tmp" compose file
+  std::string compose_temp = compose_cur + ".temporary";
 
   ComposeManager compose = ComposeManager(compose_cur, compose_new);
   bool sync_update = pendingPrimaryUpdate();
 
   // Save new compose file in a temporary file.
-  std::ofstream out_file(compose_new, std::ios::binary);
+  std::ofstream out_file(compose_temp, std::ios::binary);
   out_file << tgt_stream.rdbuf();
   tgt_stream.close();
   out_file.close();
+  rename(compose_temp.c_str(), compose_new.c_str());
 
   if (info.getUpdateType() == UpdateType::kOnline) {
     // Run online update method.
