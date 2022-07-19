@@ -65,12 +65,12 @@ set(Boost_USE_STATIC_LIBS OFF)
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
 # Mac brew library install paths
-if(EXISTS /usr/local/opt/openssl)
-  list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl)
+if(EXISTS /opt/homebrew/opt/openssl@1.1)
+  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/openssl@1.1)
 endif()
 
-if(EXISTS /usr/local/opt/libarchive)
-  list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libarchive)
+if(EXISTS /opt/homebrew/opt/libarchive/include)
+  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive/include)
 endif()
 
 find_package(Boost 1.58.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
