@@ -96,7 +96,7 @@ brew install aktualizr
 You can also build it yourself, with basic dependencies from homebrew. You can install the necessary dependencies as follows:
 
 ----
-brew install asn1c boost cmake libarchive libsodium pkgconfig python3
+brew install asn1c boost cmake libarchive libsodium pkgconfig python3 openssl@1.1
 ----
 
 and run the following from the aktualizr project directory:
