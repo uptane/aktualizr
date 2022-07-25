@@ -24,7 +24,7 @@ jobs:
         -eTEST_TESTSUITE_EXCLUDE=credentials
         -eTEST_SOTA_PACKED_CREDENTIALS=dummy-credentials
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
         with:
           submodules: recursive
       - run: git fetch --prune --unshallow
@@ -57,7 +57,7 @@ jobs:
         -eTEST_WITH_P11=0
         -eTEST_WITH_TESTSUITE=0
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
         with:
           submodules: recursive
       - run: git fetch --prune --unshallow
@@ -92,7 +92,7 @@ jobs:
         -eTEST_WITH_STATICTESTS=1
         -eTEST_WITH_DOCS=1
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
         with:
           submodules: recursive
       - run: git fetch --prune --unshallow
@@ -117,7 +117,7 @@ jobs:
     name: Shellcheck
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@main
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
       with:
