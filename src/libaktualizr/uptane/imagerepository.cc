@@ -129,16 +129,20 @@ void ImageRepository::fetchTargets(INvStorage& storage, const IMetadataFetcher& 
 
 void ImageRepository::verifyRoleHashes(const std::string& role_data, const Uptane::Role& role, bool prefetch) const {
   const std::string canonical = Utils::jsonToCanonicalStr(Utils::parseJSON(role_data));
-  // Hashes are not required. If present, however, we may as well check them.
+  // Hashes are not required in snapshot metadata. If present, however, we may as well check them.
   // This provides no security benefit, but may help with fault detection.
   for (const auto& it : snapshot.role_hashes(role)) {
     switch (it.type()) {
       case Hash::Type::kSha256:
         if (Hash(Hash::Type::kSha256, Crypto::sha256digestHex(canonical)) != it) {
+          // If prefetch is true, it means we're checking a local copy of the metadata.
+          // Failures in that case just indicate we need to refresh it from the server, so
+          // we only actually log the error if the metadata comes directly from the server.
           if (!prefetch) {
             LOG_ERROR << "Hash verification for " << role << " metadata failed";
           }
-          throw Uptane::SecurityException(RepositoryType::IMAGE, "Hash metadata mismatch");
+          throw Uptane::SecurityException(RepositoryType::IMAGE,
+                                          "Snapshot hash mismatch for " + role.ToString() + " metadata");
         }
         break;
       case Hash::Type::kSha512:
@@ -146,7 +150,8 @@ void ImageRepository::verifyRoleHashes(const std::string& role_data, const Uptan
           if (!prefetch) {
             LOG_ERROR << "Hash verification for " << role << " metadata failed";
           }
-          throw Uptane::SecurityException(RepositoryType::IMAGE, "Hash metadata mismatch");
+          throw Uptane::SecurityException(RepositoryType::IMAGE,
+                                          "Snapshot hash mismatch for " + role.ToString() + " metadata");
         }
         break;
       default:
@@ -174,7 +179,11 @@ void ImageRepository::verifyTargets(const std::string& targets_raw, bool prefetc
       throw Uptane::VersionMismatch(RepositoryType::IMAGE, Uptane::Role::TARGETS);
     }
   } catch (const Exception& e) {
-    LOG_ERROR << "Signature verification for Image repo Targets metadata failed";
+    if (!prefetch) {
+      LOG_ERROR << "Verification for Image repo Targets metadata failed";
+    } else {
+      LOG_DEBUG << "Verification for local Image repo Targets metadata failed";
+    }
     throw;
   }
 }
@@ -251,7 +260,8 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
         fetch_snapshot = false;
         LOG_DEBUG << "Skipping Image repo Snapshot download; stored version is still current.";
       } catch (const Uptane::Exception& e) {
-        LOG_ERROR << "Image repo Snapshot verification failed: " << e.what();
+        LOG_INFO << "Downloading new Image repo Snapshot metadata because verification of local copy failed: "
+                 << e.what();
       }
       local_version = snapshot.version();
     } else {
@@ -279,7 +289,8 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
         fetch_targets = false;
         LOG_DEBUG << "Skipping Image repo Targets download; stored version is still current.";
       } catch (const std::exception& e) {
-        LOG_ERROR << "Image repo Target verification failed: " << e.what();
+        LOG_INFO << "Downloading new Image repo Targets metadata because verification of local copy failed: "
+                 << e.what();
       }
       if (targets) {
         local_version = targets->version();
