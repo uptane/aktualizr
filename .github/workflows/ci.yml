@@ -24,10 +24,10 @@ jobs:
         -eTEST_TESTSUITE_EXCLUDE=credentials
         -eTEST_SOTA_PACKED_CREDENTIALS=dummy-credentials
     steps:
-      - uses: actions/checkout@master
-        with:
-          submodules: recursive
-      - run: git fetch --prune --unshallow
+      - uses: actions/checkout@main
+      - run: |
+          git fetch --prune --unshallow
+          git submodule update --init --recursive --force
       - name: Docker login
         if: github.token
         run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
@@ -57,10 +57,10 @@ jobs:
         -eTEST_WITH_P11=0
         -eTEST_WITH_TESTSUITE=0
     steps:
-      - uses: actions/checkout@master
-        with:
-          submodules: recursive
-      - run: git fetch --prune --unshallow
+      - uses: actions/checkout@main
+      - run: |
+          git fetch --prune --unshallow
+          git submodule update --init --recursive --force
       - name: Docker login
         if: github.token
         run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
@@ -92,10 +92,10 @@ jobs:
         -eTEST_WITH_STATICTESTS=1
         -eTEST_WITH_DOCS=1
     steps:
-      - uses: actions/checkout@master
-        with:
-          submodules: recursive
-      - run: git fetch --prune --unshallow
+      - uses: actions/checkout@main
+      - run: |
+          git fetch --prune --unshallow
+          git submodule update --init --recursive --force
       - name: Docker login
         if: github.token
         run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
@@ -117,7 +117,7 @@ jobs:
     name: Shellcheck
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@main
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
       with:
