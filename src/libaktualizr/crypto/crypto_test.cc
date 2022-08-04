@@ -50,6 +50,22 @@ TEST(crypto, sign_verify_rsa_file) {
 }
 
 #ifdef BUILD_P11
+
+class P11Crypto : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() { p11_ = std::make_shared<P11EngineGuard>(module_path_, pass_); }
+
+  static void TearDownTestSuite() { p11_.reset(); }
+
+  static boost::filesystem::path module_path_;
+  static std::string pass_;
+  static std::shared_ptr<P11EngineGuard> p11_;
+};
+
+boost::filesystem::path P11Crypto::module_path_{TEST_PKCS11_MODULE_PATH};
+std::string P11Crypto::pass_{"1234"};
+std::shared_ptr<P11EngineGuard> P11Crypto::p11_{nullptr};
+
 TEST(crypto, findPkcsLibrary) {
   const boost::filesystem::path pkcs11Path = P11Engine::findPkcsLibrary();
   EXPECT_NE(pkcs11Path, "");
@@ -57,47 +73,35 @@ TEST(crypto, findPkcsLibrary) {
 }
 
 /* Sign and verify a file with RSA via PKCS#11. */
-TEST(crypto, sign_verify_rsa_p11) {
-  P11Config config;
-  config.module = TEST_PKCS11_MODULE_PATH;
-  config.pass = "1234";
-  config.uptane_key_id = "03";
+TEST_F(P11Crypto, sign_verify_rsa_p11) {
+  const std::string uptane_key_id{"03"};
 
-  P11EngineGuard p11(config);
   std::string text = "This is text for sign";
   std::string key_content;
-  EXPECT_TRUE(p11->readUptanePublicKey(&key_content));
+  EXPECT_TRUE((*p11_)->readUptanePublicKey(uptane_key_id, &key_content));
   PublicKey pkey(key_content, KeyType::kRSA2048);
-  std::string private_key = p11->getUptaneKeyId();
-  std::string signature = Utils::toBase64(Crypto::RSAPSSSign(p11->getEngine(), private_key, text));
+  std::string private_key = (*p11_)->getItemFullId(uptane_key_id);
+  std::string signature = Utils::toBase64(Crypto::RSAPSSSign((*p11_)->getEngine(), private_key, text));
   bool signe_is_ok = pkey.VerifySignature(signature, text);
   EXPECT_TRUE(signe_is_ok);
 }
 
 /* Generate RSA keypairs via PKCS#11. */
-TEST(crypto, DISABLED_generate_rsa_keypair_p11) {
-  P11Config config;
-  config.module = TEST_PKCS11_MODULE_PATH;
-  config.pass = "1234";
-  config.uptane_key_id = "05";
+TEST_F(P11Crypto, generate_rsa_keypair_p11) {
+  const std::string uptane_key_id{"05"};
 
-  P11EngineGuard p11(config);
   std::string key_content;
-  EXPECT_FALSE(p11->readUptanePublicKey(&key_content));
-  EXPECT_TRUE(p11->generateUptaneKeyPair());
-  EXPECT_TRUE(p11->readUptanePublicKey(&key_content));
+  EXPECT_FALSE((*p11_)->readUptanePublicKey(uptane_key_id, &key_content));
+  EXPECT_TRUE((*p11_)->generateUptaneKeyPair(uptane_key_id));
+  EXPECT_TRUE((*p11_)->readUptanePublicKey(uptane_key_id, &key_content));
 }
 
 /* Read a TLS certificate via PKCS#11. */
-TEST(crypto, DISABLED_certificate_pkcs11) {
-  P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
-  p11_conf.tls_clientcert_id = "01";
-  P11EngineGuard p11(p11_conf);
+TEST_F(P11Crypto, certificate_pkcs11) {
+  const std::string tls_clientcert_id{"01"};
 
   std::string cert;
-  bool res = p11->readTlsCert(&cert);
+  bool res = (*p11_)->readTlsCert(tls_clientcert_id, &cert);
   EXPECT_TRUE(res);
   if (!res) return;
 

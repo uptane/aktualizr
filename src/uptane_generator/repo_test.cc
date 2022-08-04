@@ -5,9 +5,11 @@
 
 #include <boost/filesystem.hpp>
 
+#include "crypto/crypto.h"
 #include "libaktualizr/config.h"
 #include "logging/logging.h"
 #include "test_utils.h"
+#include "uptane/exceptions.h"
 #include "uptane_repo.h"
 
 KeyType key_type = KeyType::kED25519;
@@ -42,9 +44,9 @@ void check_repo(const TemporaryDirectory &temp_dir, const Uptane::RepositoryType
 
   const Json::Value timestamp_signed = Utils::parseJSONFile(repo_dir / "timestamp.json")["signed"];
   EXPECT_EQ(timestamp_signed["meta"]["snapshot.json"]["hashes"]["sha256"].asString(),
-            boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest(snapshot_raw))));
+            Crypto::sha256digestHex(snapshot_raw));
   EXPECT_EQ(timestamp_signed["meta"]["snapshot.json"]["hashes"]["sha512"].asString(),
-            boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha512digest(snapshot_raw))));
+            Crypto::sha512digestHex(snapshot_raw));
   EXPECT_EQ(timestamp_signed["meta"]["snapshot.json"]["length"].asUInt(),
             static_cast<Json::UInt>(snapshot_raw.length()));
   EXPECT_EQ(timestamp_signed["meta"]["snapshot.json"]["version"].asUInt(), snapshot_signed["version"].asUInt());

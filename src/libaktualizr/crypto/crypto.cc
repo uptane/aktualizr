@@ -4,9 +4,14 @@
 #include <iostream>
 #include <memory>
 #include <random>
+#include <string>
 
+#include <openssl/pkcs12.h>
+#include <openssl/rsa.h>
 #include <sodium.h>
 #include <boost/algorithm/hex.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 #include <boost/scoped_array.hpp>
 
 #include "libaktualizr/types.h"
@@ -120,10 +125,18 @@ std::string Crypto::sha256digest(const std::string &text) {
   return std::string(reinterpret_cast<char *>(sha256_hash.data()), crypto_hash_sha256_BYTES);
 }
 
+std::string Crypto::sha256digestHex(const std::string &text) {
+  return boost::algorithm::to_lower_copy(boost::algorithm::hex(sha256digest(text)));
+}
+
 std::string Crypto::sha512digest(const std::string &text) {
   std::array<unsigned char, crypto_hash_sha512_BYTES> sha512_hash{};
   crypto_hash_sha512(sha512_hash.data(), reinterpret_cast<const unsigned char *>(text.c_str()), text.size());
   return std::string(reinterpret_cast<char *>(sha512_hash.data()), crypto_hash_sha512_BYTES);
+}
+
+std::string Crypto::sha512digestHex(const std::string &text) {
+  return boost::algorithm::to_lower_copy(boost::algorithm::hex(sha512digest(text)));
 }
 
 std::string Crypto::RSAPSSSign(ENGINE *engine, const std::string &private_key, const std::string &message) {
@@ -680,6 +693,18 @@ MultiPartHasher::Ptr MultiPartHasher::create(Hash::Type hash_type) {
       return nullptr;
     }
   }
+}
+
+std::string MultiPartSHA512Hasher::getHexDigest() {
+  std::array<unsigned char, crypto_hash_sha512_BYTES> sha512_hash{};
+  crypto_hash_sha512_final(&state_, sha512_hash.data());
+  return boost::algorithm::hex(std::string(reinterpret_cast<char *>(sha512_hash.data()), crypto_hash_sha512_BYTES));
+}
+
+std::string MultiPartSHA256Hasher::getHexDigest() {
+  std::array<unsigned char, crypto_hash_sha256_BYTES> sha256_hash{};
+  crypto_hash_sha256_final(&state_, sha256_hash.data());
+  return boost::algorithm::hex(std::string(reinterpret_cast<char *>(sha256_hash.data()), crypto_hash_sha256_BYTES));
 }
 
 Hash Hash::generate(Type type, const std::string &data) {

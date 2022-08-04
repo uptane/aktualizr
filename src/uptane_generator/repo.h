@@ -2,10 +2,12 @@
 #define REPO_H_
 
 #include <fnmatch.h>
+#include <boost/filesystem/path.hpp>
+#include <string>
+#include <utility>
 
-#include <crypto/crypto.h>
-#include <boost/filesystem.hpp>
 #include "json/json.h"
+#include "libaktualizr/types.h"
 #include "uptane/tuf.h"
 
 struct KeyPair {

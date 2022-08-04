@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "libaktualizr/campaign.h"
 

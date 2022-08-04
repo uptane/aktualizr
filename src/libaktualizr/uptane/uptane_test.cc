@@ -870,8 +870,8 @@ class HttpFakeProv : public HttpFake {
         file_primary = "unknown";
         file_secondary = "noimage";
         // Check for default initial value of packagemanagerfake.
-        hash_primary = boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest("")));
-        hash_secondary = boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest("")));
+        hash_primary = Crypto::sha256digestHex("");
+        hash_secondary = Crypto::sha256digestHex("");
       } else {
         file_primary = "primary_firmware.txt";
         file_secondary = "secondary_firmware.txt";

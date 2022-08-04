@@ -1,7 +1,7 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <memory>
 #include <string>
 

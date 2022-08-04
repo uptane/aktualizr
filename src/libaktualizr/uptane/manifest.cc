@@ -1,6 +1,9 @@
 #include "manifest.h"
 
+#include <boost/algorithm/string/case_conv.hpp>
+
 #include "crypto/keymanager.h"
+#include "logging/logging.h"
 
 namespace Uptane {
 

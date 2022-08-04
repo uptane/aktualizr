@@ -68,12 +68,12 @@ set(Boost_USE_STATIC_LIBS OFF)
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
 # Mac brew library install paths
-if(EXISTS /usr/local/opt/openssl)
-  list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl)
+if(EXISTS /opt/homebrew/opt/openssl@1.1)
+  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/openssl@1.1)
 endif()
 
-if(EXISTS /usr/local/opt/libarchive)
-  list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libarchive)
+if(EXISTS /opt/homebrew/opt/libarchive/include)
+  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive/include)
 endif()
 
 find_package(Boost 1.58.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
@@ -130,7 +130,8 @@ if(BUILD_P11)
         endif()
         foreach(engine IN ITEMS "/usr/lib/engines-1.1/pkcs11.so"
                 "/usr/lib/engines/pkcs11.so"
-                "/usr/lib/x86_64-linux-gnu/engines-1.1/pkcs11.so")
+                "/usr/lib/x86_64-linux-gnu/engines-1.1/pkcs11.so"
+                "/usr/lib/arm-linux-gnueabihf/engines-1.1/pkcs11.so")
 
             if(EXISTS ${engine})
                 message(STATUS "Detected pkcs11 engine path: ${engine}")
@@ -299,6 +300,18 @@ function(aktualizr_source_file_checks)
         aktualizr_clang_tidy(${filtered_files})
     endif()
 endfunction()
+
+find_program(SHELLCHECK NAMES shellcheck)
+if(SHELLCHECK)
+    add_custom_target(shellcheck
+        COMMAND find docs/ scripts/ src/ tests/ -name "*.sh" | xargs ${SHELLCHECK}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        VERBATIM)
+
+    add_dependencies(qa shellcheck)
+else()
+    message(WARNING "shellcheck not found, skipping")
+endif()
 
 # Use C++11, but without GNU or other extensions
 set(CMAKE_CXX_STANDARD 11)

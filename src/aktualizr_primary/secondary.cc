@@ -3,6 +3,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/filesystem.hpp>
 
 #include <algorithm>
 #include <unordered_map>

@@ -2,6 +2,11 @@
 
 #include <chrono>
 
+#include "http/httpclient.h"
+#include "libaktualizr/config.h"
+#include "logging/logging.h"
+#include "storage/invstorage.h"
+
 ReportQueue::ReportQueue(const Config& config_in, std::shared_ptr<HttpInterface> http_client,
                          std::shared_ptr<INvStorage> storage_in)
     : config(config_in), http(std::move(http_client)), storage(std::move(storage_in)) {

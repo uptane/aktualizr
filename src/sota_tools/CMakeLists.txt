@@ -219,85 +219,85 @@ if (BUILD_SOTA_TOOLS)
 
     # Abort when given bogus command line options.
     add_test(NAME garage-push-bad-option
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-bad-option $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-bad-option.sh $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
     # Abort when given a bogus OSTree ref.
     add_test(NAME garage-push-missing-ref
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-missing-ref $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-missing-ref.sh $<TARGET_FILE:garage-push>
         ${PROJECT_SOURCE_DIR}/tests/test_data/credentials.zip
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
 
     # Abort when given nonexistent credentials.
     add_test(NAME garage-push-missing-credentials
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-missing-credentials $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-missing-credentials.sh $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
 
     # Abort when given bogus credentials.
     add_test(NAME garage-push-invalid-credentials
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-invalid-credentials $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-invalid-credentials.sh $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
 
     # Abort when given a bogus CA certificate.
     add_test(NAME garage-push-cacert-not-found
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-cacert-not-found $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-cacert-not-found.sh $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
 
     # Recover from the server hanging on to connections.
     add_test(NAME garage-push-server-500
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-500 $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-500.py $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/sota_tools)
 
     # Recover from intermittent errors.
     add_test(NAME garage-push-server-500-every-10-request
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-error_every_10 $<TARGET_FILE:garage-push> 500
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-error_every_10.py $<TARGET_FILE:garage-push> 500
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/sota_tools)
 
     # Recover from intermittent errors.
     add_test(NAME garage-push-server-409-every-10-request
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-error_every_10 $<TARGET_FILE:garage-push> 409
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-error_every_10.py $<TARGET_FILE:garage-push> 409
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/sota_tools)
 
     # Abort when server becomes unresponsive.
     add_test(NAME garage-push-server-500_after_20
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-500_after_20 $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-server-500_after_20.py $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/sota_tools)
 
     # Abort if authorization fails.
     add_test(NAME garage-push-auth-plus-failure
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-auth-plus-failure $<TARGET_FILE:garage-push>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-auth-plus-failure.sh $<TARGET_FILE:garage-push>
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
 
     # Abort if a local object is corrupt
     add_test(NAME garage-push-upload-corrupt-object
-            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-upload-corrupt-object $<TARGET_FILE:garage-push>
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-upload-corrupt-object.py $<TARGET_FILE:garage-push>
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/sota_tools)
 
     if(SOTA_PACKED_CREDENTIALS)
         # Support dry run with auth plus using a real server.
         add_test(NAME garage-push-dry-run
-            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-dry-run $<TARGET_FILE:garage-push>
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-dry-run.sh $<TARGET_FILE:garage-push>
             ${SOTA_PACKED_CREDENTIALS} master
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
         set_tests_properties(garage-push-dry-run PROPERTIES LABELS "credentials")
 
         # Parse OSTree ref or commit refhash.
         add_test(NAME garage-push-dry-run-commit
-            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-dry-run $<TARGET_FILE:garage-push>
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-dry-run.sh $<TARGET_FILE:garage-push>
             ${SOTA_PACKED_CREDENTIALS} 16ef2f2629dc9263fdf3c0f032563a2d757623bbc11cf99df25c3c3f258dccbe
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
         set_tests_properties(garage-push-dry-run-commit PROPERTIES LABELS "credentials")
 
         # Support trace logging.
         add_test(NAME garage-push-trace-logging
-            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-trace-logging $<TARGET_FILE:garage-push>
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-trace-logging.sh $<TARGET_FILE:garage-push>
             ${SOTA_PACKED_CREDENTIALS} WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
         set_tests_properties(garage-push-trace-logging PROPERTIES LABELS "credentials")
 
         if(STRACE)
             # Use a provided CA certificate.
             add_test(NAME garage-push-cacert-used
-                COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-cacert-used $<TARGET_FILE:garage-push>
+                COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-cacert-used.sh $<TARGET_FILE:garage-push>
                 ${SOTA_PACKED_CREDENTIALS} ${STRACE} WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/tests/)
             set_tests_properties(garage-push-cacert-used PROPERTIES LABELS "credentials")
         endif(STRACE)
@@ -316,7 +316,7 @@ if (BUILD_SOTA_TOOLS)
 
     # Abort when given bogus command line options.
     add_test(NAME garage-deploy-bad-option
-    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-bad-option $<TARGET_FILE:garage-deploy>
+    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-bad-option.sh $<TARGET_FILE:garage-deploy>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
     # Support debug logging.
@@ -333,30 +333,30 @@ if (BUILD_SOTA_TOOLS)
 
     # Support dry run with local repos.
     add_test(NAME garage-deploy-dry-run
-    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-dry-run $<TARGET_FILE:garage-deploy>
+    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-dry-run.sh $<TARGET_FILE:garage-deploy>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     set_tests_properties(garage-deploy-dry-run PROPERTIES PASS_REGULAR_EXPRESSION "Dry run. No objects uploaded.")
 
     # Abort if credentials do not support offline signing.
     add_test(NAME garage-deploy-online-signing
-    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-online-signing $<TARGET_FILE:garage-deploy>
+    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-online-signing.sh $<TARGET_FILE:garage-deploy>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     set_tests_properties(garage-deploy-online-signing PROPERTIES PASS_REGULAR_EXPRESSION "Provided push credentials are missing required components to sign Targets metadata")
 
     # Abort if destination server is unavailable.
     add_test(NAME garage-deploy-upload-failed
-    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-upload-failed $<TARGET_FILE:garage-deploy>
+    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-upload-failed.sh $<TARGET_FILE:garage-deploy>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     set_tests_properties(garage-deploy-upload-failed PROPERTIES PASS_REGULAR_EXPRESSION "Upload to treehub failed")
 
     # Abort if commit is not present in source server.
     add_test(NAME garage-deploy-missing-commit
-    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-missing-commit $<TARGET_FILE:garage-deploy>
+    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-missing-commit.sh $<TARGET_FILE:garage-deploy>
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 
     # Abort when given bogus fetch credentials.
     add_test(NAME garage-deploy-missing-fetch-credentials
-    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-missing-fetch-credentials $<TARGET_FILE:garage-deploy>
+    COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-missing-fetch-credentials.sh $<TARGET_FILE:garage-deploy>
             tests/test_data/credentials.zip
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 
@@ -365,7 +365,7 @@ if (BUILD_SOTA_TOOLS)
         # Garage-deploy checks that the fetch credentials are valid before looking
         # at the push credentials, so this requires real SOTA_PACKED_CREDENTIALS
         add_test(NAME garage-deploy-missing-push-credentials
-        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-missing-push-credentials $<TARGET_FILE:garage-deploy>
+        COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-missing-push-credentials.sh $<TARGET_FILE:garage-deploy>
                 ${SOTA_PACKED_CREDENTIALS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
         set_tests_properties(garage-deploy-missing-push-credentials PROPERTIES LABELS "credentials")
@@ -373,7 +373,7 @@ if (BUILD_SOTA_TOOLS)
         # Use garage-sign to offline sign targets for destination repository.
         # Remove local tuf repo generated by garage-sign after use.
         add_test(NAME garage-deploy-offline-signing
-            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-offline-signing $<TARGET_FILE:garage-deploy>
+            COMMAND ${PROJECT_SOURCE_DIR}/tests/sota_tools/test-garage-deploy-offline-signing.sh $<TARGET_FILE:garage-deploy>
             ${SOTA_PACKED_CREDENTIALS} WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
         set_tests_properties(garage-deploy-offline-signing PROPERTIES PASS_REGULAR_EXPRESSION "Success" LABELS "credentials")
     endif(SOTA_PACKED_CREDENTIALS)

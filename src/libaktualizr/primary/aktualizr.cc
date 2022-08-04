@@ -1,5 +1,6 @@
 #include <boost/filesystem.hpp>
 #include <chrono>
+#include <fstream>
 
 #include <sodium.h>
 

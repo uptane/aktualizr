@@ -1,7 +1,7 @@
 #ifndef SQLSTORAGE_BASE_H_
 #define SQLSTORAGE_BASE_H_
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 

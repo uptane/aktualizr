@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/optional.hpp>
 
 #include <sqlite3.h>

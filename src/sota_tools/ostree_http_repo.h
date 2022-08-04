@@ -1,7 +1,7 @@
 #ifndef SOTA_CLIENT_TOOLS_OSTREE_HTTP_REPO_H_
 #define SOTA_CLIENT_TOOLS_OSTREE_HTTP_REPO_H_
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "logging/logging.h"
 #include "ostree_ref.h"

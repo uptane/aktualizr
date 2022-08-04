@@ -1,6 +1,7 @@
 #ifndef PACKAGEMANAGERINTERFACE_H_
 #define PACKAGEMANAGERINTERFACE_H_
 
+#include <fstream>
 #include <mutex>
 #include <string>
 

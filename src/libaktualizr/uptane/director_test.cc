@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "directorrepository.h"
+#include "logging/logging.h"
 #include "test_utils.h"
 #include "utilities/utils.h"
 

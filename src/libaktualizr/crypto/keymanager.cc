@@ -3,10 +3,14 @@
 #include <stdexcept>
 #include <utility>
 
+#include <boost/filesystem.hpp>
 #include <boost/scoped_array.hpp>
 
+#include "crypto/crypto.h"
 #include "crypto/openssl_compat.h"
+#include "http/httpinterface.h"
 #include "libaktualizr/types.h"
+#include "p11engine.h"
 #include "storage/invstorage.h"
 
 // by using constexpr the compiler can optimize out method calls when the
@@ -22,8 +26,8 @@ KeyManager::KeyManager(std::shared_ptr<INvStorage> backend, KeyManagerConfig con
                        const std::shared_ptr<P11EngineGuard> &p11)
     : backend_(std::move(backend)), config_(std::move(config)) {
   if (built_with_p11) {
-    if (!p11_) {
-      p11_ = std::make_shared<P11EngineGuard>(config_.p11);
+    if (!p11) {
+      p11_ = std::make_shared<P11EngineGuard>(config_.p11.module, config_.p11.pass);
     } else {
       p11_ = p11;
     }
@@ -82,7 +86,7 @@ std::string KeyManager::getPkeyFile() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11");
     }
-    pkey_file = (*p11_)->getTlsPkeyId();
+    pkey_file = (*p11_)->getItemFullId(config_.p11.tls_pkey_id);
   }
   if (config_.tls_pkey_source == CryptoSource::kFile) {
     if (tmp_pkey_file && !boost::filesystem::is_empty(tmp_pkey_file->PathString())) {
@@ -98,7 +102,7 @@ std::string KeyManager::getCertFile() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11");
     }
-    cert_file = (*p11_)->getTlsCertId();
+    cert_file = (*p11_)->getItemFullId(config_.p11.tls_clientcert_id);
   }
   if (config_.tls_cert_source == CryptoSource::kFile) {
     if (tmp_cert_file && !boost::filesystem::is_empty(tmp_cert_file->PathString())) {
@@ -114,7 +118,7 @@ std::string KeyManager::getCaFile() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11");
     }
-    ca_file = (*p11_)->getTlsCacertId();
+    ca_file = (*p11_)->getItemFullId(config_.p11.tls_cacert_id);
   }
   if (config_.tls_ca_source == CryptoSource::kFile) {
     if (tmp_ca_file && !boost::filesystem::is_empty(tmp_ca_file->PathString())) {
@@ -130,7 +134,7 @@ std::string KeyManager::getPkey() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11");
     }
-    pkey = (*p11_)->getTlsPkeyId();
+    pkey = (*p11_)->getItemFullId(config_.p11.tls_pkey_id);
   }
   if (config_.tls_pkey_source == CryptoSource::kFile) {
     backend_->loadTlsPkey(&pkey);
@@ -144,7 +148,7 @@ std::string KeyManager::getCert() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11");
     }
-    cert = (*p11_)->getTlsCertId();
+    cert = (*p11_)->getItemFullId(config_.p11.tls_clientcert_id);
   }
   if (config_.tls_cert_source == CryptoSource::kFile) {
     backend_->loadTlsCert(&cert);
@@ -158,7 +162,7 @@ std::string KeyManager::getCa() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11");
     }
-    ca = (*p11_)->getTlsCacertId();
+    ca = (*p11_)->getItemFullId(config_.p11.tls_cacert_id);
   }
   if (config_.tls_ca_source == CryptoSource::kFile) {
     backend_->loadTlsCa(&ca);
@@ -177,7 +181,7 @@ std::string KeyManager::getCN() const {
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11 support, can't extract device_id");
     }
-    if (!(*p11_)->readTlsCert(&cert)) {
+    if (!(*p11_)->readTlsCert(config_.p11.tls_clientcert_id, &cert)) {
       throw std::runtime_error(not_found_cert_message);
     }
   }
@@ -197,7 +201,7 @@ void KeyManager::getCertInfo(std::string *subject, std::string *issuer, std::str
     if (!built_with_p11) {
       throw std::runtime_error("Aktualizr was built without PKCS#11 support, can't extract device certificate");
     }
-    if (!(*p11_)->readTlsCert(&cert)) {
+    if (!(*p11_)->readTlsCert(config_.p11.tls_clientcert_id, &cert)) {
       throw std::runtime_error(not_found_cert_message);
     }
   }
@@ -319,11 +323,11 @@ std::string KeyManager::generateUptaneKeyPair() {
       throw std::runtime_error("Aktualizr was built without PKCS#11 support!");
     }
     // dummy read to check if the key is present
-    if (!(*p11_)->readUptanePublicKey(&primary_public)) {
-      (*p11_)->generateUptaneKeyPair();
+    if (!(*p11_)->readUptanePublicKey(config_.p11.uptane_key_id, &primary_public)) {
+      (*p11_)->generateUptaneKeyPair(config_.p11.uptane_key_id);
     }
     // really read the key
-    if (primary_public.empty() && !(*p11_)->readUptanePublicKey(&primary_public)) {
+    if (primary_public.empty() && !(*p11_)->readUptanePublicKey(config_.p11.uptane_key_id, &primary_public)) {
       throw std::runtime_error("Could not get Uptane keys");
     }
   }
@@ -341,7 +345,7 @@ PublicKey KeyManager::UptanePublicKey() const {
       throw std::runtime_error("Aktualizr was built without PKCS#11 support!");
     }
     // dummy read to check if the key is present
-    if (!(*p11_)->readUptanePublicKey(&primary_public)) {
+    if (!(*p11_)->readUptanePublicKey(config_.p11.uptane_key_id, &primary_public)) {
       throw std::runtime_error("Could not get Uptane public key!");
     }
   }

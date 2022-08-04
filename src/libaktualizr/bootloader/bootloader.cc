@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include "storage/invstorage.h"
 #include "utilities/exceptions.h"

@@ -3,6 +3,7 @@
 #include <glib.h>
 #include <ostree.h>
 #include <sys/stat.h>
+#include <boost/filesystem.hpp>
 #include <cassert>
 #include <cstring>
 #include <iostream>

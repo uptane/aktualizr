@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "json/json.h"
+#include <boost/filesystem.hpp>
 
 #include "libaktualizr/config.h"
 #include "libaktualizr/aktualizr.h"

@@ -1,8 +1,8 @@
 #ifndef IMAGE_REPOSITORY_H_
 #define IMAGE_REPOSITORY_H_
 
-#include <map>
-#include <vector>
+#include <memory>
+#include <string>
 
 #include "uptanerepository.h"
 

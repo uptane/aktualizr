@@ -1,7 +1,7 @@
 #ifndef AKTUALIZR_BOOTSTRAP_H
 #define AKTUALIZR_BOOTSTRAP_H
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <string>
 
 class Bootstrap {

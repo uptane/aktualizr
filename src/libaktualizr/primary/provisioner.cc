@@ -6,6 +6,7 @@
 #include <boost/scoped_array.hpp>
 
 #include "bootstrap/bootstrap.h"
+#include "crypto/crypto.h"
 #include "crypto/keymanager.h"
 #include "logging/logging.h"
 

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 
 #include "cert_provider_test.h"

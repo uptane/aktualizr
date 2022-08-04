@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
-#include <boost/property_tree/ini_parser.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/property_tree/ptree_fwd.hpp>
 
 #include "libaktualizr/types.h"
 
@@ -197,13 +197,7 @@ class BaseConfig {
 
   void updateFromDirs(const std::vector<boost::filesystem::path>& configs);
 
-  static void checkDirs(const std::vector<boost::filesystem::path>& configs) {
-    for (const auto& config : configs) {
-      if (!boost::filesystem::exists(config)) {
-        throw std::runtime_error("Config directory " + config.string() + " does not exist.");
-      }
-    }
-  }
+  static void checkDirs(const std::vector<boost::filesystem::path>& configs);
 
   std::vector<boost::filesystem::path> config_dirs_ = {"/usr/lib/sota/conf.d", "/etc/sota/conf.d/"};
 };

@@ -4,14 +4,13 @@
 #include <ostream>
 #include <sstream>
 
-#include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <utility>
 
 #include "crypto/crypto.h"
 #include "libaktualizr/types.h"
 #include "logging/logging.h"
-#include "utilities/exceptions.h"
+#include "uptane/exceptions.h"
 
 using Uptane::Target;
 using Uptane::Version;
@@ -144,7 +143,7 @@ Target::Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint
 
 Target Target::Unknown() {
   Json::Value t_json;
-  t_json["hashes"]["sha256"] = boost::algorithm::to_lower_copy(boost::algorithm::hex(Crypto::sha256digest("")));
+  t_json["hashes"]["sha256"] = Crypto::sha256digestHex("");
   t_json["length"] = 0;
   Uptane::Target target{"unknown", t_json};
 

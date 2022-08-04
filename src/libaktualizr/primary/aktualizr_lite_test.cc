@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <future>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -14,6 +13,7 @@
 #include "package_manager/ostreemanager.h"
 #include "storage/sqlstorage.h"
 #include "test_utils.h"
+#include "uptane/fetcher.h"
 #include "uptane/imagerepository.h"
 
 class TufRepoMock {

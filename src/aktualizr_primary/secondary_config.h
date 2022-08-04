@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 #include <json/json.h>
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "libaktualizr/types.h"
 #include "primary/secondary_config.h"

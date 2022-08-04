@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
+
 #include <memory>
 
+#include <boost/filesystem.hpp>
 #include "json/json.h"
 
 #include "crypto/keymanager.h"
+#include "crypto/p11engine.h"
 #include "libaktualizr/config.h"
 #include "storage/sqlstorage.h"
 #include "utilities/utils.h"
@@ -111,15 +114,32 @@ TEST(KeyManager, InitFileValid) {
 }
 
 #ifdef BUILD_P11
+
+class P11KeyManager : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() { p11_ = std::make_shared<P11EngineGuard>(module_path_, pass_); }
+
+  static void TearDownTestSuite() { p11_.reset(); }
+
+  static boost::filesystem::path module_path_;
+  static std::string pass_;
+  static std::shared_ptr<P11EngineGuard> p11_;
+};
+
+boost::filesystem::path P11KeyManager::module_path_{TEST_PKCS11_MODULE_PATH};
+std::string P11KeyManager::pass_{"1234"};
+std::shared_ptr<P11EngineGuard> P11KeyManager::p11_{nullptr};
+
 /* Sign and verify a file with RSA via PKCS#11. */
-TEST(KeyManager, SignTufPkcs11) {
+TEST_F(P11KeyManager, SignTufPkcs11) {
+  P11Config p11_conf;
+  p11_conf.module = module_path_;
+  p11_conf.pass = pass_;
+  p11_conf.uptane_key_id = "03";
+
   Json::Value tosign_json;
   tosign_json["mykey"] = "value";
 
-  P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
-  p11_conf.uptane_key_id = "03";
   Config config;
   config.p11 = p11_conf;
   config.uptane.key_source = CryptoSource::kPkcs11;
@@ -127,7 +147,7 @@ TEST(KeyManager, SignTufPkcs11) {
   TemporaryDirectory temp_dir;
   config.storage.path = temp_dir.Path();
   std::shared_ptr<INvStorage> storage = INvStorage::newStorage(config.storage);
-  KeyManager keys(storage, config.keymanagerConfig());
+  KeyManager keys(storage, config.keymanagerConfig(), p11_);
 
   EXPECT_GT(keys.UptanePublicKey().Value().size(), 0);
   Json::Value signed_json = keys.signTuf(tosign_json);
@@ -138,13 +158,13 @@ TEST(KeyManager, SignTufPkcs11) {
 }
 
 /* Generate Uptane keys, use them for signing, and verify them. */
-TEST(KeyManager, DISABLED_GenSignTufPkcs11) {
+TEST_F(P11KeyManager, GenSignTufPkcs11) {
   Json::Value tosign_json;
   tosign_json["mykey"] = "value";
 
   P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
+  p11_conf.module = module_path_;
+  p11_conf.pass = pass_;
   p11_conf.uptane_key_id = "06";
   Config config;
   config.p11 = p11_conf;
@@ -153,10 +173,10 @@ TEST(KeyManager, DISABLED_GenSignTufPkcs11) {
   TemporaryDirectory temp_dir;
   config.storage.path = temp_dir.Path();
   std::shared_ptr<INvStorage> storage = INvStorage::newStorage(config.storage);
-  KeyManager keys(storage, config.keymanagerConfig());
+  KeyManager keys(storage, config.keymanagerConfig(), p11_);
 
-  P11EngineGuard p11(config.p11);
-  EXPECT_TRUE(p11->generateUptaneKeyPair());
+  P11EngineGuard p11(config.p11.module, config.p11.pass);
+  EXPECT_TRUE(p11->generateUptaneKeyPair(p11_conf.uptane_key_id));
 
   EXPECT_GT(keys.UptanePublicKey().Value().size(), 0);
   Json::Value signed_json = keys.signTuf(tosign_json);
@@ -164,12 +184,12 @@ TEST(KeyManager, DISABLED_GenSignTufPkcs11) {
   EXPECT_NE(signed_json["signatures"][0]["sig"].asString().size(), 0);
 }
 
-/* Generate RSA keypairs via PKCS#11. */
-TEST(KeyManager, DISABLED_InitPkcs11Valid) {
+///* Generate RSA keypairs via PKCS#11. */
+TEST_F(P11KeyManager, InitPkcs11Valid) {
   Config config;
   P11Config p11_conf;
-  p11_conf.module = TEST_PKCS11_MODULE_PATH;
-  p11_conf.pass = "1234";
+  p11_conf.module = module_path_;
+  p11_conf.pass = pass_;
   p11_conf.tls_pkey_id = "02";
   p11_conf.tls_clientcert_id = "01";
   config.p11 = p11_conf;
@@ -183,7 +203,7 @@ TEST(KeyManager, DISABLED_InitPkcs11Valid) {
   // Getting the CA from the HSM is not currently supported.
   std::string ca = Utils::readFile("tests/test_data/prov/root.crt");
   storage->storeTlsCa(ca);
-  KeyManager keys(storage, config.keymanagerConfig());
+  KeyManager keys(storage, config.keymanagerConfig(), p11_);
   EXPECT_TRUE(keys.getCaFile().empty());
   EXPECT_FALSE(keys.getPkeyFile().empty());
   EXPECT_FALSE(keys.getCertFile().empty());

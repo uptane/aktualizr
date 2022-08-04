@@ -5,6 +5,7 @@
 
 #include <boost/filesystem.hpp>
 
+#include "crypto/crypto.h"
 #include "libaktualizr/types.h"
 #include "repo.h"
 #include "storage/sqlstorage.h"

@@ -1,6 +1,10 @@
 #include "directorrepository.h"
 
+#include "fetcher.h"
+#include "logging/logging.h"
 #include "storage/invstorage.h"
+#include "uptane/exceptions.h"
+#include "utilities/utils.h"
 
 #include <boost/filesystem.hpp>
 

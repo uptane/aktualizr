@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
 
 #include "bootloader.h"
+
+#include <boost/filesystem.hpp>
+
 #include "storage/invstorage.h"
+#include "utilities/utils.h"
 
 /* Check that the reboot detection feature works */
 TEST(bootloader, detectReboot) {

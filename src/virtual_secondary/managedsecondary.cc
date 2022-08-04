@@ -1,7 +1,6 @@
 #include "managedsecondary.h"
 
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include <boost/algorithm/hex.hpp>
@@ -14,47 +13,45 @@
 #include "uptane/imagerepository.h"
 #include "uptane/manifest.h"
 #include "uptane/tuf.h"
-#include "utilities/exceptions.h"
-#include "utilities/fault_injection.h"
 #include "utilities/utils.h"
 
 namespace Primary {
 
 ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) : sconfig(std::move(sconfig_in)) {
-  struct stat st {};
+  struct stat stat_buf {};
   if (!boost::filesystem::is_directory(sconfig.metadata_path)) {
     Utils::createDirectories(sconfig.metadata_path, S_IRWXU);
   }
-  if (stat(sconfig.metadata_path.c_str(), &st) < 0) {
+  if (stat(sconfig.metadata_path.c_str(), &stat_buf) < 0) {
     throw std::runtime_error(std::string("Could not check metadata directory permissions: ") + std::strerror(errno));
   }
-  if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+  if ((stat_buf.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
     throw std::runtime_error("Secondary metadata directory has unsafe permissions");
   }
 
   if (!boost::filesystem::is_directory(sconfig.full_client_dir)) {
     Utils::createDirectories(sconfig.full_client_dir, S_IRWXU);
   }
-  if (stat(sconfig.full_client_dir.c_str(), &st) < 0) {
+  if (stat(sconfig.full_client_dir.c_str(), &stat_buf) < 0) {
     throw std::runtime_error(std::string("Could not check Secondary storage directory permissions: ") +
                              std::strerror(errno));
   }
-  if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+  if ((stat_buf.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
     throw std::runtime_error("Secondary storage directory has unsafe permissions");
   }
 
   std::string public_key_string;
-  if (!loadKeys(&public_key_string, &private_key)) {
-    if (!Crypto::generateKeyPair(sconfig.key_type, &public_key_string, &private_key)) {
+  bool did_load_keys = loadKeys(&public_key_string, &private_key);
+  if (!did_load_keys) {
+    bool generated_keys_ok = Crypto::generateKeyPair(sconfig.key_type, &public_key_string, &private_key);
+    if (!generated_keys_ok) {
       LOG_ERROR << "Could not generate RSA keys for secondary " << ManagedSecondary::getSerial() << "@"
                 << sconfig.ecu_hardware_id;
       throw std::runtime_error("Unable to generate secondary RSA keys");
     }
+    storeKeys(public_key_string, private_key);
   }
   public_key_ = PublicKey(public_key_string, sconfig.key_type);
-
-  // FIXME: This should probably be inside the condition above.
-  storeKeys(public_key_.Value(), private_key);
 
   storage_config_.path = sconfig.full_client_dir;
   storage_ = INvStorage::newStorage(storage_config_);
@@ -305,6 +302,8 @@ bool ManagedSecondary::getFirmwareInfo(Uptane::InstalledImageInfo &firmware_info
 void ManagedSecondary::storeKeys(const std::string &pub_key, const std::string &priv_key) {
   Utils::writeFile((sconfig.full_client_dir / sconfig.ecu_private_key), priv_key);
   Utils::writeFile((sconfig.full_client_dir / sconfig.ecu_public_key), pub_key);
+  sync();
+  did_store_keys++;  // For testing
 }
 
 bool ManagedSecondary::loadKeys(std::string *pub_key, std::string *priv_key) {

@@ -1,6 +1,7 @@
 #ifndef OSTREE_H_
 #define OSTREE_H_
 
+#include <boost/optional/optional.hpp>
 #include <memory>
 #include <string>
 #include <unordered_map>

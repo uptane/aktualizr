@@ -1,5 +1,6 @@
 #include "bootstrap.h"
 
+#include <fstream>
 #include <sstream>
 
 #include "crypto/crypto.h"

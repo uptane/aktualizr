@@ -48,10 +48,15 @@ docker build -t "${IMG_TAG}" -f "$DOCKERFILE" .
 
 # Prevent DOCKER_OPTS[@]: unbound variable
 # From SO: https://stackoverflow.com/a/34361807/6096518
-OPTS_STR=${DOCKER_OPTS[*]+"${DOCKER_OPTS[*]}"}
+OPTS_STR="${DOCKER_OPTS[*]+"${DOCKER_OPTS[*]}"}"
 
 # run under current user, mounting current directory at the same location in the container
 #
 # note: we've switched back to running the tests as root on CI when we switched from Jenkins to Gitlab
 # it would be great to revert to the old way at some point
-docker run -u "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" --rm "$OPTS_STR" -it "${IMG_TAG}" "$@"
+
+if [[ -z "${OPTS_STR}" ]]; then
+    docker run -u "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" --rm -it "${IMG_TAG}" "$@"
+else
+    docker run -u "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" --rm "${OPTS_STR}" -it "${IMG_TAG}" "$@"
+fi
