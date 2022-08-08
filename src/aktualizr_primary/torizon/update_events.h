@@ -5,7 +5,6 @@
 #include "update_lock.h"
 
 class UpdateEvents {
-
   boost::filesystem::path update_lock_file = "/run/lock/aktualizr-lock";
 
   UpdateEvents(Aktualizr *a) : aktualizr(a), lock(update_lock_file) {}

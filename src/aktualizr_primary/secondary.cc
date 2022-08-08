@@ -35,6 +35,13 @@ static SecondaryFactoryRegistry sec_factory_registry = {
        auto virtual_sec_cgf = dynamic_cast<const VirtualSecondaryConfig&>(config);
        return Secondaries({std::make_shared<VirtualSecondary>(virtual_sec_cgf)});
      }},
+#ifdef TORIZON
+    {DockerComposeSecondaryConfig::Type,
+     [](const SecondaryConfig& config, Aktualizr& /* unused */) {
+       auto docker_compose_sec_cgf = dynamic_cast<const DockerComposeSecondaryConfig&>(config);
+       return Secondaries({std::make_shared<DockerComposeSecondary>(docker_compose_sec_cgf)});
+     }},
+#endif
 #ifdef BUILD_GENERIC_SECONDARY
     {TorizonGenericSecondaryConfig::Type,
      [](const SecondaryConfig& config, Aktualizr& /* unused */) {

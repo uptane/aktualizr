@@ -1,15 +1,15 @@
 #include <boost/filesystem/path.hpp>
 #include <sstream>
 
+#include "compose_manager.h"
 #include "dockercomposesecondary.h"
 #include "dockerofflineloader.h"
-#include "uptane/manifest.h"
 #include "libaktualizr/types.h"
 #include "logging/logging.h"
+#include "storage/invstorage.h"
+#include "uptane/manifest.h"
 #include "utilities/fault_injection.h"
 #include "utilities/utils.h"
-#include "compose_manager.h"
-#include "storage/invstorage.h"
 
 using std::stringstream;
 
@@ -19,7 +19,8 @@ namespace Primary {
 
 const char* const DockerComposeSecondaryConfig::Type = "docker-compose";
 
-DockerComposeSecondaryConfig::DockerComposeSecondaryConfig(const Json::Value& json_config) : ManagedSecondaryConfig(Type) {
+DockerComposeSecondaryConfig::DockerComposeSecondaryConfig(const Json::Value& json_config)
+    : ManagedSecondaryConfig(Type) {
   partial_verifying = json_config["partial_verifying"].asBool();
   ecu_serial = json_config["ecu_serial"].asString();
   ecu_hardware_id = json_config["ecu_hardware_id"].asString();
@@ -89,7 +90,7 @@ DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryCo
  * - For offline updates it would likely involve validating the Docker images?
  */
 
-data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &target, const InstallInfo& info) {
+data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& target, const InstallInfo& info) {
   auto tgt_stream = secondary_provider_->getTargetFileHandle(target);
 
   /* Here we try to make container updates "as atomic as possible". So we save
@@ -151,12 +152,14 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target &t
   }
 }
 
-bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path &compose_in,
-                                              const std::string &compose_sha256,
-                                              const boost::filesystem::path &images_path,
-                                              const boost::filesystem::path &manifests_path,
-                                              boost::filesystem::path *compose_out) {
-  if (compose_out != nullptr) { compose_out->clear(); }
+bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path& compose_in,
+                                              const std::string& compose_sha256,
+                                              const boost::filesystem::path& images_path,
+                                              const boost::filesystem::path& manifests_path,
+                                              boost::filesystem::path* compose_out) {
+  if (compose_out != nullptr) {
+    compose_out->clear();
+  }
 
   boost::filesystem::path compose_new = compose_in;
   compose_new.replace_extension(".off");
@@ -172,13 +175,15 @@ bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path &com
     dcloader.writeOfflineComposeFile(compose_new);
     // TODO: [OFFUPD] Define how to perform the offline-online transformation (related to getFirmwareInfo()).
 
-  } catch (std::runtime_error &exc) {
+  } catch (std::runtime_error& exc) {
     // TODO: Consider throwing/handling custom exception types from dockerofflineloader and dockertarballloader.
     LOG_WARNING << "Offline loading failed: " << exc.what();
     return false;
   }
 
-  if (compose_out != nullptr) { *compose_out = compose_new; }
+  if (compose_out != nullptr) {
+    *compose_out = compose_new;
+  }
 
   return true;
 }

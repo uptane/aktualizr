@@ -10,7 +10,9 @@
 #include "libaktualizr/types.h"
 #include "primary/secondary_config.h"
 #include "virtualsecondary.h"
-
+#ifdef TORIZON
+#include "dockercomposesecondary.h"
+#endif
 #ifdef BUILD_GENERIC_SECONDARY
 #include "torizongenericsecondary.h"
 #endif
@@ -79,6 +81,9 @@ class JsonConfigParser : public SecondaryConfigParser {
  private:
   static void createIPSecondariesCfg(Configs& configs, const Json::Value& json_ip_sec_cfg);
   static void createVirtualSecondariesCfg(Configs& configs, const Json::Value& json_virtual_sec_cfg);
+#ifdef TORIZON
+  static void createDockerComposeSecondariesCfg(Configs& configs, const Json::Value& json_docker_compose_sec_cfg);
+#endif
 #ifdef BUILD_GENERIC_SECONDARY
   static void createTorizonGenericSecondariesCfg(Configs& configs, const Json::Value& json_torgen_sec_cfg);
 #endif
@@ -89,6 +94,9 @@ class JsonConfigParser : public SecondaryConfigParser {
   SecondaryConfigFactoryRegistry sec_cfg_factory_registry_ = {
       {IPSecondariesConfig::Type, createIPSecondariesCfg},
       {VirtualSecondaryConfig::Type, createVirtualSecondariesCfg},
+#ifdef TORIZON
+      {DockerComposeSecondaryConfig::Type, createDockerComposeSecondariesCfg},
+#endif
 #ifdef BUILD_GENERIC_SECONDARY
       {TorizonGenericSecondaryConfig::Type, createTorizonGenericSecondariesCfg},
 #endif

@@ -21,8 +21,7 @@ std::vector<std::string> CommandRunner::runResult(const std::string& cmd) {
   // TODO: Review: log sometimes seems to be lost. E.g.
   // ...aktualizr-torizon[817]: emoving not used containers, networks an
   // ...aktualizr-torizon[1396]: emoving not used containers, networks an
-  while (c.running() && std::getline(pipe, line) && !line.empty())
-      result.push_back(line);
+  while (c.running() && std::getline(pipe, line) && !line.empty()) result.push_back(line);
 
   c.wait();
 

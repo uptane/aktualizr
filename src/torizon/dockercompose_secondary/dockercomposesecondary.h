@@ -1,11 +1,11 @@
 #ifndef PRIMARY_DOCKERCOMPOSESECONDARY_H_
 #define PRIMARY_DOCKERCOMPOSESECONDARY_H_
 
-#include <string>
 #include <boost/filesystem.hpp>
+#include <string>
 
-#include "managedsecondary.h"
 #include "libaktualizr/types.h"
+#include "managedsecondary.h"
 
 namespace Primary {
 
@@ -36,19 +36,16 @@ class DockerComposeSecondary : public ManagedSecondary {
 
  private:
   bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const override;
-  data::InstallationResult install(const Uptane::Target &target, const InstallInfo& info) override;
+  data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
   void validateInstall();
 
   /**
    * Load Docker images from an offline-update image.
    */
-  bool loadDockerImages(const boost::filesystem::path &compose_in,
-                        const std::string &compose_sha256,
-                        const boost::filesystem::path &images_path,
-                        const boost::filesystem::path &manifests_path,
-                        boost::filesystem::path *compose_out = nullptr);
+  bool loadDockerImages(const boost::filesystem::path& compose_in, const std::string& compose_sha256,
+                        const boost::filesystem::path& images_path, const boost::filesystem::path& manifests_path,
+                        boost::filesystem::path* compose_out = nullptr);
   bool pendingPrimaryUpdate();
-
 };
 
 }  // namespace Primary

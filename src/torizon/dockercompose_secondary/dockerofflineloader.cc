@@ -1,12 +1,13 @@
 #include "dockerofflineloader.h"
-#include "dockertarballloader.h"
 #include "crypto/crypto.h"
+#include "dockertarballloader.h"
 #include "logging/logging.h"
 #include "utilities/utils.h"
 
 #include <sys/utsname.h>
 #include <algorithm>
 #include <cassert>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -15,8 +16,8 @@
 #include <vector>
 
 #include <fcntl.h>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/filesystem/path.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 static const std::string SHA256_PREFIX = "sha256:";
 static const std::string JSON_EXT = ".json";
@@ -38,25 +39,22 @@ static constexpr std::size_t MAX_COMPOSE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
  * TODO: Make into a macro or function template.
  */
 static void ensure(bool cond, const std::string &message) {
-  if (! cond) {
+  if (!cond) {
     throw std::runtime_error(message.c_str());
   }
 }
 
 static void ensure(bool cond, const char *message) {
-  if (! cond) {
+  if (!cond) {
     throw std::runtime_error(message);
   }
 }
 
-bool loadManifest(
-    const std::string &req_digest,
-    const boost::filesystem::path manifests_dir, Json::Value &target) {
-
+bool loadManifest(const std::string &req_digest, const boost::filesystem::path manifests_dir, Json::Value &target) {
   // Open manifest file and check its size.
   const boost::filesystem::path fname(manifests_dir / (req_digest + JSON_EXT));
   std::ifstream input(fname.string(), std::ios::binary);
-  if (! input) {
+  if (!input) {
     LOG_WARNING << "Could not open manifest " << fname;
     return false;
   }
@@ -72,7 +70,7 @@ bool loadManifest(
 
   // Load manifest file into memory.
   typedef std::vector<uint8_t> ManifestBufferType;
-  auto buffer = std::make_unique<ManifestBufferType>(orglen + 1);
+  auto buffer = std_::make_unique<ManifestBufferType>(orglen + 1);
 
   input.read(reinterpret_cast<char *>(buffer->data()), buffer->size());
   const uintmax_t len = input.gcount();
@@ -95,7 +93,7 @@ bool loadManifest(
   Json::CharReaderBuilder builder;
   Json::String errs;
   bool status = Json::parseFromStream(builder, source, &target, &errs);
-  if (! status) {
+  if (!status) {
     LOG_WARNING << "Parsing failed for manifest " << fname;
     return false;
   }
@@ -103,9 +101,7 @@ bool loadManifest(
   return true;
 }
 
-bool platformMatches(
-    const std::string plat1, const std::string plat2, unsigned *grade) {
-
+bool platformMatches(const std::string plat1, const std::string plat2, unsigned *grade) {
   // TODO: Determine if there are defined rules for how to compare platforms.
   //       e.g. can we say that linux/arm/v7 encompasses linux/arm/v6?
 
@@ -128,7 +124,7 @@ bool platformMatches(
   bool match = true;
   unsigned _grade = 0;
 
-  for (auto it1=plat1_lst.begin(), it2=plat2_lst.begin(); ; it1++, it2++) {
+  for (auto it1 = plat1_lst.begin(), it2 = plat2_lst.begin();; it1++, it2++) {
     if (it1 == plat1_lst.end() || it2 == plat2_lst.end()) break;
     if (*it1 != *it2) {
       match = false;
@@ -163,8 +159,7 @@ std::string getDockerPlatform() {
   // See https://stackoverflow.com/questions/45125516/possible-values-for-uname-m.
   if (boost::starts_with(machine, "armv7")) {
     platform = "linux/arm/v7";
-  } else if (boost::starts_with(machine, "aarch64") ||
-             boost::starts_with(machine, "armv8")) {
+  } else if (boost::starts_with(machine, "aarch64") || boost::starts_with(machine, "armv8")) {
     platform = "linux/arm64";
   } else if (machine == "x86_64") {
     platform = "linux/amd64";
@@ -175,19 +170,15 @@ std::string getDockerPlatform() {
   return platform;
 }
 
-void splitDigestFromName(
-    const std::string &name,
-    std::string *name_nodigest, std::string *digest, bool removePrefix) {
-
+void splitDigestFromName(const std::string &name, std::string *name_nodigest, std::string *digest, bool removePrefix) {
   // Make sure prefix is present.
   std::size_t pos = name.find(SHA256_PREFIX);
-  ensure(pos != std::string::npos,
-         "Image name '" + name + "' not specified by digest");
+  ensure(pos != std::string::npos, "Image name '" + name + "' not specified by digest");
 
   // Get image name without digest.
   if (name_nodigest) {
     ensure(pos > 1, "Bad format of image name '" + name + "'");
-    *name_nodigest = name.substr(0, pos-1);
+    *name_nodigest = name.substr(0, pos - 1);
   }
 
   // Get the digest (with or without prefix).
@@ -236,9 +227,7 @@ class LargeTemporaryDirectory {
   ~LargeTemporaryDirectory();
   boost::filesystem::path Path() const { return tmp_name_; }
   std::string PathString() const { return Path().string(); }
-  boost::filesystem::path operator/(const boost::filesystem::path &subdir) const {
-    return (tmp_name_ / subdir);
-  }
+  boost::filesystem::path operator/(const boost::filesystem::path &subdir) const { return (tmp_name_ / subdir); }
 
  private:
   boost::filesystem::path tmp_name_;
@@ -246,8 +235,7 @@ class LargeTemporaryDirectory {
 
 boost::filesystem::path get_large_tmp_dir() {
   static const boost::filesystem::path large_tmp_dir{"/var/tmp/"};
-  if (boost::filesystem::exists(large_tmp_dir) &&
-      boost::filesystem::is_directory(large_tmp_dir)) {
+  if (boost::filesystem::exists(large_tmp_dir) && boost::filesystem::is_directory(large_tmp_dir)) {
     LOG_TRACE << "Temporary directory set to " << large_tmp_dir;
     return large_tmp_dir;
   }
@@ -256,8 +244,7 @@ boost::filesystem::path get_large_tmp_dir() {
 }
 
 LargeTemporaryDirectory::LargeTemporaryDirectory(const std::string &hint)
-    : tmp_name_(get_large_tmp_dir() /
-                boost::filesystem::unique_path(std::string("%%%%-%%%%-").append(hint))) {
+    : tmp_name_(get_large_tmp_dir() / boost::filesystem::unique_path(std::string("%%%%-%%%%-").append(hint))) {
   Utils::createDirectories(tmp_name_, S_IRWXU);
 }
 
@@ -275,31 +262,24 @@ const std::string DockerManifestWrapper::MEDIA_TYPE::SINGLE_PLAT =
 const std::string DockerManifestWrapper::MEDIA_TYPE::MULTI_PLAT =
     "application/vnd.docker.distribution.manifest.list.v2+json";
 
-DockerManifestWrapper::DockerManifestWrapper(const Json::Value &manifest)
-  : manifest_(manifest)
-{
+DockerManifestWrapper::DockerManifestWrapper(const Json::Value &manifest) : manifest_(manifest) {
   // Ensure this is a media type we understand.
   const std::string media_type = getMediaType();
-  ensure((media_type == MEDIA_TYPE::SINGLE_PLAT) ||
-         (media_type == MEDIA_TYPE::MULTI_PLAT), "Bad manifest type");
+  ensure((media_type == MEDIA_TYPE::SINGLE_PLAT) || (media_type == MEDIA_TYPE::MULTI_PLAT), "Bad manifest type");
 }
 
-bool DockerManifestWrapper::isMultiPlatform() const {
-  return getMediaType() == MEDIA_TYPE::MULTI_PLAT;
-}
+bool DockerManifestWrapper::isMultiPlatform() const { return getMediaType() == MEDIA_TYPE::MULTI_PLAT; }
 
-void DockerManifestWrapper::findBestPlatform(
-    std::string req_platform,
-    std::string *sel_platform, std::string *sel_digest) const {
+void DockerManifestWrapper::findBestPlatform(std::string req_platform, std::string *sel_platform,
+                                             std::string *sel_digest) const {
   ensureMediaType(MEDIA_TYPE::MULTI_PLAT);
 
   struct ManInfo {
     unsigned grade_;
     std::string digest_;
     std::string platform_;
-    ManInfo(unsigned grade,
-            const std::string &digest, const std::string platform)
-      : grade_(grade), digest_(digest), platform_(platform) {}
+    ManInfo(unsigned grade, const std::string &digest, const std::string platform)
+        : grade_(grade), digest_(digest), platform_(platform) {}
   };
 
   // Go over all manifests in the manifest list.
@@ -313,15 +293,13 @@ void DockerManifestWrapper::findBestPlatform(
     }
   }
 
-  ensure(! grade_digest_pairs.empty(),
-         "There are no images appropriate for platform " + req_platform);
+  ensure(!grade_digest_pairs.empty(), "There are no images appropriate for platform " + req_platform);
 
   if (grade_digest_pairs.size() >= 2) {
     // Sort in decreasing order of grades.
     // LOG_DEBUG << "Sorting " << grade_digest_pairs.size() << " elements";
-    std::sort(
-        grade_digest_pairs.begin(), grade_digest_pairs.end(),
-        [](const ManInfo &a, const ManInfo &b) { return a.grade_ > b.grade_; });
+    std::sort(grade_digest_pairs.begin(), grade_digest_pairs.end(),
+              [](const ManInfo &a, const ManInfo &b) { return a.grade_ > b.grade_; });
     ensure(grade_digest_pairs[0].grade_ > grade_digest_pairs[1].grade_,
            "There are multiple images appropriate for platform " + req_platform);
   }
@@ -344,8 +322,7 @@ std::string DockerManifestWrapper::getConfigDigest(bool removePrefix) const {
 }
 
 std::string DockerManifestWrapper::platformString(const Json::Value &plat) const {
-  ensure(plat.isMember("os") && plat.isMember("architecture"),
-         "Bad platform spec in manifest");
+  ensure(plat.isMember("os") && plat.isMember("architecture"), "Bad platform spec in manifest");
 
   std::string platform = plat["os"].asString();
   platform += "/";
@@ -373,23 +350,21 @@ void DockerManifestWrapper::ensureMediaType(const std::string &req_type) const {
   ensure(getMediaType() == req_type, "Bad mediaType of manifest");
 }
 
-
 // ---
 // DockerManifestsCache class
 // ---
 
-DockerManifestsCache::ManifestPtr
-DockerManifestsCache::loadByDigest(const std::string &digest) {
+DockerManifestsCache::ManifestPtr DockerManifestsCache::loadByDigest(const std::string &digest) {
   // Get digest without the sha256 prefix.
   std::string digest_nopref = removeDigestPrefix(digest);
   ensure(digest_nopref.length() == 64, "Bad digest format");
 
   // Try to find manifest in cache first.
-  DigestToManifestCacheElemMap::iterator it = manifests_cache_.find(digest_nopref);
-  if (it != manifests_cache_.end()) {
+  DigestToManifestCacheElemMap::iterator dit = manifests_cache_.find(digest_nopref);
+  if (dit != manifests_cache_.end()) {
     LOG_TRACE << "cache: hit for manifest with digest " << digest_nopref;
     // Update access index and return it.
-    ManifestCacheElem &cache_elem = it->second;
+    ManifestCacheElem &cache_elem = dit->second;
     cache_elem.first = ++access_counter_;
     return cache_elem.second;
   }
@@ -447,12 +422,9 @@ const std::regex DockerComposeFile::plat_name_re{"^    (?:platform):\\s*(\"?)(\\
  * Special version of getline() that reads text from input including the
  * newline character.
  */
-static bool raw_getline(
-    std::istream &input,
-    std::string &line, std::size_t maxcnt, char delim='\n') {
+static bool raw_getline(std::istream &input, std::string &line, std::size_t maxcnt, char delim = '\n') {
   line.clear();
-  if (! input.good())
-    return false;
+  if (!input.good()) return false;
 
   char ch;
   std::size_t cnt = 0;
@@ -462,23 +434,20 @@ static bool raw_getline(
       throw std::runtime_error("Line too long");
     }
     line += ch;
-    if (ch == delim)
-      break;
+    if (ch == delim) break;
   }
 
   return true;
 }
 
-DockerComposeFile::DockerComposeFile(const boost::filesystem::path &compose_path) {
-  read(compose_path);
-}
+DockerComposeFile::DockerComposeFile(const boost::filesystem::path &compose_path) { read(compose_path); }
 
 bool DockerComposeFile::read(const boost::filesystem::path &compose_path) {
   compose_lines_.clear();
 
   // Open file in binary mode so that line breaks are preserved.
   std::ifstream input(compose_path.string(), std::ios::binary);
-  if (! input) {
+  if (!input) {
     LOG_WARNING << "Could not open compose-file " << compose_path;
     return false;
   }
@@ -499,8 +468,7 @@ bool DockerComposeFile::read(const boost::filesystem::path &compose_path) {
     }
 
   } catch (std::runtime_error &exc) {
-    LOG_WARNING << "Error reading compose-file " << compose_path
-                << ": " << exc.what();
+    LOG_WARNING << "Error reading compose-file " << compose_path << ": " << exc.what();
     return false;
   }
 
@@ -517,7 +485,6 @@ void DockerComposeFile::dumpLines() {
 }
 
 bool DockerComposeFile::getServices(StringToImagePlatformPair &dest, bool verbose) {
-
   // Start with clean destination.
   dest.clear();
 
@@ -525,7 +492,7 @@ bool DockerComposeFile::getServices(StringToImagePlatformPair &dest, bool verbos
 
   std::string curr_service, curr_image, curr_platform;
   auto store_current = [&]() {
-    if ((! curr_service.empty()) && (! curr_image.empty())) {
+    if ((!curr_service.empty()) && (!curr_image.empty())) {
       // LOG_INFO << "Storing: " << curr_service << " => " << curr_image
       //          << " [" << na_if_empty(curr_platform) << "]";
       dest.insert({curr_service, ImagePlatformPair(curr_image, curr_platform)});
@@ -554,7 +521,7 @@ bool DockerComposeFile::getServices(StringToImagePlatformPair &dest, bool verbos
       continue;
     }
 
-    if (! in_svc_section) {
+    if (!in_svc_section) {
       // LOG_INFO << "Ignore [not in services section]" << std::endl;
       continue;
     }
@@ -579,9 +546,8 @@ bool DockerComposeFile::getServices(StringToImagePlatformPair &dest, bool verbos
   if (verbose) {
     LOG_DEBUG << "Services in docker-compose:";
     for (auto &mapping : dest) {
-      LOG_DEBUG << "* " << mapping.first << ": "
-                << mapping.second.getImage()
-                << " [" << na_if_empty(mapping.second.getPlatform()) << "]";
+      LOG_DEBUG << "* " << mapping.first << ": " << mapping.second.getImage() << " ["
+                << na_if_empty(mapping.second.getPlatform()) << "]";
     }
   }
 
@@ -614,7 +580,7 @@ void DockerComposeFile::forwardTransform(const ServiceToImageMapping &service_im
       continue;
     }
 
-    if (! in_svc_section) {
+    if (!in_svc_section) {
       save(line);
       continue;
     }
@@ -651,8 +617,7 @@ void DockerComposeFile::forwardTransform(const ServiceToImageMapping &service_im
   if (new_compose_lines.size()) {
     // Use the first line as a template (so newline ending is kept).
     std::regex non_spaces{"^[^\\r\\n]*"};
-    std::string first_line = std::regex_replace(
-        new_compose_lines.front(), non_spaces, offline_mode_header);
+    std::string first_line = std::regex_replace(new_compose_lines.front(), non_spaces, offline_mode_header);
     new_compose_lines.push_front(first_line);
   }
 
@@ -665,7 +630,7 @@ void DockerComposeFile::backwardTransform() {
   // Check marker at first line.
   if (compose_lines_.size()) {
     const std::string first_line = compose_lines_.front();
-    if (! std::regex_match(first_line, offline_mode_header_re)) {
+    if (!std::regex_match(first_line, offline_mode_header_re)) {
       LOG_DEBUG << "Offline-mode header not found: skipping backward transform";
       return;
     }
@@ -696,7 +661,7 @@ void DockerComposeFile::backwardTransform() {
       continue;
     }
 
-    if (! in_svc_section) {
+    if (!in_svc_section) {
       save(line);
       continue;
     }
@@ -732,7 +697,7 @@ void DockerComposeFile::backwardTransform() {
 
 bool DockerComposeFile::write(const boost::filesystem::path &compose_path) {
   std::ofstream output(compose_path.string(), std::ios::binary);
-  if (! output) {
+  if (!output) {
     LOG_WARNING << "Could not open compose-file " << compose_path << " for writing";
     return false;
   }
@@ -741,7 +706,7 @@ bool DockerComposeFile::write(const boost::filesystem::path &compose_path) {
     output << line;
   }
 
-  if (! output) return false;
+  if (!output) return false;
 
   return true;
 }
@@ -757,8 +722,7 @@ std::string DockerComposeFile::toString() {
 std::string DockerComposeFile::getSHA256() {
   MultiPartSHA256Hasher hasher;
   for (auto &line : compose_lines_) {
-    hasher.update(reinterpret_cast<const unsigned char *>(line.data()),
-                  static_cast<uint64_t>(line.size()));
+    hasher.update(reinterpret_cast<const unsigned char *>(line.data()), static_cast<uint64_t>(line.size()));
   }
 
   std::string sha256 = boost::algorithm::to_lower_copy(hasher.getHexDigest());
@@ -771,30 +735,20 @@ std::string DockerComposeFile::getSHA256() {
 // DockerComposeOfflineLoader class
 // ---
 
-DockerComposeOfflineLoader::DockerComposeOfflineLoader()
-  : default_platform_(getDockerPlatform())
-{
-}
+DockerComposeOfflineLoader::DockerComposeOfflineLoader() : default_platform_(getDockerPlatform()) {}
 
-DockerComposeOfflineLoader::DockerComposeOfflineLoader(
-    const boost::filesystem::path &images_dir,
-    const std::shared_ptr<DockerManifestsCache> &manifests_cache)
-  : default_platform_(getDockerPlatform()),
-    images_dir_(images_dir),
-    manifests_cache_(manifests_cache)
-{
-}
+DockerComposeOfflineLoader::DockerComposeOfflineLoader(const boost::filesystem::path &images_dir,
+                                                       const std::shared_ptr<DockerManifestsCache> &manifests_cache)
+    : default_platform_(getDockerPlatform()), images_dir_(images_dir), manifests_cache_(manifests_cache) {}
 
-void DockerComposeOfflineLoader::setUp(
-    const boost::filesystem::path &images_dir,
-    const std::shared_ptr<DockerManifestsCache> &manifests_cache) {
+void DockerComposeOfflineLoader::setUp(const boost::filesystem::path &images_dir,
+                                       const std::shared_ptr<DockerManifestsCache> &manifests_cache) {
   images_dir_ = images_dir;
   manifests_cache_ = manifests_cache;
 }
 
-
 void DockerComposeOfflineLoader::updateReferencedImages() {
-  assert(!! compose_file_);
+  assert(!!compose_file_);
   compose_file_->getServices(referenced_images_);
 }
 
@@ -803,8 +757,7 @@ void DockerComposeOfflineLoader::dumpReferencedImages() {
   for (auto &ri : referenced_images_) {
     LOG_DEBUG << "* " << ri.first << ":";
     auto &platform = ri.second.getPlatform();
-    LOG_DEBUG << "  " << ri.second.getImage()
-              << " [" << na_if_empty(platform) << "]";
+    LOG_DEBUG << "  " << ri.second.getImage() << " [" << na_if_empty(platform) << "]";
   }
 }
 
@@ -828,9 +781,8 @@ void DockerComposeOfflineLoader::updateImageMapping() {
 
     if (main_manifest->isMultiPlatform()) {
       // Multi-platform image: load the most appropriate manifest.
-      main_manifest->findBestPlatform(
-          req_platform.empty() ? default_platform_ : req_platform,
-          &best_platform, &best_digest);
+      main_manifest->findBestPlatform(req_platform.empty() ? default_platform_ : req_platform, &best_platform,
+                                      &best_digest);
       best_manifest = manifests_cache_->loadByDigest(best_digest);
     }
 
@@ -841,10 +793,8 @@ void DockerComposeOfflineLoader::updateImageMapping() {
     sel_image += ":digest_";
     sel_image += best_digest_modif;
 
-    ImageMappingEntry imentry(
-        req_image, req_platform,
-        sel_image, best_platform,
-        best_digest, best_manifest->getConfigDigest(false));
+    ImageMappingEntry imentry(req_image, req_platform, sel_image, best_platform, best_digest,
+                              best_manifest->getConfigDigest(false));
 
     per_service_image_mapping_.insert({svc_name, imentry});
   }
@@ -856,31 +806,22 @@ void DockerComposeOfflineLoader::dumpImageMapping() {
     const std::string &svc_name = im.first;
     const ImageMappingEntry &mapping = im.second;
     LOG_DEBUG << "* " << svc_name << ":";
-    LOG_DEBUG << "  from: "
-              << mapping.getOrgImage()
-              << " [" << na_if_empty(mapping.getOrgPlatform()) << "]";
-    LOG_DEBUG << "    to: "
-              << mapping.getSelImage()
-              << " [" << na_if_empty(mapping.getSelPlatform()) << "]";
-    LOG_DEBUG << "        manifest digest: "
-              << mapping.getSelManDigest();
-    LOG_DEBUG << "        config digest (ID): "
-              << mapping.getSelCfgDigest();
+    LOG_DEBUG << "  from: " << mapping.getOrgImage() << " [" << na_if_empty(mapping.getOrgPlatform()) << "]";
+    LOG_DEBUG << "    to: " << mapping.getSelImage() << " [" << na_if_empty(mapping.getSelPlatform()) << "]";
+    LOG_DEBUG << "        manifest digest: " << mapping.getSelManDigest();
+    LOG_DEBUG << "        config digest (ID): " << mapping.getSelCfgDigest();
   }
 }
 
-void DockerComposeOfflineLoader::loadCompose(
-    const boost::filesystem::path &compose_name,
-    const std::string &compose_sha256) {
-
+void DockerComposeOfflineLoader::loadCompose(const boost::filesystem::path &compose_name,
+                                             const std::string &compose_sha256) {
   compose_file_ = std::make_shared<DockerComposeFile>();
   ensure(compose_file_->read(compose_name), "Could not load docker-compose file");
 
-  if (! compose_sha256.empty()) {
+  if (!compose_sha256.empty()) {
     const std::string actual_sha256 = compose_file_->getSHA256();
-    ensure(actual_sha256 == compose_sha256,
-           "Compose file's digest does not match expected value, actual=\""
-           + actual_sha256 + "\"" + ", expect=\"" + compose_sha256 + "\"");
+    ensure(actual_sha256 == compose_sha256, "Compose file's digest does not match expected value, actual=\"" +
+                                                actual_sha256 + "\"" + ", expect=\"" + compose_sha256 + "\"");
     LOG_INFO << "docker-compose file matches expected digest";
   } else {
     LOG_WARNING << "Skipping check of docker-compose digest";
@@ -890,17 +831,15 @@ void DockerComposeOfflineLoader::loadCompose(
   updateImageMapping();
 }
 
-static void doInstallImage(
-    const boost::filesystem::path &tarball,
-    DockerTarballLoader::StringToStringSet expected_contents) {
+static void doInstallImage(const boost::filesystem::path &tarball,
+                           DockerTarballLoader::StringToStringSet expected_contents) {
   // LOG_INFO << "Preparing to install " << tarball;
   // Run actual tarball loader.
   DockerTarballLoader tbloader(tarball);
   tbloader.loadMetadata();
   if (!tbloader.validateMetadata(&expected_contents) || !tbloader.loadImages()) {
     LOG_WARNING << "Loading of tarballs aborted!";
-    throw std::runtime_error(
-        "Failed to load docker tarball " + tarball.filename().string());
+    throw std::runtime_error("Failed to load docker tarball " + tarball.filename().string());
   }
   // LOG_INFO << "Finished installing " << tarball;
 }
@@ -916,8 +855,7 @@ void DockerComposeOfflineLoader::installImages(bool make_copy) {
     const std::string cfg_digest = removeDigestPrefix(mapping.getSelCfgDigest());
 
     // Avoid loading same image more than once.
-    if (std::find(loaded_digests.begin(),
-                  loaded_digests.end(), man_digest) != loaded_digests.end()) {
+    if (std::find(loaded_digests.begin(), loaded_digests.end(), man_digest) != loaded_digests.end()) {
       LOG_INFO << "Tarball for manifest '" << man_digest << "' already loaded";
       continue;
     }
@@ -937,8 +875,7 @@ void DockerComposeOfflineLoader::installImages(bool make_copy) {
       boost::filesystem::copy_file(org_tarball, tarball, errcode);
       if (errcode != boost::system::errc::success) {
         LOG_WARNING << "Could not copy Docker tarball to secure location: aborting";
-        throw std::runtime_error(
-            "Failed to copy docker tarball " + tarball.filename().string());
+        throw std::runtime_error("Failed to copy docker tarball " + tarball.filename().string());
       }
       doInstallImage(tarball, expected);
     } else {
@@ -949,9 +886,7 @@ void DockerComposeOfflineLoader::installImages(bool make_copy) {
   }
 }
 
-void DockerComposeOfflineLoader::writeOfflineComposeFile(
-    const boost::filesystem::path &compose_name, bool verbose) {
-
+void DockerComposeOfflineLoader::writeOfflineComposeFile(const boost::filesystem::path &compose_name, bool verbose) {
   DockerComposeFile::ServiceToImageMapping compose_mapping;
   for (const auto &im : per_service_image_mapping_) {
     const std::string &svc_name = im.first;
@@ -963,14 +898,14 @@ void DockerComposeOfflineLoader::writeOfflineComposeFile(
   // problem since all data was loaded already but it would be nicer to keep
   // the internal state.
   compose_file_->forwardTransform(compose_mapping);
-  if (! compose_file_->write(compose_name)) {
+  if (!compose_file_->write(compose_name)) {
     throw std::runtime_error("Failed to write " + compose_name.string());
   }
 
   if (verbose) {
     LOG_DEBUG << ("Offline-mode image mapping:");
     for (const auto &sm : compose_mapping) {
-      LOG_DEBUG << "* " << sm.first <<  " => " << sm.second;
+      LOG_DEBUG << "* " << sm.first << " => " << sm.second;
     }
     LOG_DEBUG << "Offline-mode compose written to " << compose_name;
   }

@@ -5,7 +5,6 @@
 #include "command_runner.h"
 
 class ComposeManager {
-
   const std::string compose_program_ = "/usr/bin/docker-compose";
   const std::string printenv_program_ = "/usr/bin/fw_printenv rollback";
   std::string compose_file_current_;

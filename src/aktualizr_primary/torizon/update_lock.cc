@@ -1,13 +1,12 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
 #include <fcntl.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-#include "update_lock.h"
 #include "logging/logging.h"
+#include "update_lock.h"
 
 bool UpdateLock::get(bool block) {
-
   int flags = LOCK_EX;
 
   /* Open the lock file. If for some reason the lock file cannot be opened,
@@ -24,8 +23,7 @@ bool UpdateLock::get(bool block) {
     }
   }
 
-  if (block == false)
-    flags |= LOCK_NB;
+  if (block == false) flags |= LOCK_NB;
 
   if (flock(lockdesc, flags) < 0) {
     LOG_ERROR << "Unable to acquire lock: " << lockfile;
@@ -35,14 +33,10 @@ bool UpdateLock::get(bool block) {
   return true;
 }
 
-bool UpdateLock::try_get() {
-  return get(false);
-}
+bool UpdateLock::try_get() { return get(false); }
 
 bool UpdateLock::free() {
-
-  if (!lockdesc)
-    return false;
+  if (!lockdesc) return false;
 
   if (flock(lockdesc, LOCK_UN) < 0) {
     LOG_INFO << "Unable to release lock: " << lockfile;
@@ -52,8 +46,6 @@ bool UpdateLock::free() {
   return true;
 }
 
-UpdateLock::~UpdateLock()
-{
-  if (lockdesc)
-    close(lockdesc);
+UpdateLock::~UpdateLock() {
+  if (lockdesc) close(lockdesc);
 }

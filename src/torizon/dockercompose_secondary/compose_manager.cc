@@ -2,15 +2,15 @@
 #include <boost/filesystem/path.hpp>
 
 #include "compose_manager.h"
-#include "logging/logging.h"
 #include "libaktualizr/config.h"
+#include "logging/logging.h"
 
 namespace bpo = boost::program_options;
 
 ComposeManager::ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new) {
   compose_file_current_ = compose_file_current;
   compose_file_new_ = compose_file_new;
-  compose_cmd_  = compose_program_ + " --file ";
+  compose_cmd_ = compose_program_ + " --file ";
   containers_stopped = false;
   reboot = false;
   sync_update = false;
@@ -61,10 +61,11 @@ bool ComposeManager::checkRollback() {
   LOG_INFO << "Checking rollback status";
   std::vector<std::string> output = cmd.runResult(printenv_program_);
 
-  if (std::find_if(output.begin(), output.end(), [](const std::string& str) { return str.find("rollback=1") != std::string::npos; }) != output.end()) {
+  if (std::find_if(output.begin(), output.end(), [](const std::string &str) {
+        return str.find("rollback=1") != std::string::npos;
+      }) != output.end()) {
     return true;
-  }
-  else {
+  } else {
     return false;
   }
 }
@@ -90,7 +91,7 @@ bool ComposeManager::update(bool offline, bool sync) {
   }
 
   if (!sync_update) {
-    if(completeUpdate() == false) {
+    if (completeUpdate() == false) {
       return false;
     }
   }
@@ -101,8 +102,7 @@ bool ComposeManager::update(bool offline, bool sync) {
 bool ComposeManager::pendingUpdate() {
   if (!access(compose_file_new_.c_str(), F_OK)) {
     LOG_INFO << "Finishing pending container updates via docker-compose";
-  }
-  else {
+  } else {
     return true;
   }
 
@@ -110,15 +110,14 @@ bool ComposeManager::pendingUpdate() {
     sync_update = false;
     reboot = false;
     return false;
-  }
-  else {
+  } else {
     sync_update = true;
     reboot = true;
   }
 
   containers_stopped = false;
 
-  if(completeUpdate() == false) {
+  if (completeUpdate() == false) {
     return false;
   }
 
@@ -126,7 +125,6 @@ bool ComposeManager::pendingUpdate() {
 }
 
 bool ComposeManager::rollback() {
-
   LOG_INFO << "Rolling back container update";
 
   if (containers_stopped == true) {

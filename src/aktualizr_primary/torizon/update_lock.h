@@ -4,7 +4,6 @@
 #include "libaktualizr/aktualizr.h"
 
 class UpdateLock {
-
   boost::filesystem::path lockfile;
   int lockdesc;
 

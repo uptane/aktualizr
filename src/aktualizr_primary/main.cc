@@ -13,6 +13,16 @@
 #include "utilities/aktualizr_version.h"
 #include "utilities/sig_handler.h"
 #include "utilities/utils.h"
+#ifdef TORIZON
+#include "device_data_proxy.h"
+#include "update_events.h"
+#endif
+
+#ifdef TORIZON
+#define PROGRAM_NAME "aktualizr-torizon"
+#else
+#define PROGRAM_NAME "aktualizr"
+#endif
 
 namespace bpo = boost::program_options;
 
@@ -22,19 +32,19 @@ void checkInfoOptions(const bpo::options_description &description, const bpo::va
     exit(EXIT_SUCCESS);
   }
   if (vm.count("version") != 0) {
-    std::cout << "Current aktualizr version is: " << aktualizr_version() << "\n";
+    std::cout << "Current " PROGRAM_NAME " version is: " << aktualizr_version() << "\n";
     exit(EXIT_SUCCESS);
   }
 }
 
 bpo::variables_map parseOptions(int argc, char **argv) {
-  bpo::options_description description("aktualizr command line options");
+  bpo::options_description description(PROGRAM_NAME " command line options");
   // clang-format off
   // Try to keep these options in the same order as Config::updateFromCommandLine().
   // The first three are commandline only.
   description.add_options()
       ("help,h", "print usage")
-      ("version,v", "Current aktualizr version")
+      ("version,v", "Current " PROGRAM_NAME " version")
       ("config,c", bpo::value<std::vector<boost::filesystem::path> >()->composing(), "configuration file or directory")
       ("loglevel", bpo::value<int>(), "set log level 0-5 (trace, debug, info, warning, error, fatal)")
       ("run-mode", bpo::value<std::string>(), "run mode of aktualizr: full, once, campaign_check, campaign_accept, campaign_decline, campaign_postpone, check, download, or install")
@@ -45,7 +55,13 @@ bpo::variables_map parseOptions(int argc, char **argv) {
       ("primary-ecu-hardware-id", bpo::value<std::string>(), "hardware ID of Primary ECU")
       ("secondary-config-file", bpo::value<boost::filesystem::path>(), "Secondary ECUs configuration file")
       ("campaign-id", bpo::value<std::string>(), "ID of the campaign to act on")
-      ("hwinfo-file", bpo::value<boost::filesystem::path>(), "custom hardware information JSON file");
+      ("hwinfo-file", bpo::value<boost::filesystem::path>(), "custom hardware information JSON file")
+#ifdef TORIZON
+      ("enable-data-proxy", "enable proxy to send device data to Torizon OTA via SendDeviceData()")
+      ("data-proxy-port", bpo::value<int>(), "TCP port to be used by the proxy (defaults to 8850)")
+#endif
+      ;
+
   // clang-format on
 
   // consider the first positional argument as the aktualizr run mode
@@ -87,6 +103,7 @@ bpo::variables_map parseOptions(int argc, char **argv) {
   return vm;
 }
 
+#ifndef TORIZON
 void processEvent(const std::shared_ptr<event::BaseEvent> &event) {
   if (event->isTypeOf<event::DownloadProgressReport>() || event->variant == "UpdateCheckComplete") {
     // Do nothing; libaktualizr already logs it.
@@ -100,6 +117,7 @@ void processEvent(const std::shared_ptr<event::BaseEvent> &event) {
     LOG_INFO << "got " << event->variant << " event";
   }
 }
+#endif
 
 int main(int argc, char *argv[]) {
   logger_init();
@@ -120,7 +138,12 @@ int main(int argc, char *argv[]) {
     LOG_DEBUG << "Current directory: " << boost::filesystem::current_path().string();
 
     Aktualizr aktualizr(config);
+#ifdef TORIZON
+    UpdateEvents *events = events->getInstance(&aktualizr);
+    std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = events->processEvent;
+#else
     std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = processEvent;
+#endif
     boost::signals2::scoped_connection conn;
 
     conn = aktualizr.SetSignalHandler(f_cb);
@@ -137,11 +160,53 @@ int main(int argc, char *argv[]) {
 
     aktualizr.Initialize();
 
+#ifdef TORIZON
+    // configure device data proxy
+    DeviceDataProxy proxy;
+    if (commandline_map.count("enable-data-proxy") != 0) {
+      // proxy conflicts with hwinfo-file
+      if (commandline_map.count("hwinfo-file") != 0) {
+        LOG_ERROR << "Parameters --enable-data-proxy and --hwinfo-file conflict with each other. "
+                  << "Please enable only one of them!";
+        return EXIT_FAILURE;
+      }
+
+      // setup proxy TCP port
+      uint16_t port = 0;
+      if (commandline_map.count("data-proxy-port") != 0) port = commandline_map["data-proxy-port"].as<uint16_t>();
+
+      // start proxy
+      try {
+        proxy.Initialize(port);
+        proxy.Start(aktualizr);
+      } catch (const std::exception &ex) {
+        proxy.Stop(aktualizr, true);
+        LOG_ERROR << "PROXY: error: " << ex.what();
+      }
+    }
+
+    // Check if Offline Updates are enabled
+    // TODO: [OFFUPD] Review these logs post-MVP
+    if (config.uptane.enable_offline_updates) {
+      LOG_INFO << "Offline Updates are enabled";
+    } else {
+      LOG_INFO << "Offline Updates are disabled";
+    }
+#endif
+
     // handle unix signals
+#ifdef TORIZON
+    SigHandler::get().start([&aktualizr, &proxy]() {
+      proxy.Stop(aktualizr, false);
+      aktualizr.Abort();
+      aktualizr.Shutdown();
+    });
+#else
     SigHandler::get().start([&aktualizr]() {
       aktualizr.Abort();
       aktualizr.Shutdown();
     });
+#endif
     SigHandler::signal(SIGHUP);
     SigHandler::signal(SIGINT);
     SigHandler::signal(SIGTERM);

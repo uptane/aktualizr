@@ -31,6 +31,7 @@ option(BUILD_SOTA_TOOLS "Set to ON to build SOTA tools" OFF)
 option(FAULT_INJECTION "Set to ON to enable fault injection" OFF)
 option(TESTSUITE_VALGRIND "Set to ON to make tests to run under valgrind (default when CMAKE_BUILD_TYPE=Valgrind)" ${TESTSUITE_VALGRIND_DEFAULT})
 option(CCACHE "Set to ON to use ccache if available" ON)
+option(TORIZON "Set to ON to indicate build is for Torizon" ON)
 
 # Adhere to GNU filesystem layout conventions; provides CMAKE_INSTALL_* macros
 include(GNUInstallDirs)
@@ -153,6 +154,10 @@ if(BUILD_SOTA_TOOLS)
     # The sota tools depend on libostree, but they don't require/depend on software enabled by BUILD_OSTREE flag
     find_package(OSTree REQUIRED)
 endif(BUILD_SOTA_TOOLS)
+
+if(TORIZON)
+    add_definitions(-DTORIZON)
+endif(TORIZON)
 
 if(FAULT_INJECTION)
     find_package(Libfiu REQUIRED)
