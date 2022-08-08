@@ -14,7 +14,9 @@ void DirectorRepository::resetMeta() {
   resetRoot();
   targets = Targets();
   latest_targets = Targets();
+#ifdef BUILD_OFFLINE_UPDATES
   offline_snapshot = Snapshot();
+#endif
 }
 
 void DirectorRepository::checkTargetsExpired(UpdateType utype) {

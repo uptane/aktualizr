@@ -65,8 +65,7 @@ class SecondaryInterface {
     return boost::none;
   }
 
-  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   virtual data::InstallationResult putMetadataOffUpd(const Uptane::Target& target,
                                                      const Uptane::OfflineUpdateFetcher& fetcher) = 0;
 #endif

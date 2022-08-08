@@ -61,11 +61,7 @@ class OstreeManager : public PackageManagerInterface {
   void updateNotify() override;
   bool fetchTarget(const Uptane::Target &target, Uptane::Fetcher &fetcher, const KeyManager &keys,
                    const FetcherProgressCb &progress_cb, const api::FlowControlToken *token) override;
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  //       For this to work correctly the compilation options should be exactly
-  //       the same in aktualizr-torizon but they aren't ATM
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   bool fetchTargetOffUpd(const Uptane::Target &target, const Uptane::OfflineUpdateFetcher &fetcher,
                          const KeyManager &keys, const FetcherProgressCb &progress_cb,
                          const api::FlowControlToken *token) override;
@@ -82,9 +78,7 @@ class OstreeManager : public PackageManagerInterface {
       OstreeProgressCb progress_cb = nullptr, const char *alt_remote = nullptr,
       boost::optional<std::unordered_map<std::string, std::string>> headers = boost::none);
 
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   static data::InstallationResult pullLocal(const boost::filesystem::path &sysroot_path,
                                             const boost::filesystem::path &srcrepo_path, const Uptane::Target &target,
                                             OstreeProgressCb progress_cb = nullptr);

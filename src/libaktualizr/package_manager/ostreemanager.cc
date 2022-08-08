@@ -158,6 +158,7 @@ data::InstallationResult OstreeManager::pull(const boost::filesystem::path &sysr
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "Pulling OSTree image was successful");
 }
 
+#ifdef BUILD_OFFLINE_UPDATES
 /**
  * Simplified version of `OstreeManager::pull()` for performing local pulls.
  */
@@ -228,6 +229,7 @@ data::InstallationResult OstreeManager::pullLocal(const boost::filesystem::path 
   g_variant_unref(options);
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "Pulling local OSTree image was successful");
 }
+#endif // defined(BUILD_OFFLINE_UPDATES)
 
 data::InstallationResult OstreeManager::install(const Uptane::Target &target) const {
   const char *opt_osname = nullptr;

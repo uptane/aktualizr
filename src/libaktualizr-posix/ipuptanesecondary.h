@@ -39,8 +39,7 @@ class IpUptaneSecondary : public SecondaryInterface {
   data::InstallationResult sendFirmware(const Uptane::Target& target) override;
   data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
 
-  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   data::InstallationResult putMetadataOffUpd(const Uptane::Target& target,
                                              const OfflineUpdateFetcher& fetcher) override {
     (void)target;

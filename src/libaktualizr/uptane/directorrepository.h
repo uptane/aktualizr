@@ -27,11 +27,7 @@ class DirectorRepository : public RepositoryCommon {
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
   bool matchTargetsWithImageTargets(const std::shared_ptr<const Uptane::Targets>& image_targets) const;
 
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  //       For this to work correctly the compilation options should be exactly
-  //       the same in aktualizr-torizon but they aren't ATM
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   void checkMetaOfflineOffUpd(INvStorage& storage);
   void updateMetaOffUpd(INvStorage& storage, const OfflineUpdateFetcher& fetcher) override;
   void verifyOfflineSnapshot(const std::string& snapshot_raw_new, const std::string& snapshot_raw_old);
@@ -56,11 +52,7 @@ class DirectorRepository : public RepositoryCommon {
   Uptane::Targets targets;         // Only empty if we've never received non-empty targets.
   Uptane::Targets latest_targets;  // Can be an empty list.
 
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  //       For this to work correctly the compilation options should be exactly
-  //       the same in aktualizr-torizon but they aren't ATM
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   void checkOfflineSnapshotExpired();
   void transformOfflineTargets(INvStorage& storage);
   Uptane::Snapshot offline_snapshot;

@@ -966,7 +966,6 @@ void SQLStorage::clearEcuSerials() {
   db.commitTransaction();
 }
 
-#ifdef BUILD_OFFLINE_UPDATES
 void SQLStorage::stashEcuSerialsForHwId(const EcuSerials& serials) {
   LOG_TRACE << "Stashing ECU serials for hwid";
   stashed_ecu_serials_ = serials;
@@ -979,7 +978,6 @@ bool SQLStorage::getEcuSerialsForHwId(EcuSerials* serials) const {
   }
   return !stashed_ecu_serials_.empty();
 }
-#endif
 
 void SQLStorage::storeCachedEcuManifest(const Uptane::EcuSerial& ecu_serial, const std::string& manifest) {
   SQLite3Guard db = dbConnection();

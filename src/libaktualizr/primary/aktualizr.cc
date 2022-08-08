@@ -105,7 +105,7 @@ std::future<void> Aktualizr::RunForever() {
         LOG_DEBUG << "Not provisioned yet: " << e.what();
       }
 
-#if 1  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
+#ifdef BUILD_OFFLINE_UPDATES
       if (config_.uptane.enable_offline_updates) {
         // Check update directory while waiting for next polling cycle.
         bool quit = false;

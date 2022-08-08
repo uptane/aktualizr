@@ -228,11 +228,7 @@ class Aktualizr {
    */
   std::future<result::Install> Install(const std::vector<Uptane::Target>& updates);
 
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  //       For this to work correctly the compilation options should be exactly
-  //       the same in aktualizr-torizon but they aren't ATM
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   /**
    * TODO: [OFFUPD] Remove after MVP.
    * Check if an offline-update is available.

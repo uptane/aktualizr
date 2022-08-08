@@ -94,11 +94,7 @@ class SotaUptaneClient {
   std::ifstream openStoredTarget(const Uptane::Target &target);
   bool getEcuSerials(EcuSerials *serials) const { return provisioner_.GetEcuSerials(serials); }
 
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  //       For this to work correctly the compilation options should be exactly
-  //       the same in aktualizr-torizon but they aren't ATM
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   result::UpdateCheck fetchMetaOffUpd(const boost::filesystem::path &source_path);
   result::Download fetchImagesOffUpd(const std::vector<Uptane::Target> &targets,
                                      const api::FlowControlToken *token = nullptr);
@@ -171,11 +167,7 @@ class SotaUptaneClient {
   std::exception_ptr getLastException() const { return last_exception; }
   Uptane::Target getCurrent() const { return package_manager_->getCurrent(); }
 
-  // TODO: [OFFUPD] Protect with an #ifdef:
-  //       For this to work correctly the compilation options should be exactly
-  //       the same in aktualizr-torizon but they aren't ATM
-  // BUILD_OFFLINE_UPDATES {{
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   std::pair<bool, Uptane::Target> fetchImageOffUpd(const Uptane::Target &target,
                                                    const api::FlowControlToken *token = nullptr);
 #endif

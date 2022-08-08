@@ -242,19 +242,14 @@ void Provisioner::initEcuSerials() {
     new_ecu_serials_.emplace_back(s.first, s.second->getHwId());
   }
 
-#ifdef BUILD_OFFLINE_UPDATES
-  // TODO: Review this idea.
+  // TODO: [OFFUPD] Review this idea.
   //
-  // Here we are "stashing" the ECU for use by the offline-update logic which
-  // requires this information to map hardware IDs into ECU serials; Such
-  // information is being taken from the INvStorage class at the moment but
-  // in the future we should consider taking it from somewhere else or ensure
-  // that the information is actually in the storage.
+  // Here we are "stashing" the ECU serials for use by the offline-update logic which requires
+  // this information to map hardware IDs into ECU serials; Such information is being taken
+  // from the INvStorage class at the moment but in the future we should consider taking it
+  // from somewhere else or ensure that the information is actually in the storage.
   //
-  // NOTE: The code following this seems to consider `new_ecu_serials_` as
-  // the source of truth for the current list of ECUs - confirm this.
   storage_->stashEcuSerialsForHwId(new_ecu_serials_);
-#endif
 
   register_ecus_ = stored_ecu_serials.empty();
   if (!register_ecus_) {
@@ -306,7 +301,7 @@ bool Provisioner::GetEcuSerials(EcuSerials* serials) const {
 #ifdef BUILD_OFFLINE_UPDATES
   return (storage_->loadEcuSerials(serials) || storage_->getEcuSerialsForHwId(serials));
 #else
-  return storage_->loadEcuSerials(serials))
+  return storage_->loadEcuSerials(serials);
 #endif
 }
 

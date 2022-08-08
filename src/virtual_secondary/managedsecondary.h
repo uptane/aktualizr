@@ -74,8 +74,7 @@ class ManagedSecondary : public SecondaryInterface {
   bool loadKeys(std::string* pub_key, std::string* priv_key);
   int storeKeysCount() const { return did_store_keys; }
 
-  // TODO: [OFFUPD] #ifdef BUILD_OFFLINE_UPDATES
-#if 1
+#ifdef BUILD_OFFLINE_UPDATES
   data::InstallationResult putMetadataOffUpd(const Uptane::Target& target,
                                              const Uptane::OfflineUpdateFetcher& fetcher) override;
 #endif
