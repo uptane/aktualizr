@@ -25,9 +25,9 @@ jobs:
         -eTEST_SOTA_PACKED_CREDENTIALS=dummy-credentials
     steps:
       - uses: actions/checkout@main
-      - run: |
-          git fetch --prune --unshallow
-          git submodule update --init --recursive --force
+        with:
+          submodules: recursive
+      - run: git fetch --prune --unshallow
       - name: Docker login
         if: github.token
         run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
@@ -58,9 +58,9 @@ jobs:
         -eTEST_WITH_TESTSUITE=0
     steps:
       - uses: actions/checkout@main
-      - run: |
-          git fetch --prune --unshallow
-          git submodule update --init --recursive --force
+        with:
+          submodules: recursive
+      - run: git fetch --prune --unshallow
       - name: Docker login
         if: github.token
         run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
@@ -93,9 +93,9 @@ jobs:
         -eTEST_WITH_DOCS=1
     steps:
       - uses: actions/checkout@main
-      - run: |
-          git fetch --prune --unshallow
-          git submodule update --init --recursive --force
+        with:
+          submodules: recursive
+      - run: git fetch --prune --unshallow
       - name: Docker login
         if: github.token
         run: echo ${{ github.token }} | docker login docker.pkg.github.com -u uptane --password-stdin
