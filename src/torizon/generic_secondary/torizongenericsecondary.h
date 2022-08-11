@@ -12,7 +12,6 @@ namespace Primary {
 
 class TorizonGenericSecondaryConfig : public ManagedSecondaryConfig {
  public:
-  // FIXME: [TORIZON] If upstreaming is to be done then this could be "managed-generic"
   static constexpr const char* const Type{"torizon-generic"};
 
   TorizonGenericSecondaryConfig() : ManagedSecondaryConfig(Type) {}

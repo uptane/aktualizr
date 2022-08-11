@@ -1,11 +1,8 @@
-// TODO: [TDX] This module is used by the secondary only but is in the primary directory.
 #include <boost/filesystem/path.hpp>
 
 #include "compose_manager.h"
 #include "libaktualizr/config.h"
 #include "logging/logging.h"
-
-namespace bpo = boost::program_options;
 
 ComposeManager::ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new) {
   compose_file_current_ = compose_file_current;
@@ -37,15 +34,15 @@ bool ComposeManager::cleanup() {
 }
 
 bool ComposeManager::completeUpdate() {
-  if (!access(compose_file_current_.c_str(), F_OK)) {
-    if (down(compose_file_current_) == false) {
+  if (access(compose_file_current_.c_str(), F_OK) == 0) {
+    if (!down(compose_file_current_)) {
       LOG_ERROR << "Error running docker-compose down";
       return false;
     }
     containers_stopped = true;
   }
 
-  if (up(compose_file_new_) == false) {
+  if (!up(compose_file_new_)) {
     LOG_ERROR << "Error running docker-compose up";
     return false;
   }
@@ -60,14 +57,9 @@ bool ComposeManager::completeUpdate() {
 bool ComposeManager::checkRollback() {
   LOG_INFO << "Checking rollback status";
   std::vector<std::string> output = cmd.runResult(printenv_program_);
-
-  if (std::find_if(output.begin(), output.end(), [](const std::string &str) {
-        return str.find("rollback=1") != std::string::npos;
-      }) != output.end()) {
-    return true;
-  } else {
-    return false;
-  }
+  auto found_it = std::find_if(output.begin(), output.end(),
+                               [](const std::string &str) { return str.find("rollback=1") != std::string::npos; });
+  return found_it != output.end();
 }
 
 bool ComposeManager::update(bool offline, bool sync) {
@@ -84,14 +76,14 @@ bool ComposeManager::update(bool offline, bool sync) {
 
   if (!offline) {
     // Only try to pull images upon an online update.
-    if (pull(compose_file_new_) == false) {
+    if (!pull(compose_file_new_)) {
       LOG_ERROR << "Error running docker-compose pull";
       return false;
     }
   }
 
   if (!sync_update) {
-    if (completeUpdate() == false) {
+    if (!completeUpdate()) {
       return false;
     }
   }
@@ -100,7 +92,7 @@ bool ComposeManager::update(bool offline, bool sync) {
 }
 
 bool ComposeManager::pendingUpdate() {
-  if (!access(compose_file_new_.c_str(), F_OK)) {
+  if (access(compose_file_new_.c_str(), F_OK) == 0) {
     LOG_INFO << "Finishing pending container updates via docker-compose";
   } else {
     return true;
@@ -117,17 +109,13 @@ bool ComposeManager::pendingUpdate() {
 
   containers_stopped = false;
 
-  if (completeUpdate() == false) {
-    return false;
-  }
-
-  return true;
+  return completeUpdate();
 }
 
 bool ComposeManager::rollback() {
   LOG_INFO << "Rolling back container update";
 
-  if (containers_stopped == true) {
+  if (containers_stopped) {
     up(compose_file_current_);
     containers_stopped = false;
   }

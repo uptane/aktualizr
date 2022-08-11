@@ -4,15 +4,14 @@
 
 #include <archive.h>
 #include <archive_entry.h>
+#include <json/reader.h>
+#include <json/value.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/process.hpp>
-//#include <boost/algorithm/string/predicate.hpp>
-#include <json/reader.h>
-#include <json/value.h>
-#include <signal.h>
 
 #include <array>
+#include <csignal>
 #include <iostream>
 #include <map>
 #include <set>
@@ -53,13 +52,15 @@ static constexpr std::size_t DEFAULT_BLOCK_BUFFER_SIZE_BYTES = 256 * 1024;
  */
 class SignalBlocker {
  protected:
-  sigset_t org_mask;
+  sigset_t org_mask{};
 
+  // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
   void block(int sigs[], int n) {
     sigset_t signal_mask;
     ::sigemptyset(&signal_mask);
     for (int i = 0; i < n; i++) {
       // LOG_INFO << "Blocking signal " << sigs[i];
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       ::sigaddset(&signal_mask, sigs[i]);
     }
     ::pthread_sigmask(SIG_BLOCK, &signal_mask, &org_mask);
@@ -67,15 +68,19 @@ class SignalBlocker {
 
   void restore() {
     // LOG_INFO << "Restoring signals";
-    ::pthread_sigmask(SIG_BLOCK, &org_mask, NULL);
+    ::pthread_sigmask(SIG_BLOCK, &org_mask, nullptr);
   }
 
  public:
-  SignalBlocker(int sig1) {
+  explicit SignalBlocker(int sig1) {
+    // NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
     int sigs[] = {sig1};
     block(sigs, 1);
   }
-
+  SignalBlocker(const SignalBlocker &) = delete;
+  SignalBlocker(SignalBlocker &&) = delete;
+  SignalBlocker &operator=(const SignalBlocker &other) = delete;
+  SignalBlocker &operator=(SignalBlocker &&other) = delete;
   virtual ~SignalBlocker() { restore(); }
 };
 
@@ -99,7 +104,7 @@ static void ensure(bool cond, const char *message) {
  */
 std::ostream &operator<<(std::ostream &stream, const std::set<std::string> &value) {
   stream << "{";
-  for (auto &item : value) {
+  for (const auto &item : value) {
     stream << item << ", ";
   }
   stream << "}";
@@ -113,29 +118,33 @@ static constexpr std::size_t ARCHIVE_CTRL_BUFFER_SIZE = DEFAULT_BLOCK_BUFFER_SIZ
  */
 struct ArchiveCtrl {
  protected:
-  typedef std::array<uint8_t, ARCHIVE_CTRL_BUFFER_SIZE> BufferType;
+  using BufferType = std::array<uint8_t, ARCHIVE_CTRL_BUFFER_SIZE>;
   std::ifstream infile_;
-  uint64_t nread_;
-  BufferType buffer_;
+  uint64_t nread_{0};
+  BufferType buffer_{};
   MultiPartSHA256Hasher hasher_;
 
  public:
-  ArchiveCtrl(const boost::filesystem::path &tarball) : infile_(tarball.string(), std::ios::binary), nread_(0) {
+  explicit ArchiveCtrl(const boost::filesystem::path &tarball) : infile_(tarball.string(), std::ios::binary) {
     if (!infile_) {
       throw std::runtime_error("Could not open '" + tarball.string() + "'");
     }
   }
+  ArchiveCtrl(const ArchiveCtrl &other) = delete;
+  ArchiveCtrl(ArchiveCtrl &&other) = delete;
+  ArchiveCtrl &operator=(const ArchiveCtrl &other) = delete;
+  ArchiveCtrl &operator=(ArchiveCtrl &&other) = delete;
 
   virtual ~ArchiveCtrl() { infile_.close(); }
 
   ssize_t read() {
-    infile_.read(reinterpret_cast<char *>(buffer_.data()), buffer_.size());
+    infile_.read(reinterpret_cast<char *>(buffer_.data()), static_cast<std::streamsize>(buffer_.size()));
     hasher_.update(buffer_.data(), static_cast<uint64_t>(infile_.gcount()));
-    nread_ += infile_.gcount();
+    nread_ += static_cast<uint64_t>(infile_.gcount());
     return infile_.gcount();
   }
 
-  uint64_t nread() { return nread_; }
+  uint64_t nread() const { return nread_; }
 
   void *data() { return static_cast<void *>(buffer_.data()); }
 
@@ -145,9 +154,9 @@ struct ArchiveCtrl {
 /**
  * Helper function for integrating with libarchive.
  */
-static ssize_t _arch_read(struct archive *arch, void *client_data, const void **buff) {
+static ssize_t arch_reader(struct archive *arch, void *client_data, const void **buff) {
   (void)arch;
-  ArchiveCtrl *archctrl = reinterpret_cast<ArchiveCtrl *>(client_data);
+  auto *archctrl = reinterpret_cast<ArchiveCtrl *>(client_data);
   *buff = archctrl->data();
   return archctrl->read();
 }
@@ -159,7 +168,7 @@ bool DockerTarballLoader::loadMetadataEntryJson(archive *arch, archive_entry *en
   //       However, the size is not guaranteed to be always set.
 
   // Load the JSON file into memory.
-  typedef std::array<uint8_t, MAX_JSON_FILE_SIZE_BYTES + 1> JsonBufferType;
+  using JsonBufferType = std::array<uint8_t, MAX_JSON_FILE_SIZE_BYTES + 1>;
   auto buffer = std_::make_unique<JsonBufferType>();
   ssize_t count = archive_read_data(arch, reinterpret_cast<void *>(buffer->data()), buffer->size());
   if (count > static_cast<ssize_t>(MAX_JSON_FILE_SIZE_BYTES)) {
@@ -174,7 +183,7 @@ bool DockerTarballLoader::loadMetadataEntryJson(archive *arch, archive_entry *en
   std::string digest = boost::algorithm::to_lower_copy(hasher.getHexDigest());
 
   // Parse contents.
-  std::string _source(reinterpret_cast<char *>(buffer->data()), count);
+  std::string _source(reinterpret_cast<char *>(buffer->data()), static_cast<std::string::size_type>(count));
   std::istringstream source(_source);
   Json::Value root;
   source >> root;
@@ -194,7 +203,7 @@ bool DockerTarballLoader::loadMetadataEntryJson(archive *arch, archive_entry *en
 
   // Update statistics.
   metastats_.nfiles_json++;
-  metastats_.nbytes_json += count;
+  metastats_.nbytes_json += static_cast<uint64_t>(count);
 
   if (metastats_.nbytes_json > MAX_TOT_JSON_FILES_SIZE_BYTES) {
     LOG_WARNING << "Total size of JSON files in tarball was exceeded";
@@ -208,7 +217,7 @@ bool DockerTarballLoader::loadMetadataEntryOther(archive *arch, archive_entry *e
   const boost::filesystem::path pathname{archive_entry_pathname(entry)};
 
   // Process file in blocks.
-  typedef std::array<uint8_t, DEFAULT_BLOCK_BUFFER_SIZE_BYTES> BufferType;
+  using BufferType = std::array<uint8_t, DEFAULT_BLOCK_BUFFER_SIZE_BYTES>;
   auto buffer = std_::make_unique<BufferType>();
 
   ssize_t count;
@@ -219,7 +228,7 @@ bool DockerTarballLoader::loadMetadataEntryOther(archive *arch, archive_entry *e
     count = archive_read_data(arch, reinterpret_cast<void *>(buffer->data()), buffer->size());
     hasher.update(buffer->data(), static_cast<uint64_t>(count));
     // Update statistics.
-    metastats_.nbytes_other += count;
+    metastats_.nbytes_other += static_cast<uint64_t>(count);
   } while (count > 0);
 
   std::string digest = boost::algorithm::to_lower_copy(hasher.getHexDigest());
@@ -264,7 +273,9 @@ bool DockerTarballLoader::loadMetadataEntry(archive *arch, archive_entry *entry)
   }
 
   // Do nothing for directory entries.
-  if (archive_entry_filetype(entry) == AE_IFDIR) return true;
+  if (archive_entry_filetype(entry) == AE_IFDIR) {
+    return true;
+  }
 
   assert(archive_entry_filetype(entry) == AE_IFREG);
 
@@ -286,7 +297,7 @@ void DockerTarballLoader::loadMetadata() {
   arch = archive_read_new();
   archive_read_support_filter_none(arch);
   archive_read_support_format_tar(arch);
-  archive_read_open(arch, archctrl.get(), NULL, _arch_read, NULL);
+  archive_read_open(arch, archctrl.get(), nullptr, arch_reader, nullptr);
 
   metamap_.clear();
   metastats_.clear();
@@ -310,13 +321,13 @@ void DockerTarballLoader::loadMetadata() {
 }
 
 Json::Value DockerTarballLoader::metamapGetRoot(const std::string &key) {
-  MetadataMap::iterator it = metamap_.find(key);
+  auto it = metamap_.find(key);
   ensure(it != metamap_.end(), "Key '" + key + "' not found in metamap");
   return it->second.getRoot();
 }
 
 std::string DockerTarballLoader::metamapGetSHA256(const std::string &key) {
-  MetadataMap::iterator it = metamap_.find(key);
+  auto it = metamap_.find(key);
   ensure(it != metamap_.end(), "Key '" + key + "' not found in metamap");
   return it->second.getSHA256();
 }
@@ -385,7 +396,7 @@ bool DockerTarballLoader::validateMetadata(StringToStringSet *expected_tags_per_
     // Check external requirements.
     // ---
 
-    if (expected_tags_per_image) {
+    if (expected_tags_per_image != nullptr) {
       // Extract expected set of images.
       std::set<std::string> expected_image_ids;
       for (const auto &elem : *expected_tags_per_image) {
@@ -400,7 +411,7 @@ bool DockerTarballLoader::validateMetadata(StringToStringSet *expected_tags_per_
         const boost::filesystem::path config(man["Config"].asString());
         const std::string imgid(config.stem().string());
 
-        static const char repo_tags_el[] = "RepoTags";
+        static constexpr const char *repo_tags_el = "RepoTags";
         ensure(man.isMember(repo_tags_el), "no RepoTags in manifest");
         ensure(man[repo_tags_el].isArray(), "bad RepoTags type");
 
@@ -432,6 +443,7 @@ bool DockerTarballLoader::validateMetadata(StringToStringSet *expected_tags_per_
 bool DockerTarballLoader::loadImages() {
   // Open tarball as raw binary data.
   std::ifstream infile(tarball_.string(), std::ios::binary);
+  // NOLINTNEXTLINE(clang-analyzer-core.NonNullParamChecker)
   if (!infile) {
     LOG_WARNING << "Could not open '" << tarball_.string() << "'";
     return false;
@@ -443,16 +455,16 @@ bool DockerTarballLoader::loadImages() {
   static constexpr const size_t num_blocks_mask = num_blocks - 1U;
 
   struct Block {
-    std::array<uint8_t, 16 * 1024> buf;
-    size_t len;
-    bool used;
-    Block() : len(0), used(false) {}
+    std::array<uint8_t, 16 * 1024> buf{};
+    size_t len{0};
+    bool used{false};
+    Block() = default;
     void clear() {
       len = 0;
       used = false;
     }
   };
-  typedef std::array<Block, num_blocks> Blocks;
+  using Blocks = std::array<Block, num_blocks>;
 
   auto blocks = std_::make_unique<Blocks>();
   unsigned block_index = 0;
@@ -474,20 +486,20 @@ bool DockerTarballLoader::loadImages() {
   // Read tarball, send it to `docker load` and determine its digest.
   uint64_t nread = 0;
   for (;;) {
-    auto &cur_block = (*blocks)[block_index];
+    auto &cur_block = blocks->at(block_index);
     if (cur_block.used) {
       // Block already used: send all data to external process.
-      docker_stdin.write(reinterpret_cast<char *>(cur_block.buf.data()), cur_block.len);
+      docker_stdin.write(reinterpret_cast<char *>(cur_block.buf.data()), static_cast<std::streamsize>(cur_block.len));
       cur_block.clear();
     }
 
-    infile.read(reinterpret_cast<char *>(cur_block.buf.data()), cur_block.buf.size());
-    cur_block.len = infile.gcount();
+    infile.read(reinterpret_cast<char *>(cur_block.buf.data()), static_cast<std::streamsize>(cur_block.buf.size()));
+    cur_block.len = static_cast<size_t>(infile.gcount());
     cur_block.used = true;
 
     // Prevent modifications of file size: this is very important to avoid attacks
     // where extraneous data is appended to the end marker of the tarball.
-    nread += infile.gcount();
+    nread += static_cast<uint64_t>(infile.gcount());
     if (nread > org_tarball_length_) {
       LOG_WARNING << "Size of tarball has changed (aborting)";
       break;
@@ -498,7 +510,9 @@ bool DockerTarballLoader::loadImages() {
 
     // Advance.
     block_index = (block_index + 1) & num_blocks_mask;
-    if (!infile) break;
+    if (!infile) {
+      break;
+    }
   }
 
   // At this point, not all data has been sent to the child program. So here
@@ -510,10 +524,10 @@ bool DockerTarballLoader::loadImages() {
   if (org_tarball_digest_ == new_digest) {
     // Send outstanding blocks if everything is good.
     for (unsigned cnt = 0; cnt < num_blocks; cnt++) {
-      auto &cur_block = (*blocks)[block_index];
+      auto &cur_block = blocks->at(block_index);
       if (cur_block.used) {
         // Block already used: send all data to external process.
-        docker_stdin.write(reinterpret_cast<char *>(cur_block.buf.data()), cur_block.len);
+        docker_stdin.write(reinterpret_cast<char *>(cur_block.buf.data()), static_cast<std::streamsize>(cur_block.len));
         cur_block.clear();
       }
       block_index = (block_index + 1) & num_blocks_mask;

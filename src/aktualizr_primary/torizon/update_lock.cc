@@ -14,7 +14,7 @@ bool UpdateLock::get(bool block) {
    * no longer updateable, for example if the lock directory does not exist
    * or is not writeable.
    */
-  if (!lockdesc) {
+  if (lockdesc == 0) {
     lockdesc = open(lockfile.c_str(), O_RDWR | O_CREAT | O_APPEND, 0666);
     if (lockdesc < 0) {
       LOG_ERROR << "Unable to open lock file: " << lockfile;
@@ -23,7 +23,9 @@ bool UpdateLock::get(bool block) {
     }
   }
 
-  if (block == false) flags |= LOCK_NB;
+  if (!block) {
+    flags |= LOCK_NB;
+  }
 
   if (flock(lockdesc, flags) < 0) {
     LOG_ERROR << "Unable to acquire lock: " << lockfile;
@@ -36,7 +38,9 @@ bool UpdateLock::get(bool block) {
 bool UpdateLock::try_get() { return get(false); }
 
 bool UpdateLock::free() {
-  if (!lockdesc) return false;
+  if (lockdesc == 0) {
+    return false;
+  }
 
   if (flock(lockdesc, LOCK_UN) < 0) {
     LOG_INFO << "Unable to release lock: " << lockfile;
@@ -47,5 +51,7 @@ bool UpdateLock::free() {
 }
 
 UpdateLock::~UpdateLock() {
-  if (lockdesc) close(lockdesc);
+  if (lockdesc != 0) {
+    close(lockdesc);
+  }
 }

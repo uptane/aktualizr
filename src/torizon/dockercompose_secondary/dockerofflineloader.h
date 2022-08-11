@@ -20,7 +20,7 @@ class DockerManifestWrapper {
    *
    * @param manifest the root Json::Value object to be wrapped.
    */
-  explicit DockerManifestWrapper(const Json::Value &manifest);
+  explicit DockerManifestWrapper(Json::Value manifest);
 
   /**
    * Return whether or not the manifest is multi-platform (or more precisely,
@@ -32,7 +32,7 @@ class DockerManifestWrapper {
    * Get digest/platform pair most closely matching the requested platform
    * from a manifest list. If none is found, throws a runtime_exception.
    */
-  void findBestPlatform(std::string req_platform, std::string *sel_platform, std::string *sel_digest) const;
+  void findBestPlatform(const std::string &req_platform, std::string *sel_platform, std::string *sel_digest) const;
 
   /**
    * Get digest of the configuration object of an image.
@@ -42,7 +42,7 @@ class DockerManifestWrapper {
  protected:
   Json::Value manifest_;
 
-  std::string platformString(const Json::Value &plat) const;
+  static std::string platformString(const Json::Value &plat);
   std::string getMediaType() const;
   void ensureMediaType(const std::string &req_type) const;
 
@@ -58,13 +58,12 @@ class DockerManifestWrapper {
  */
 class DockerManifestsCache {
  public:
-  typedef std::shared_ptr<DockerManifestWrapper> ManifestPtr;
-  typedef std::pair<size_t, ManifestPtr> ManifestCacheElem;
-  typedef std::map<std::string, ManifestCacheElem> DigestToManifestCacheElemMap;
+  using ManifestPtr = std::shared_ptr<DockerManifestWrapper>;
+  using ManifestCacheElem = std::pair<size_t, ManifestPtr>;
+  using DigestToManifestCacheElemMap = std::map<std::string, ManifestCacheElem>;
 
- public:
-  explicit DockerManifestsCache(const boost::filesystem::path &manifests_dir, size_t max_manifests = 32)
-      : manifests_dir_(manifests_dir), max_manifests_(max_manifests), access_counter_(0) {}
+  explicit DockerManifestsCache(boost::filesystem::path manifests_dir, size_t max_manifests = 32)
+      : manifests_dir_(std::move(manifests_dir)), max_manifests_(max_manifests), access_counter_(0) {}
 
   /**
    * Load the manifest (specified by its digest) from the manifest directory
@@ -91,14 +90,15 @@ class ImagePlatformPair {
   std::string platform_;
 
  public:
-  ImagePlatformPair(const std::string &image) : image_(image) {}
-  ImagePlatformPair(const std::string &image, const std::string &platform) : image_(image), platform_(platform) {}
+  explicit ImagePlatformPair(std::string image) : image_(std::move(image)) {}
+  ImagePlatformPair(std::string image, std::string platform)
+      : image_(std::move(image)), platform_(std::move(platform)) {}
 
   const std::string &getImage() { return image_; }
   const std::string &getPlatform() { return platform_; }
 };
 
-typedef std::map<std::string, ImagePlatformPair> StringToImagePlatformPair;
+using StringToImagePlatformPair = std::map<std::string, ImagePlatformPair>;
 
 /**
  * Class for transforming a docker-compose file from the original form with
@@ -112,7 +112,7 @@ typedef std::map<std::string, ImagePlatformPair> StringToImagePlatformPair;
  */
 class DockerComposeFile {
  protected:
-  typedef std::list<std::string> ComposeLinesType;
+  using ComposeLinesType = std::list<std::string>;
   ComposeLinesType compose_lines_;
 
   static const std::string services_section_name;
@@ -128,22 +128,21 @@ class DockerComposeFile {
   static const std::regex plat_name_re;
 
  public:
-  typedef std::map<std::string, std::string> ServiceToImageMapping;
+  using ServiceToImageMapping = std::map<std::string, std::string>;
 
- public:
-  DockerComposeFile() {}
+  DockerComposeFile() = default;
 
   /**
    * Constructor: construct and execute the read() method with the passed
    * argument.
    */
-  DockerComposeFile(const boost::filesystem::path &compose_path);
+  explicit DockerComposeFile(const boost::filesystem::path &compose_path);
 
   /**
    * Determine if object is in the good (docker-compose data is loaded
    * into memory).
    */
-  operator bool() { return !compose_lines_.empty(); }
+  explicit operator bool() { return !compose_lines_.empty(); }
   bool good() { return !compose_lines_.empty(); }
 
   /**
@@ -238,16 +237,15 @@ class DockerComposeOfflineLoader {
     std::string sel_cfg_digest_;
 
    public:
-    ImageMappingEntry() {}
-    ImageMappingEntry(const std::string &org_image, const std::string &org_platform, const std::string &sel_image,
-                      const std::string &sel_platform, const std::string &sel_man_digest,
-                      const std::string &sel_cfg_digest)
-        : org_image_(org_image),
-          org_platform_(org_platform),
-          sel_image_(sel_image),
-          sel_platform_(sel_platform),
-          sel_man_digest_(sel_man_digest),
-          sel_cfg_digest_(sel_cfg_digest) {}
+    ImageMappingEntry() = default;
+    ImageMappingEntry(std::string org_image, std::string org_platform, std::string sel_image, std::string sel_platform,
+                      std::string sel_man_digest, std::string sel_cfg_digest)
+        : org_image_(std::move(org_image)),
+          org_platform_(std::move(org_platform)),
+          sel_image_(std::move(sel_image)),
+          sel_platform_(std::move(sel_platform)),
+          sel_man_digest_(std::move(sel_man_digest)),
+          sel_cfg_digest_(std::move(sel_cfg_digest)) {}
 
     const std::string &getOrgImage() const { return org_image_; }
     const std::string &getOrgPlatform() const { return org_platform_; }
@@ -257,18 +255,17 @@ class DockerComposeOfflineLoader {
     const std::string &getSelCfgDigest() const { return sel_cfg_digest_; }
   };
 
-  typedef std::map<std::string, ImageMappingEntry> PerServiceImageMapping;
+  using PerServiceImageMapping = std::map<std::string, ImageMappingEntry>;
 
  public:
   DockerComposeOfflineLoader();
-  DockerComposeOfflineLoader(const boost::filesystem::path &images_dir,
-                             const std::shared_ptr<DockerManifestsCache> &manifests_cache);
+  DockerComposeOfflineLoader(boost::filesystem::path images_dir, std::shared_ptr<DockerManifestsCache> manifests_cache);
 
   /**
    * Configure what images directory and manifest cache object to be
    * used by this instance of the offline loader.
    */
-  void setUp(const boost::filesystem::path &images_dir, const std::shared_ptr<DockerManifestsCache> &manifests_cache);
+  void setUp(boost::filesystem::path images_dir, const std::shared_ptr<DockerManifestsCache> &manifests_cache);
 
   /**
    * Load the specified docker-compose file, check its SHA256 against the
@@ -323,7 +320,7 @@ class DockerComposeOfflineLoader {
  *
  * @return true iff loading was successful.
  */
-bool loadManifest(const std::string &req_digest, const boost::filesystem::path manifests_dir, Json::Value &target);
+bool loadManifest(const std::string &req_digest, const boost::filesystem::path &manifests_dir, Json::Value &target);
 
 /**
  * Determine if two platform specification strings match.
@@ -336,7 +333,7 @@ bool loadManifest(const std::string &req_digest, const boost::filesystem::path m
  *      linux DOES NOT match windows ;-)
  *
  */
-bool platformMatches(const std::string plat1, const std::string plat2, unsigned *grade = nullptr);
+bool platformMatches(const std::string &plat1, const std::string &plat2, unsigned *grade = nullptr);
 
 /**
  * Determine current Docker platform (default platform for fetching images).

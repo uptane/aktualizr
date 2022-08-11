@@ -10,13 +10,14 @@
 
 static const uint16_t default_port = 8850;
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 DeviceDataProxy::DeviceDataProxy() {
   port = default_port;
   running = false;
   enabled = false;
 }
 
-void DeviceDataProxy::Initialize(const uint16_t p) {
+void DeviceDataProxy::Initialize(uint16_t p) {
   LOG_INFO << "PROXY: initializing...";
 
   enabled = true;
@@ -30,7 +31,7 @@ void DeviceDataProxy::Initialize(const uint16_t p) {
 
   LOG_INFO << "PROXY: using TCP port " << port << ".";
 
-  if (pipe(cancel_pipe)) {
+  if (pipe(cancel_pipe) != 0) {
     status_message = "could not create pipe for thread synchronization";
     throw std::runtime_error(status_message);
   }
@@ -52,7 +53,7 @@ int DeviceDataProxy::ConnectionSetNonblock(int socketfd) {
   return 0;
 }
 
-int DeviceDataProxy::ConnectionCreate() {
+int DeviceDataProxy::ConnectionCreate() const {
   int socketfd;
 
   if ((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -66,17 +67,19 @@ int DeviceDataProxy::ConnectionCreate() {
     return -1;
   }
 
-  sockaddr_in sockaddr;
+  sockaddr_in sockaddr{};
   sockaddr.sin_family = AF_INET;
   sockaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   sockaddr.sin_port = htons(port);
 
-  if (bind(socketfd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) < 0) {
+  if (bind(socketfd, reinterpret_cast<struct sockaddr*>(&sockaddr), sizeof(sockaddr)) < 0) {
     LOG_ERROR << "PROXY: failed to bind to TCP port! [" << strerror(errno) << "]";
     return -1;
   }
 
-  if (ConnectionSetNonblock(socketfd) == -1) return -1;
+  if (ConnectionSetNonblock(socketfd) == -1) {
+    return -1;
+  }
 
   if (listen(socketfd, 32) < 0) {
     LOG_ERROR << "PROXY: failed to listen to TCP port! [" << strerror(errno) << "]";
@@ -96,7 +99,7 @@ std::string DeviceDataProxy::FindAndReplaceString(std::string str, const std::st
 }
 
 void DeviceDataProxy::SendDeviceData(Aktualizr& aktualizr, std::string& str_data) {
-  if (str_data.size()) {
+  if (!str_data.empty()) {
     LOG_INFO << "PROXY: sending device data to Torizon OTA.";
     str_data = "{" + FindAndReplaceString(str_data, "}\n{", ",") + "}";
     Json::Value json_data = Utils::parseJSON(str_data);
@@ -113,16 +116,22 @@ void DeviceDataProxy::ReportStatus(Aktualizr& aktualizr, bool error) {
   str_data += "\"proxy\": {";
 
   // proxy status
-  if (error == true)
+  if (error) {
+    // NOLINTNEXTLINE(modernize-raw-string-literal)
     str_data += "\"status\": \"error\",";
-  else
+  } else {
+    // NOLINTNEXTLINE(modernize-raw-string-literal)
     str_data += "\"status\": \"stopped\",";
+  }
 
   // proxy status message
-  if (status_message.size())
+  if (!status_message.empty()) {
+    // NOLINTNEXTLINE(modernize-raw-string-literal)
     str_data += "\"message\": \"" + status_message + "\"";
-  else
+  } else {
+    // NOLINTNEXTLINE(modernize-raw-string-literal)
     str_data += "\"message\": \"status message not available\"";
+  }
 
   // end proxy info
   str_data += "}";
@@ -135,7 +144,7 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
     LOG_INFO << "PROXY: starting thread.";
 
     std::string device_buffered_data;
-    struct epoll_event events;
+    struct epoll_event events {};
     int epoll_errors = 0;
     int listener_socket;
     int timeout = -1;
@@ -150,13 +159,13 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
     int epfd = epoll_create(2);
 
     // set up file descriptor to cancel (stop) the thread
-    struct epoll_event ev1;
+    struct epoll_event ev1 {};
     ev1.events = EPOLLIN | EPOLLPRI;
     ev1.data.fd = cancel_pipe[0];
     epoll_ctl(epfd, EPOLL_CTL_ADD, cancel_pipe[0], &ev1);
 
     // set up file descriptor to listen to TCP connections
-    struct epoll_event ev2;
+    struct epoll_event ev2 {};
     ev2.events = EPOLLIN | EPOLLPRI;
     ev2.data.fd = listener_socket;
     epoll_ctl(epfd, EPOLL_CTL_ADD, listener_socket, &ev2);
@@ -184,7 +193,7 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
       }
 
       // timer expired, send data (if available) to Torizon OTA
-      else if (!ret) {
+      else if (ret == 0) {
         SendDeviceData(aktualizr, device_buffered_data);
         timeout = -1;
       }
@@ -197,11 +206,11 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
 
       // connection from TCP socket
       else if (events.data.fd == listener_socket) {
-        int connection_socket = accept(listener_socket, NULL, NULL);
+        int connection_socket = accept(listener_socket, nullptr, nullptr);
         LOG_DEBUG << "PROXY: receiving connection from client. fd=" << connection_socket;
         if (connection_socket >= 0) {
           // set up file descriptor to listen to client connection
-          struct epoll_event evconn;
+          struct epoll_event evconn {};
           evconn.events = EPOLLIN | EPOLLPRI;
           evconn.data.fd = connection_socket;
           epoll_ctl(epfd, EPOLL_CTL_ADD, connection_socket, &evconn);
@@ -210,8 +219,9 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
       }
 
       // receiving data from client
-      else if (events.events & EPOLLIN) {
+      else if ((events.events & EPOLLIN) != 0u) {
         const unsigned int MAX_BUF_LENGTH = 4096;
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
         char buffer[MAX_BUF_LENGTH];
         std::string str_data;
         ssize_t bytesReceived;
@@ -222,11 +232,13 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
         do {
           bytesReceived = recv(events.data.fd, buffer, MAX_BUF_LENGTH, 0);
 
-          if (bytesReceived > 0) str_data += std::string(&buffer[0], bytesReceived);
+          if (bytesReceived > 0) {
+            str_data += std::string(&buffer[0], static_cast<std::string::size_type>(bytesReceived));
+          }
 
         } while (bytesReceived == MAX_BUF_LENGTH);
 
-        if (str_data.size()) {
+        if (!str_data.empty()) {
           LOG_DEBUG << "PROXY: Data received."
                     << " SIZE=" << str_data.size() << " DATA=" << str_data;
 
@@ -236,7 +248,9 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
             str_data = str_data.substr(1, str_data.size() - 3);
 
             // add comma to separate entries
-            if (device_buffered_data.size()) device_buffered_data += ",";
+            if (!device_buffered_data.empty()) {
+              device_buffered_data += ",";
+            }
 
             // concatenate new entry
             device_buffered_data += str_data;
@@ -249,9 +263,9 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
         }
 
         // client disconnected
-        else if (!bytesReceived) {
+        else if (bytesReceived == 0) {
           LOG_DEBUG << "PROXY: client disconnected! fd=" << events.data.fd;
-          epoll_ctl(epfd, EPOLL_CTL_DEL, events.data.fd, NULL);
+          epoll_ctl(epfd, EPOLL_CTL_DEL, events.data.fd, nullptr);
           close(events.data.fd);
         }
       }
@@ -271,15 +285,17 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
 }
 
 void DeviceDataProxy::Stop(Aktualizr& aktualizr, bool error) {
-  if (enabled == true) {
-    if (running == true) {
+  if (enabled) {
+    if (running) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
       write(cancel_pipe[1], "stop", 4);
 #pragma GCC diagnostic pop
       future.get();
     }
-    if (error == false) status_message = "execution stopped by the user";
+    if (!error) {
+      status_message = "execution stopped by the user";
+    }
     ReportStatus(aktualizr, error);
   }
 }

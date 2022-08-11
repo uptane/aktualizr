@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
 
     Aktualizr aktualizr(config);
 #ifdef TORIZON
-    UpdateEvents *events = events->getInstance(&aktualizr);
-    std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = events->processEvent;
+    (void)UpdateEvents::getInstance(&aktualizr);
+    std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = UpdateEvents::processEvent;
 #else
     std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = processEvent;
 #endif
@@ -173,7 +173,9 @@ int main(int argc, char *argv[]) {
 
       // setup proxy TCP port
       uint16_t port = 0;
-      if (commandline_map.count("data-proxy-port") != 0) port = commandline_map["data-proxy-port"].as<uint16_t>();
+      if (commandline_map.count("data-proxy-port") != 0) {
+        port = commandline_map["data-proxy-port"].as<uint16_t>();
+      }
 
       // start proxy
       try {

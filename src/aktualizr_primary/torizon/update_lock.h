@@ -8,7 +8,11 @@ class UpdateLock {
   int lockdesc;
 
  public:
-  UpdateLock(boost::filesystem::path lock) : lockfile(lock), lockdesc(0) {}
+  explicit UpdateLock(boost::filesystem::path lock) : lockfile(std::move(lock)), lockdesc(0) {}
+  UpdateLock(const UpdateLock&) = delete;
+  UpdateLock(UpdateLock&&) = delete;
+  UpdateLock& operator=(const UpdateLock&) = delete;
+  UpdateLock& operator=(UpdateLock&&) = delete;
   ~UpdateLock();
 
   bool get(bool block = true);

@@ -229,7 +229,7 @@ data::InstallationResult OstreeManager::pullLocal(const boost::filesystem::path 
   g_variant_unref(options);
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "Pulling local OSTree image was successful");
 }
-#endif // defined(BUILD_OFFLINE_UPDATES)
+#endif  // defined(BUILD_OFFLINE_UPDATES)
 
 data::InstallationResult OstreeManager::install(const Uptane::Target &target) const {
   const char *opt_osname = nullptr;

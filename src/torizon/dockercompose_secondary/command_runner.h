@@ -6,7 +6,7 @@
 
 class CommandRunner {
  public:
-  CommandRunner() {}
+  CommandRunner() = default;
 
   bool run(const std::string& cmd);
   std::vector<std::string> runResult(const std::string& cmd);

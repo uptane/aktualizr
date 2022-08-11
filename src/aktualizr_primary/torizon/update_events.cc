@@ -20,12 +20,13 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     {"UpdateCheckComplete",
      [](const event::BaseEvent *base) -> std::string {
        const auto *event_ptr = dynamic_cast<const event::UpdateCheckComplete *>(base);
-       if (event_ptr->result.status == result::UpdateStatus::kNoUpdatesAvailable)
+       if (event_ptr->result.status == result::UpdateStatus::kNoUpdatesAvailable) {
          return "Result - No updates available";
-       else if (event_ptr->result.status == result::UpdateStatus::kUpdatesAvailable)
+       } else if (event_ptr->result.status == result::UpdateStatus::kUpdatesAvailable) {
          return "Result - Updates available";
-       else if (event_ptr->result.status == result::UpdateStatus::kError)
+       } else if (event_ptr->result.status == result::UpdateStatus::kError) {
          return "Result - Error";
+       }
        return "Result - Unknown";
      }},
     {"DownloadProgressReport",
@@ -41,14 +42,15 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
     {"AllDownloadsComplete",
      [](const event::BaseEvent *base) -> std::string {
        const auto *event_ptr = dynamic_cast<const event::AllDownloadsComplete *>(base);
-       if (event_ptr->result.status == result::DownloadStatus::kSuccess)
+       if (event_ptr->result.status == result::DownloadStatus::kSuccess) {
          return "Result - Success";
-       else if (event_ptr->result.status == result::DownloadStatus::kPartialSuccess)
+       } else if (event_ptr->result.status == result::DownloadStatus::kPartialSuccess) {
          return "Result - Partial success";
-       else if (event_ptr->result.status == result::DownloadStatus::kNothingToDownload)
+       } else if (event_ptr->result.status == result::DownloadStatus::kNothingToDownload) {
          return "Result - Nothing to download";
-       else if (event_ptr->result.status == result::DownloadStatus::kError)
+       } else if (event_ptr->result.status == result::DownloadStatus::kError) {
          return "Result - Error";
+       }
        return "Result - Unknown";
      }},
     {"InstallTargetComplete",
@@ -63,10 +65,13 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
      }},
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 UpdateEvents *UpdateEvents::instance = nullptr;
 
 UpdateEvents *UpdateEvents::getInstance(Aktualizr *a) {
-  if (instance == nullptr) instance = new UpdateEvents(a);
+  if (instance == nullptr) {
+    instance = new UpdateEvents(a);
+  }
   return instance;
 }
 
@@ -75,14 +80,15 @@ void UpdateEvents::processAllInstallsComplete() {
   lock.free();
 }
 
-void UpdateEvents::processUpdateCheckComplete(const result::UpdateStatus status) {
+void UpdateEvents::processUpdateCheckComplete(result::UpdateStatus status) {
   lock.free();
   if (status == result::UpdateStatus::kUpdatesAvailable) {
     LOG_INFO << "Update available. Acquiring the update lock...";
-    if (lock.try_get() == false)
+    if (!lock.try_get()) {
       aktualizr->DisableUpdates(true);
-    else
+    } else {
       aktualizr->DisableUpdates(false);
+    }
   }
 }
 
@@ -95,7 +101,7 @@ void UpdateEvents::processEvent(const std::shared_ptr<event::BaseEvent> &event) 
     LOG_INFO << "Event: " << event->variant << ", " << extra->second(event.get());
   }
 
-  UpdateEvents *e = getInstance(0);
+  UpdateEvents *e = getInstance(nullptr);
 
   if (event->variant == event::UpdateCheckComplete::TypeName) {
     const auto *update_event = dynamic_cast<event::UpdateCheckComplete *>(event.get());

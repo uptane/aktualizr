@@ -23,19 +23,19 @@ class DockerTarballLoader {
     std::string sha256_;  // Metadata file's digest.
     Json::Value root_;    // Metadata in the file.
    public:
-    explicit MetaInfo(const std::string &sha256) : sha256_(sha256), root_() {}
-    MetaInfo(const std::string &sha256, Json::Value &root) : sha256_(sha256), root_(root) {}
+    explicit MetaInfo(std::string sha256) : sha256_(std::move(sha256)) {}
+    MetaInfo(std::string sha256, Json::Value &root) : sha256_(std::move(sha256)), root_(root) {}
     Json::Value &getRoot() { return root_; }
     std::string &getSHA256() { return sha256_; }
   };
 
-  typedef std::map<std::string, MetaInfo> MetadataMap;
+  using MetadataMap = std::map<std::string, MetaInfo>;
 
   struct MetaStats {
-    uint32_t nfiles_json;
-    uint32_t nfiles_other;
-    uint64_t nbytes_json;
-    uint64_t nbytes_other;
+    uint32_t nfiles_json{0};
+    uint32_t nfiles_other{0};
+    uint64_t nbytes_json{0};
+    uint64_t nbytes_other{0};
     void clear() {
       nfiles_json = 0;
       nfiles_other = 0;
@@ -44,13 +44,13 @@ class DockerTarballLoader {
     }
   };
 
-  typedef std::map<std::string, std::set<std::string>> StringToStringSet;
+  using StringToStringSet = std::map<std::string, std::set<std::string>>;
 
- public:
   /**
    * Constructor.
    */
-  explicit DockerTarballLoader(const boost::filesystem::path &tarball) : tarball_(tarball), org_tarball_length_(0) {}
+  explicit DockerTarballLoader(boost::filesystem::path tarball)
+      : tarball_(std::move(tarball)), org_tarball_length_(0) {}
 
   /**
    * Parse tarball archive and load all metadata (JSON) files into

@@ -175,6 +175,7 @@ boost::filesystem::path utils::BasedPath::get(const boost::filesystem::path &bas
   return Utils::absolutePath(base, p_);
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 Json::Value utils::MergeJson(const Json::Value &main, const Json::Value &other,
                              const std::vector<std::string> *other_ignore) {
   if (!main.isObject() || !other.isObject()) {
@@ -191,6 +192,7 @@ Json::Value utils::MergeJson(const Json::Value &main, const Json::Value &other,
       res[it.name()] = *it;
     } else {
       // Element exists both in 'main' and 'other': merge them recursively.
+      // NOLINTNEXTLINE(misc-no-recursion)
       res[it.name()] = MergeJson(*it, other[it.name()]);
     }
   }

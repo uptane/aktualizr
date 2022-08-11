@@ -17,7 +17,7 @@ namespace bpo = boost::program_options;
 
 namespace Primary {
 
-const char* const DockerComposeSecondaryConfig::Type = "docker-compose";
+constexpr const char* const DockerComposeSecondaryConfig::Type;
 
 DockerComposeSecondaryConfig::DockerComposeSecondaryConfig(const Json::Value& json_config)
     : ManagedSecondaryConfig(Type) {
@@ -139,7 +139,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
     return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Unknown update type");
   }
 
-  if (update_status == true) {
+  if (update_status) {
     Utils::writeFile(sconfig.target_name_path, target.filename());
     if (sync_update) {
       return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
@@ -254,7 +254,7 @@ void DockerComposeSecondary::validateInstall() {
   storage = INvStorage::newStorage(config.storage);
   boost::optional<Uptane::Target> pending_target;
   storage->loadInstalledVersions(serial.ToString(), nullptr, &pending_target);
-  if (!pending_target && !access(compose_file_new.c_str(), F_OK)) {
+  if (!pending_target && (access(compose_file_new.c_str(), F_OK) == 0)) {
     LOG_INFO << "Incomplete update detected.";
     pending_check.containers_stopped = true;
     pending_check.rollback();

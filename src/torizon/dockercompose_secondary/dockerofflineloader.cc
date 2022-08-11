@@ -50,7 +50,7 @@ static void ensure(bool cond, const char *message) {
   }
 }
 
-bool loadManifest(const std::string &req_digest, const boost::filesystem::path manifests_dir, Json::Value &target) {
+bool loadManifest(const std::string &req_digest, const boost::filesystem::path &manifests_dir, Json::Value &target) {
   // Open manifest file and check its size.
   const boost::filesystem::path fname(manifests_dir / (req_digest + JSON_EXT));
   std::ifstream input(fname.string(), std::ios::binary);
@@ -69,11 +69,11 @@ bool loadManifest(const std::string &req_digest, const boost::filesystem::path m
   }
 
   // Load manifest file into memory.
-  typedef std::vector<uint8_t> ManifestBufferType;
+  using ManifestBufferType = std::vector<uint8_t>;
   auto buffer = std_::make_unique<ManifestBufferType>(orglen + 1);
 
-  input.read(reinterpret_cast<char *>(buffer->data()), buffer->size());
-  const uintmax_t len = input.gcount();
+  input.read(reinterpret_cast<char *>(buffer->data()), static_cast<std::streamsize>(buffer->size()));
+  const auto len = static_cast<uintmax_t>(input.gcount());
   ensure(len == orglen, "Manifest file changed size");
 
   // Determine the file's digest and make sure it's correct.
@@ -88,7 +88,7 @@ bool loadManifest(const std::string &req_digest, const boost::filesystem::path m
 
   // Encapsulate data into stream.
   std::string _source(reinterpret_cast<char *>(buffer->data()), len);
-  std::istringstream source(std::move(_source));
+  std::istringstream source(_source);
   // Parse contents.
   Json::CharReaderBuilder builder;
   Json::String errs;
@@ -101,7 +101,7 @@ bool loadManifest(const std::string &req_digest, const boost::filesystem::path m
   return true;
 }
 
-bool platformMatches(const std::string plat1, const std::string plat2, unsigned *grade) {
+bool platformMatches(const std::string &plat1, const std::string &plat2, unsigned *grade) {
   // TODO: Determine if there are defined rules for how to compare platforms.
   //       e.g. can we say that linux/arm/v7 encompasses linux/arm/v6?
 
@@ -125,7 +125,9 @@ bool platformMatches(const std::string plat1, const std::string plat2, unsigned 
   unsigned _grade = 0;
 
   for (auto it1 = plat1_lst.begin(), it2 = plat2_lst.begin();; it1++, it2++) {
-    if (it1 == plat1_lst.end() || it2 == plat2_lst.end()) break;
+    if (it1 == plat1_lst.end() || it2 == plat2_lst.end()) {
+      break;
+    }
     if (*it1 != *it2) {
       match = false;
       break;
@@ -133,7 +135,7 @@ bool platformMatches(const std::string plat1, const std::string plat2, unsigned 
     _grade++;
   }
 
-  if (grade) {
+  if (grade != nullptr) {
     *grade = _grade;
   }
 
@@ -145,11 +147,11 @@ bool platformMatches(const std::string plat1, const std::string plat2, unsigned 
 
 std::string getDockerPlatform() {
   const char *envplat = getenv("DOCKER_DEFAULT_PLATFORM");
-  if (envplat) {
+  if (envplat != nullptr) {
     return std::string(envplat);
   }
 
-  struct utsname uinfo;
+  struct utsname uinfo {};
   ensure(uname(&uinfo) == 0, "Cannot get system information");
   std::string sysname(uinfo.sysname);
   ensure(sysname == "Linux", "Only Linux is supported");
@@ -176,13 +178,13 @@ void splitDigestFromName(const std::string &name, std::string *name_nodigest, st
   ensure(pos != std::string::npos, "Image name '" + name + "' not specified by digest");
 
   // Get image name without digest.
-  if (name_nodigest) {
+  if (name_nodigest != nullptr) {
     ensure(pos > 1, "Bad format of image name '" + name + "'");
     *name_nodigest = name.substr(0, pos - 1);
   }
 
   // Get the digest (with or without prefix).
-  if (digest) {
+  if (digest != nullptr) {
     if (removePrefix) {
       *digest = name.substr(pos + SHA256_PREFIX.length());
     } else {
@@ -223,7 +225,9 @@ class LargeTemporaryDirectory {
  public:
   explicit LargeTemporaryDirectory(const std::string &hint = "dir");
   LargeTemporaryDirectory(const LargeTemporaryDirectory &) = delete;
-  LargeTemporaryDirectory operator=(LargeTemporaryDirectory &) = delete;
+  LargeTemporaryDirectory(LargeTemporaryDirectory &&) = delete;
+  LargeTemporaryDirectory &operator=(const LargeTemporaryDirectory &) = delete;
+  LargeTemporaryDirectory &operator=(LargeTemporaryDirectory &&) = delete;
   ~LargeTemporaryDirectory();
   boost::filesystem::path Path() const { return tmp_name_; }
   std::string PathString() const { return Path().string(); }
@@ -262,7 +266,7 @@ const std::string DockerManifestWrapper::MEDIA_TYPE::SINGLE_PLAT =
 const std::string DockerManifestWrapper::MEDIA_TYPE::MULTI_PLAT =
     "application/vnd.docker.distribution.manifest.list.v2+json";
 
-DockerManifestWrapper::DockerManifestWrapper(const Json::Value &manifest) : manifest_(manifest) {
+DockerManifestWrapper::DockerManifestWrapper(Json::Value manifest) : manifest_(std::move(manifest)) {
   // Ensure this is a media type we understand.
   const std::string media_type = getMediaType();
   ensure((media_type == MEDIA_TYPE::SINGLE_PLAT) || (media_type == MEDIA_TYPE::MULTI_PLAT), "Bad manifest type");
@@ -270,7 +274,7 @@ DockerManifestWrapper::DockerManifestWrapper(const Json::Value &manifest) : mani
 
 bool DockerManifestWrapper::isMultiPlatform() const { return getMediaType() == MEDIA_TYPE::MULTI_PLAT; }
 
-void DockerManifestWrapper::findBestPlatform(std::string req_platform, std::string *sel_platform,
+void DockerManifestWrapper::findBestPlatform(const std::string &req_platform, std::string *sel_platform,
                                              std::string *sel_digest) const {
   ensureMediaType(MEDIA_TYPE::MULTI_PLAT);
 
@@ -278,8 +282,8 @@ void DockerManifestWrapper::findBestPlatform(std::string req_platform, std::stri
     unsigned grade_;
     std::string digest_;
     std::string platform_;
-    ManInfo(unsigned grade, const std::string &digest, const std::string platform)
-        : grade_(grade), digest_(digest), platform_(platform) {}
+    ManInfo(unsigned grade, std::string digest, std::string platform)
+        : grade_(grade), digest_(std::move(digest)), platform_(std::move(platform)) {}
   };
 
   // Go over all manifests in the manifest list.
@@ -304,10 +308,10 @@ void DockerManifestWrapper::findBestPlatform(std::string req_platform, std::stri
            "There are multiple images appropriate for platform " + req_platform);
   }
 
-  if (sel_platform) {
+  if (sel_platform != nullptr) {
     *sel_platform = grade_digest_pairs[0].platform_;
   }
-  if (sel_digest) {
+  if (sel_digest != nullptr) {
     *sel_digest = grade_digest_pairs[0].digest_;
   }
 }
@@ -321,7 +325,7 @@ std::string DockerManifestWrapper::getConfigDigest(bool removePrefix) const {
   return digest;
 }
 
-std::string DockerManifestWrapper::platformString(const Json::Value &plat) const {
+std::string DockerManifestWrapper::platformString(const Json::Value &plat) {
   ensure(plat.isMember("os") && plat.isMember("architecture"), "Bad platform spec in manifest");
 
   std::string platform = plat["os"].asString();
@@ -360,7 +364,7 @@ DockerManifestsCache::ManifestPtr DockerManifestsCache::loadByDigest(const std::
   ensure(digest_nopref.length() == 64, "Bad digest format");
 
   // Try to find manifest in cache first.
-  DigestToManifestCacheElemMap::iterator dit = manifests_cache_.find(digest_nopref);
+  auto dit = manifests_cache_.find(digest_nopref);
   if (dit != manifests_cache_.end()) {
     LOG_TRACE << "cache: hit for manifest with digest " << digest_nopref;
     // Update access index and return it.
@@ -392,7 +396,9 @@ DockerManifestsCache::ManifestPtr DockerManifestsCache::loadByDigest(const std::
         delit_counter = cache_elem.first;
       }
     }
-    if (delit == manifests_cache_.end()) break;
+    if (delit == manifests_cache_.end()) {
+      break;
+    }
     // Remove LRU entry.
     LOG_TRACE << "cache: discard entry with digest " << delit->first;
     manifests_cache_.erase(delit);
@@ -411,11 +417,17 @@ const std::string DockerComposeFile::offline_mode_header{"# mode=offline"};
 const std::string DockerComposeFile::image_tag{"image"};
 const std::string DockerComposeFile::image_tag_old{"x-old-image"};
 
+// NOLINTNEXTLINE(modernize-raw-string-literal)
 const std::regex DockerComposeFile::offline_mode_header_re{"^#.*\\bmode=offline\\b.*\\s*$"};
+// NOLINTNEXTLINE(modernize-raw-string-literal)
 const std::regex DockerComposeFile::level1_key_re{"^([-._a-zA-Z0-9]+):\\s*$"};
+// NOLINTNEXTLINE(modernize-raw-string-literal)
 const std::regex DockerComposeFile::level2_key_re{"^  ([-._a-zA-Z0-9]+):\\s*$"};
+// NOLINTNEXTLINE(modernize-raw-string-literal)
 const std::regex DockerComposeFile::image_name_re{"^    (image):\\s*(\"?)(\\S+)(\\2)\\s*$"};
+// NOLINTNEXTLINE(modernize-raw-string-literal)
 const std::regex DockerComposeFile::image_name_old_re{"^    (x-old-image):\\s*(\"?)(\\S+)(\\2)\\s*$"};
+// NOLINTNEXTLINE(modernize-raw-string-literal)
 const std::regex DockerComposeFile::plat_name_re{"^    (?:platform):\\s*(\"?)(\\S+)(\\1)\\s*$"};
 
 /**
@@ -424,7 +436,9 @@ const std::regex DockerComposeFile::plat_name_re{"^    (?:platform):\\s*(\"?)(\\
  */
 static bool raw_getline(std::istream &input, std::string &line, std::size_t maxcnt, char delim = '\n') {
   line.clear();
-  if (!input.good()) return false;
+  if (!input.good()) {
+    return false;
+  }
 
   char ch;
   std::size_t cnt = 0;
@@ -434,7 +448,9 @@ static bool raw_getline(std::istream &input, std::string &line, std::size_t maxc
       throw std::runtime_error("Line too long");
     }
     line += ch;
-    if (ch == delim) break;
+    if (ch == delim) {
+      break;
+    }
   }
 
   return true;
@@ -490,7 +506,9 @@ bool DockerComposeFile::getServices(StringToImagePlatformPair &dest, bool verbos
 
   bool in_svc_section = false;
 
-  std::string curr_service, curr_image, curr_platform;
+  std::string curr_service;
+  std::string curr_image;
+  std::string curr_platform;
   auto store_current = [&]() {
     if ((!curr_service.empty()) && (!curr_image.empty())) {
       // LOG_INFO << "Storing: " << curr_service << " => " << curr_image
@@ -599,8 +617,10 @@ void DockerComposeFile::forwardTransform(const ServiceToImageMapping &service_im
         // Create modified versions of the line: one with the old image and
         // another with the new one (in this order) and we rely on that order
         // in backwardTransform().
-        new_line1.replace(mres.position(1), mres.length(1), image_tag_old);
-        new_line2.replace(mres.position(3), mres.length(3), it->second);
+        new_line1.replace(static_cast<std::string::size_type>(mres.position(1)),
+                          static_cast<std::string::size_type>(mres.length(1)), image_tag_old);
+        new_line2.replace(static_cast<std::string::size_type>(mres.position(3)),
+                          static_cast<std::string::size_type>(mres.length(3)), it->second);
         save(new_line1);
         save(new_line2);
       } else {
@@ -614,7 +634,7 @@ void DockerComposeFile::forwardTransform(const ServiceToImageMapping &service_im
   }
 
   // Add a marker to indicate this file is in "offline-mode".
-  if (new_compose_lines.size()) {
+  if (!new_compose_lines.empty()) {
     // Use the first line as a template (so newline ending is kept).
     std::regex non_spaces{"^[^\\r\\n]*"};
     std::string first_line = std::regex_replace(new_compose_lines.front(), non_spaces, offline_mode_header);
@@ -628,7 +648,7 @@ void DockerComposeFile::backwardTransform() {
   bool in_svc_section = false;
 
   // Check marker at first line.
-  if (compose_lines_.size()) {
+  if (!compose_lines_.empty()) {
     const std::string first_line = compose_lines_.front();
     if (!std::regex_match(first_line, offline_mode_header_re)) {
       LOG_DEBUG << "Offline-mode header not found: skipping backward transform";
@@ -643,7 +663,8 @@ void DockerComposeFile::backwardTransform() {
     new_compose_lines.push_back(new_line);
   };
 
-  std::string curr_service, curr_image;
+  std::string curr_service;
+  std::string curr_image;
   std::smatch mres;
   assert(compose_lines_.begin() != compose_lines_.end());
   for (auto it = std::next(compose_lines_.begin()); it != compose_lines_.end(); it++) {
@@ -676,7 +697,8 @@ void DockerComposeFile::backwardTransform() {
       curr_image = mres[3];
       // Save a modified version of the line.
       std::string new_line1 = line;
-      new_line1.replace(mres.position(1), mres.length(1), image_tag);
+      new_line1.replace(static_cast<std::string::size_type>(mres.position(1)),
+                        static_cast<std::string::size_type>(mres.length(1)), image_tag);
       save(new_line1);
 
     } else if (std::regex_match(line, mres, image_name_re)) {
@@ -701,14 +723,10 @@ bool DockerComposeFile::write(const boost::filesystem::path &compose_path) {
     LOG_WARNING << "Could not open compose-file " << compose_path << " for writing";
     return false;
   }
-
   for (auto &line : compose_lines_) {
     output << line;
   }
-
-  if (!output) return false;
-
-  return true;
+  return !!output;
 }
 
 std::string DockerComposeFile::toString() {
@@ -737,13 +755,15 @@ std::string DockerComposeFile::getSHA256() {
 
 DockerComposeOfflineLoader::DockerComposeOfflineLoader() : default_platform_(getDockerPlatform()) {}
 
-DockerComposeOfflineLoader::DockerComposeOfflineLoader(const boost::filesystem::path &images_dir,
-                                                       const std::shared_ptr<DockerManifestsCache> &manifests_cache)
-    : default_platform_(getDockerPlatform()), images_dir_(images_dir), manifests_cache_(manifests_cache) {}
+DockerComposeOfflineLoader::DockerComposeOfflineLoader(boost::filesystem::path images_dir,
+                                                       std::shared_ptr<DockerManifestsCache> manifests_cache)
+    : default_platform_(getDockerPlatform()),
+      images_dir_(std::move(images_dir)),
+      manifests_cache_(std::move(manifests_cache)) {}
 
-void DockerComposeOfflineLoader::setUp(const boost::filesystem::path &images_dir,
+void DockerComposeOfflineLoader::setUp(boost::filesystem::path images_dir,
                                        const std::shared_ptr<DockerManifestsCache> &manifests_cache) {
-  images_dir_ = images_dir;
+  images_dir_ = std::move(images_dir);
   manifests_cache_ = manifests_cache;
 }
 
@@ -756,7 +776,7 @@ void DockerComposeOfflineLoader::dumpReferencedImages() {
   LOG_DEBUG << "Images referenced in docker-compose:";
   for (auto &ri : referenced_images_) {
     LOG_DEBUG << "* " << ri.first << ":";
-    auto &platform = ri.second.getPlatform();
+    const auto &platform = ri.second.getPlatform();
     LOG_DEBUG << "  " << ri.second.getImage() << " [" << na_if_empty(platform) << "]";
   }
 }
@@ -771,7 +791,8 @@ void DockerComposeOfflineLoader::updateImageMapping() {
     const std::string &req_platform = ref_image.second.getPlatform();
 
     // Determine digest and load corresponding manifest.
-    std::string req_image_nodigest, req_digest;
+    std::string req_image_nodigest;
+    std::string req_digest;
     splitDigestFromName(req_image, &req_image_nodigest, &req_digest, false);
     auto main_manifest = manifests_cache_->loadByDigest(req_digest);
 
