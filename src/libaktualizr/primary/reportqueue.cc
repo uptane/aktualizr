@@ -8,8 +8,15 @@
 #include "storage/invstorage.h"
 
 ReportQueue::ReportQueue(const Config& config_in, std::shared_ptr<HttpInterface> http_client,
-                         std::shared_ptr<INvStorage> storage_in)
-    : config(config_in), http(std::move(http_client)), storage(std::move(storage_in)) {
+                         std::shared_ptr<INvStorage> storage_in, int run_pause_s, int event_number_limit)
+    : config(config_in),
+      http(std::move(http_client)),
+      storage(std::move(storage_in)),
+      run_pause_s_{run_pause_s},
+      event_number_limit_{event_number_limit} {
+  if (event_number_limit == 0) {
+    throw std::invalid_argument("Event number limit is set to 0 what leads to event accumulation in DB");
+  }
   thread_ = std::thread(std::bind(&ReportQueue::run, this));
 }
 
@@ -32,7 +39,7 @@ void ReportQueue::run() {
   std::unique_lock<std::mutex> lock(m_);
   while (!shutdown_) {
     flushQueue();
-    cv_.wait_for(lock, std::chrono::seconds(10));
+    cv_.wait_for(lock, std::chrono::seconds(run_pause_s_));
   }
 }
 
@@ -47,7 +54,7 @@ void ReportQueue::enqueue(std::unique_ptr<ReportEvent> event) {
 void ReportQueue::flushQueue() {
   int64_t max_id = 0;
   Json::Value report_array{Json::arrayValue};
-  storage->loadReportEvents(&report_array, &max_id);
+  storage->loadReportEvents(&report_array, &max_id, event_number_limit_);
 
   if (config.tls.server.empty()) {
     // Prevent a lot of unnecessary garbage output in uptane vector tests.

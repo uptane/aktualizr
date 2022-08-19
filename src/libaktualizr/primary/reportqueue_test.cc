@@ -16,8 +16,18 @@
 
 class HttpFakeRq : public HttpFake {
  public:
-  HttpFakeRq(const boost::filesystem::path &test_dir_in, size_t expected_events)
-      : HttpFake(test_dir_in, ""), expected_events_(expected_events) {}
+  HttpFakeRq(const boost::filesystem::path &test_dir_in, size_t expected_events, int event_numb_limit = -1)
+      : HttpFake(test_dir_in, ""),
+        expected_events_(expected_events),
+        event_numb_limit_{event_numb_limit},
+        last_request_expected_events_{expected_events_} {
+    if (event_numb_limit_ > 0) {
+      last_request_expected_events_ = expected_events_ % static_cast<uint>(event_numb_limit_);
+      if (last_request_expected_events_ == 0) {
+        last_request_expected_events_ = static_cast<uint>(event_numb_limit_);
+      }
+    }
+  }
 
   HttpResponse handle_event(const std::string &url, const Json::Value &data) override {
     (void)data;
@@ -61,6 +71,20 @@ class HttpFakeRq : public HttpFake {
         expected_events_received.set_value(true);
       }
       return HttpResponse("", 200, CURLE_OK, "");
+    } else if (url.find("reportqueue/EventNumberLimit") == 0) {
+      const auto recv_event_numb{data.size()};
+      EXPECT_GT(recv_event_numb, 0);
+      events_seen += recv_event_numb;
+      EXPECT_LE(events_seen, expected_events_);
+
+      if (events_seen < expected_events_) {
+        EXPECT_EQ(recv_event_numb, event_numb_limit_);
+      } else {
+        EXPECT_EQ(recv_event_numb, last_request_expected_events_);
+        expected_events_received.set_value(true);
+      }
+
+      return HttpResponse("", 200, CURLE_OK, "");
     }
     LOG_ERROR << "Unexpected event: " << data;
     return HttpResponse("", 400, CURLE_OK, "");
@@ -69,6 +93,8 @@ class HttpFakeRq : public HttpFake {
   size_t events_seen{0};
   size_t expected_events_;
   std::promise<bool> expected_events_received{};
+  int event_numb_limit_;
+  size_t last_request_expected_events_;
 };
 
 /* Test one event. */
@@ -170,6 +196,34 @@ TEST(ReportQueue, StoreEvents) {
   EXPECT_EQ(http->events_seen, num_events);
   sleep(1);
   check_sql(0);
+}
+
+TEST(ReportQueue, LimitEventNumber) {
+  TemporaryDirectory temp_dir;
+  Config config;
+  config.storage.path = temp_dir.Path();
+  config.tls.server = "";
+  auto sql_storage = std::make_shared<SQLStorage>(config.storage, false);
+
+  const std::vector<std::tuple<uint, int>> test_cases{
+      {1, -1}, {1, 1}, {1, 2}, {10, -1}, {10, 1}, {10, 2}, {10, 3}, {10, 9}, {10, 10}, {10, 11},
+  };
+  for (const auto &tc : test_cases) {
+    const auto event_numb{std::get<0>(tc)};
+    const auto event_numb_limit{std::get<1>(tc)};
+
+    Json::Value report_array{Json::arrayValue};
+    for (uint ii = 0; ii < event_numb; ++ii) {
+      sql_storage->saveReportEvent(Utils::parseJSON(R"({"id": "some ID", "eventType": "some Event"})"));
+    }
+
+    config.tls.server = "reportqueue/EventNumberLimit";
+    auto http = std::make_shared<HttpFakeRq>(temp_dir.Path(), event_numb, event_numb_limit);
+    ReportQueue report_queue(config, http, sql_storage, 0, event_numb_limit);
+    // Wait at most 20 seconds for the messages to get processed.
+    http->expected_events_received.get_future().wait_for(std::chrono::seconds(20));
+    EXPECT_EQ(http->events_seen, event_numb);
+  }
 }
 
 #ifndef __NO_MAIN__
