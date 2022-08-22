@@ -13,7 +13,8 @@ ReportQueue::ReportQueue(const Config& config_in, std::shared_ptr<HttpInterface>
       http(std::move(http_client)),
       storage(std::move(storage_in)),
       run_pause_s_{run_pause_s},
-      event_number_limit_{event_number_limit} {
+      event_number_limit_{event_number_limit},
+      cur_event_number_limit_{event_number_limit_} {
   if (event_number_limit == 0) {
     throw std::invalid_argument("Event number limit is set to 0 what leads to event accumulation in DB");
   }
@@ -54,7 +55,7 @@ void ReportQueue::enqueue(std::unique_ptr<ReportEvent> event) {
 void ReportQueue::flushQueue() {
   int64_t max_id = 0;
   Json::Value report_array{Json::arrayValue};
-  storage->loadReportEvents(&report_array, &max_id, event_number_limit_);
+  storage->loadReportEvents(&report_array, &max_id, cur_event_number_limit_);
 
   if (config.tls.server.empty()) {
     // Prevent a lot of unnecessary garbage output in uptane vector tests.
@@ -65,15 +66,31 @@ void ReportQueue::flushQueue() {
   if (!report_array.empty()) {
     HttpResponse response = http->post(config.tls.server + "/events", report_array);
 
+    bool delete_events{response.isOk()};
     // 404 implies the server does not support this feature. Nothing we can
     // do, just move along.
     if (response.http_status_code == 404) {
-      LOG_TRACE << "Server does not support event reports. Clearing report queue.";
+      LOG_DEBUG << "Server does not support event reports. Clearing report queue.";
+      delete_events = true;
+    } else if (response.http_status_code == 413) {
+      if (report_array.size() > 1) {
+        // if 413 is received to posting of more than one event then try sending less events next time
+        cur_event_number_limit_ = report_array.size() > 2 ? report_array.size() / 2 : 1;
+        LOG_DEBUG << "Got 413 response to request that contains " << report_array.size() << " events. Will try to send "
+                  << cur_event_number_limit_ << " events.";
+      } else {
+        // An event is too big to be accepted by the server, let's drop it
+        LOG_WARNING << "Dropping a report event " << report_array[0].get("id", "unknown") << " since the server `"
+                    << config.tls.server << "` cannot digest it (413).";
+        delete_events = true;
+      }
+    } else if (!response.isOk()) {
+      LOG_WARNING << "Failed to post update events: " << response.getStatusStr();
     }
-
-    if (response.isOk() || response.http_status_code == 404) {
+    if (delete_events) {
       report_array.clear();
       storage->deleteReportEvents(max_id);
+      cur_event_number_limit_ = event_number_limit_;
     }
   }
 }

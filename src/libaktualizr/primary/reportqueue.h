@@ -109,6 +109,7 @@ class ReportQueue {
   std::shared_ptr<INvStorage> storage;
   const int run_pause_s_;
   const int event_number_limit_;
+  int cur_event_number_limit_;
 };
 
 #endif  // REPORTQUEUE_H_
