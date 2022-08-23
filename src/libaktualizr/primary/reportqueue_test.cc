@@ -191,7 +191,7 @@ TEST(ReportQueue, StoreEvents) {
   auto check_sql = [sql_storage](size_t count) {
     int64_t max_id = 0;
     Json::Value report_array{Json::arrayValue};
-    sql_storage->loadReportEvents(&report_array, &max_id);
+    sql_storage->loadReportEvents(&report_array, &max_id, -1);
     EXPECT_EQ(max_id, count);
   };
 

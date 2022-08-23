@@ -75,7 +75,7 @@ void ReportQueue::flushQueue() {
     } else if (response.http_status_code == 413) {
       if (report_array.size() > 1) {
         // if 413 is received to posting of more than one event then try sending less events next time
-        cur_event_number_limit_ = report_array.size() > 2 ? report_array.size() / 2 : 1;
+        cur_event_number_limit_ = report_array.size() > 2 ? static_cast<int>(report_array.size() / 2U) : 1;
         LOG_DEBUG << "Got 413 response to request that contains " << report_array.size() << " events. Will try to send "
                   << cur_event_number_limit_ << " events.";
       } else {

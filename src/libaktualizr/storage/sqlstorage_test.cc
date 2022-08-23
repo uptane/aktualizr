@@ -529,7 +529,7 @@ TEST(sqlstorage, store_and_load_report_events) {
   int64_t max_id;
   {
     Json::Value events{Json::arrayValue};
-    storage->loadReportEvents(&events, &max_id);
+    storage->loadReportEvents(&events, &max_id, -1);
     EXPECT_EQ(events.size(), event_numb);
   }
   const std::vector<int> event_number_limits{1, 4, 3, 5};
