@@ -516,6 +516,33 @@ TEST(sqlstorage, migrate_from_fs) {
   }
 }
 
+TEST(sqlstorage, store_and_load_report_events) {
+  TemporaryDirectory temp_dir;
+  StorageConfig config;
+  config.path = temp_dir.Path();
+  auto storage = INvStorage::newStorage(config);
+
+  const int event_numb{10};
+  for (int ii = 0; ii < event_numb; ++ii) {
+    storage->saveReportEvent(Utils::parseJSON(R"("id": "some ID", "eventType": "some Event")"));
+  }
+  int64_t max_id;
+  {
+    Json::Value events{Json::arrayValue};
+    storage->loadReportEvents(&events, &max_id, -1);
+    EXPECT_EQ(events.size(), event_numb);
+  }
+  const std::vector<int> event_number_limits{1, 4, 3, 5};
+  int processed_events{0};
+  for (const auto& l : event_number_limits) {
+    Json::Value events{Json::arrayValue};
+    storage->loadReportEvents(&events, &max_id, l);
+    EXPECT_EQ(events.size(), l < (event_numb - processed_events) ? l : event_numb - processed_events);
+    storage->deleteReportEvents(max_id);
+    processed_events += l;
+  }
+}
+
 #ifndef __NO_MAIN__
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
