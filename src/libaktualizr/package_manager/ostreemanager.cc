@@ -274,6 +274,31 @@ data::InstallationResult OstreeManager::install(const Uptane::Target &target) co
 
   std::string args_content =
       std::string(ostree_bootconfig_parser_get(ostree_deployment_get_bootconfig(merge_deployment.get()), "options"));
+
+#ifdef TORIZON
+  {
+    g_autoptr(GVariant) commit = nullptr;
+    g_autoptr(GVariant) metadata = nullptr;
+    if (ostree_repo_load_variant(repo.get(), OSTREE_OBJECT_TYPE_COMMIT, revision, &commit, &error) == 0) {
+      LOG_ERROR << error->message;
+      data::InstallationResult install_res(data::ResultCode::Numeric::kInstallFailed, error->message);
+      g_error_free(error);
+      return install_res;
+    }
+    metadata = g_variant_get_child_value(commit, 0);
+    g_autoptr(GVariant) value = g_variant_lookup_value(metadata, "oe.kargs-default", nullptr);
+    if (value != nullptr) {
+      // Override kernel arguments with the ones from commit metadata.
+      const gchar *str = g_variant_get_string(value, nullptr);
+      LOG_INFO << "Commit metadata kargs=" << str;
+      LOG_DEBUG << "Original deployment kargs=" << args_content;
+      args_content = std::string(str);
+    } else {
+      LOG_INFO << "Commit metadata does not contain kargs!";
+    }
+  }
+#endif
+
   std::vector<std::string> args_vector;
   // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
   boost::split(args_vector, args_content, boost::is_any_of(" "));
