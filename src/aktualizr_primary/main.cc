@@ -246,8 +246,17 @@ int main(int argc, char *argv[]) {
       result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
       aktualizr.Install(update_result.updates).get();
     } else if (run_mode == "once") {
+#ifdef TORIZON
+      if (config.uptane.enable_offline_updates) {
+        aktualizr.CheckAndInstallOffline(config.uptane.offline_updates_source);
+      } else {
+        aktualizr.SendDeviceData().get();
+        aktualizr.UptaneCycle();
+      }
+#else
       aktualizr.SendDeviceData().get();
       aktualizr.UptaneCycle();
+#endif
     } else {
       boost::signals2::connection ac_conn =
           aktualizr.SetSignalHandler(std::bind(targets_autoclean_cb, std::ref(aktualizr), std::placeholders::_1));
