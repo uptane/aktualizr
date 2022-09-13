@@ -41,7 +41,11 @@ class DockerComposeSecondary : public ManagedSecondary {
  private:
   bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const override;
   data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
-  void validateInstall();
+  boost::optional<data::InstallationResult> completePendingInstall(const Uptane::Target& target) override {
+    return completeInstall(target);
+  }
+  data::InstallationResult completeInstall(const Uptane::Target& target);
+  void rollbackPendingInstall() override;
 
   /**
    * Load Docker images from an offline-update image.
@@ -50,7 +54,6 @@ class DockerComposeSecondary : public ManagedSecondary {
                                const boost::filesystem::path& images_path,
                                const boost::filesystem::path& manifests_path,
                                boost::filesystem::path* compose_out = nullptr);
-  bool pendingPrimaryUpdate();
 };
 
 }  // namespace Primary

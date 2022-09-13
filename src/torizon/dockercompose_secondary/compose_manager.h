@@ -10,7 +10,6 @@ class ComposeManager {
   std::string compose_file_current_;
   std::string compose_file_new_;
   std::string compose_cmd_;
-  bool reboot;
 
   CommandRunner cmd;
 
@@ -21,7 +20,6 @@ class ComposeManager {
   bool cleanup();
 
   bool completeUpdate();
-  bool checkRollback();
 
  public:
   ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new);
@@ -29,9 +27,11 @@ class ComposeManager {
   bool update(bool offline, bool sync);
   bool pendingUpdate();
   bool rollback();
+  bool checkRollback();
 
   bool containers_stopped;
   bool sync_update;
+  bool reboot;
 };
 
 #endif  // COMPOSE_MANAGER_H_

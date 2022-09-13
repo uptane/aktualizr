@@ -64,6 +64,7 @@ class SecondaryInterface {
     (void)target;
     return boost::none;
   }
+  virtual void rollbackPendingInstall() {}
 
 #ifdef BUILD_OFFLINE_UPDATES
   virtual data::InstallationResult putMetadataOffUpd(const Uptane::Target& target,

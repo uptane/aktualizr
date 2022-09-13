@@ -95,19 +95,13 @@ bool ComposeManager::pendingUpdate() {
   if (access(compose_file_new_.c_str(), F_OK) == 0) {
     LOG_INFO << "Finishing pending container updates via docker-compose";
   } else {
-    return true;
+    // Should never reach here in normal operation.
+    return false;
   }
 
   if (checkRollback()) {
-    sync_update = false;
-    reboot = false;
     return false;
-  } else {
-    sync_update = true;
-    reboot = true;
   }
-
-  containers_stopped = false;
 
   return completeUpdate();
 }

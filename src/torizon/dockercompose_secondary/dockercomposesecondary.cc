@@ -6,7 +6,6 @@
 #include "dockerofflineloader.h"
 #include "libaktualizr/types.h"
 #include "logging/logging.h"
-#include "storage/invstorage.h"
 #include "uptane/manifest.h"
 #include "utilities/fault_injection.h"
 #include "utilities/utils.h"
@@ -76,7 +75,6 @@ void DockerComposeSecondaryConfig::dump(const boost::filesystem::path& file_full
 
 DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryConfig sconfig_in)
     : ManagedSecondary(std::move(sconfig_in)) {
-  validateInstall();
 }
 
 /*
@@ -107,7 +105,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
   std::string compose_temp = compose_cur + ".temporary";
 
   ComposeManager compose = ComposeManager(compose_cur, compose_new);
-  bool sync_update = pendingPrimaryUpdate();
+  bool sync_update = secondary_provider_->pendingPrimaryUpdate();
 
   // Save new compose file in a temporary file.
   std::ofstream out_file(compose_temp, std::ios::binary);
@@ -188,25 +186,6 @@ bool DockerComposeSecondary::loadDockerImages(const boost::filesystem::path& com
   return true;
 }
 
-bool DockerComposeSecondary::pendingPrimaryUpdate() {
-  // TODO: Consider adding a method to perform this check as part of the `SecondaryProvider` in libaktualizr.
-  // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
-
-  EcuSerials serials;
-  bpo::variables_map vm;
-  Config config(vm);
-  std::shared_ptr<INvStorage> storage;
-  storage = INvStorage::newStorage(config.storage);
-  boost::optional<Uptane::Target> pending;
-
-  if (!secondary_provider_->getEcuSerialsForHwId(&serials) || serials.empty()) {
-    throw std::runtime_error("Unable to get ECU serials from primary");
-  }
-
-  storage->loadInstalledVersions((serials[0].first).ToString(), nullptr, &pending);
-  return !!pending;
-}
-
 bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const {
   std::string content;
 
@@ -238,39 +217,45 @@ bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmwar
   return true;
 }
 
-// TODO: Consider a more general mechanism to allow all secondaries to complete a previous installation.
-// See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
-// TODO: Consider implementing `completePendingInstall()` instead; consider also returning a different
-// result code to ask for a reboot OR giving a delay for the reboot: `shutdown +1`.
-void DockerComposeSecondary::validateInstall() {
+// TODO: Consider returning a different result code to ask for a reboot
+// OR giving a delay for the reboot: `shutdown +1`.
+data::InstallationResult DockerComposeSecondary::completeInstall(const Uptane::Target& target) {
+  (void)target;
+
   std::string compose_file = sconfig.firmware_path.string();
   std::string compose_file_new = compose_file + ".tmp";
   ComposeManager pending_check(compose_file, compose_file_new);
 
-  Uptane::EcuSerial serial = getSerial();
-  std::shared_ptr<INvStorage> storage;
-  bpo::variables_map vm;
-  Config config(vm);
-  storage = INvStorage::newStorage(config.storage);
-  boost::optional<Uptane::Target> pending_target;
-  storage->loadInstalledVersions(serial.ToString(), nullptr, &pending_target);
-  if (!pending_target && (access(compose_file_new.c_str(), F_OK) == 0)) {
-    LOG_INFO << "Incomplete update detected.";
-    pending_check.containers_stopped = true;
-    pending_check.rollback();
-  }
-
   if (!pending_check.pendingUpdate()) {
     LOG_ERROR << "Unable to complete pending container update";
 
-    // TODO: Consider providing a method for clearing the pending flag via the `SecondaryProvider` in libaktualizr.
-    // See https://gitlab.int.toradex.com/rd/torizon-core/aktualizr-torizon/-/merge_requests/7#note_70289
-    // Pending compose update failed, unset pending flag so that the rest of the Uptane process can go forward again
-    storage->saveEcuInstallationResult(serial, data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, ""));
-    storage->saveInstalledVersion(serial.ToString(), *pending_target, InstalledVersionUpdateMode::kNone);
-
-    pending_check.rollback();
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "");
   }
+
+  return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
+}
+
+void DockerComposeSecondary::rollbackPendingInstall() {
+  // This function handles a failed sync update and
+  // performs a rollback on the needed ECUs to ensure sync.
+
+  std::string compose_file = sconfig.firmware_path.string();
+  std::string compose_file_new = compose_file + ".tmp";
+  ComposeManager pending_rollback(compose_file, compose_file_new);
+
+  if (pending_rollback.checkRollback()) {
+    // OS rollback detected, need to rollback just the compose secondary.
+    pending_rollback.sync_update = false;
+    pending_rollback.reboot = false;
+    pending_rollback.containers_stopped = true;
+  } else {
+    // Failed to complete pending compose update, need to rollback
+    // the primary, compose secondary, and reboot the system.
+    pending_rollback.sync_update = true;
+    pending_rollback.reboot = true;
+    pending_rollback.containers_stopped = false;
+  }
+  pending_rollback.rollback();
 }
 
 }  // namespace Primary

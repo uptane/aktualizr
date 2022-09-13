@@ -82,8 +82,6 @@ bool Aktualizr::UptaneCycle() {
 
 std::future<void> Aktualizr::RunForever() {
   std::future<void> future = std::async(std::launch::async, [this]() {
-    // TODO: [OFFUPD] Move to inside the loop if throwing an error (hopefully not needed).
-    CompleteSecondaryUpdates().get();
 
     std::unique_lock<std::mutex> l(exit_cond_.m);
     bool have_sent_device_data = false;

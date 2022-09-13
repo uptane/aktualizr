@@ -74,6 +74,18 @@ bool SecondaryProvider::getEcuSerialsForHwId(EcuSerials* serials) const {
   return storage_->getEcuSerialsForHwId(serials);
 }
 
+bool SecondaryProvider::pendingPrimaryUpdate() {
+  EcuSerials serials;
+  boost::optional<Uptane::Target> pending;
+
+  if (!getEcuSerialsForHwId(&serials) || serials.empty()) {
+    throw std::runtime_error("Unable to get ECU serials from primary");
+  }
+
+  storage_->loadInstalledVersions((serials[0].first).ToString(), nullptr, &pending);
+  return !!pending;
+}
+
 std::string SecondaryProvider::getTreehubCredentials() const {
   if (config_.tls.pkey_source != CryptoSource::kFile || config_.tls.cert_source != CryptoSource::kFile ||
       config_.tls.ca_source != CryptoSource::kFile) {

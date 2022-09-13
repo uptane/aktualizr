@@ -406,6 +406,8 @@ void SotaUptaneClient::initialize() {
 
   uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, provisioner_.PrimaryEcuSerial());
 
+  completePreviousSecondaryUpdates();
+
   finalizeAfterReboot();
 
   attemptProvision();
@@ -1618,6 +1620,7 @@ void SotaUptaneClient::checkAndUpdatePendingSecondaries() {
           std::string raw_report;
           computeDeviceInstallationResult(&ir, &raw_report);
           storage->storeDeviceInstallationResult(ir, raw_report, pending_version->correlation_id());
+          sec->rollbackPendingInstall();
           continue;
         }
       }
