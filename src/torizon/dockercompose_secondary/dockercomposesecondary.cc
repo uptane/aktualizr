@@ -138,10 +138,10 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
   }
 
   if (update_status) {
-    Utils::writeFile(sconfig.target_name_path, target.filename());
     if (sync_update) {
       return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
     } else {
+      Utils::writeFile(sconfig.target_name_path, target.filename());
       return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
     }
   } else {
@@ -232,6 +232,7 @@ data::InstallationResult DockerComposeSecondary::completeInstall(const Uptane::T
     return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "");
   }
 
+  Utils::writeFile(sconfig.target_name_path, target.filename());
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
