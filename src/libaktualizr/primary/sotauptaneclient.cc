@@ -866,6 +866,8 @@ void SotaUptaneClient::uptaneIteration(std::vector<Uptane::Target> *targets, uns
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();
+    storeInstallationFailure(
+        data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     throw;
   }
 
@@ -959,8 +961,6 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
-    storeInstallationFailure(
-        data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     return result;
   }
 
@@ -968,8 +968,6 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   if (utype == UpdateType::kOnline &&
       !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
-    storeInstallationFailure(
-        data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     return result;
   } else if (utype == UpdateType::kOffline &&
              !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(),
@@ -1359,6 +1357,10 @@ void SotaUptaneClient::storeInstallationFailure(const data::InstallationResult &
   // Store installation report to inform Director of the update failure before
   // we actually got to the install step.
   const std::string &correlation_id = director_repo.getCorrelationId();
+  if (correlation_id.empty()) {
+    LOG_WARNING << "Correlation ID is blank, installation failure will not be logged";
+    return;
+  }
   storage->storeDeviceInstallationResult(result, "", correlation_id);
   // Fix for OTA-2587, listen to backend again after end of install.
   director_repo.dropTargets(*storage);
