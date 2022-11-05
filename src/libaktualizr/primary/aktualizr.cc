@@ -21,15 +21,15 @@ Aktualizr::Aktualizr(const Config &config)
 
 Aktualizr::Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in,
                      const std::shared_ptr<HttpInterface> &http_in)
-    : config_{move(config)}, sig_{new event::Channel()}, api_queue_{new api::CommandQueue()} {
+    : config_{std::move(config)}, sig_{new event::Channel()}, api_queue_{new api::CommandQueue()} {
   if (sodium_init() == -1) {  // Note that sodium_init doesn't require a matching 'sodium_deinit'
     throw std::runtime_error("Unable to initialize libsodium");
   }
 
-  storage_ = move(storage_in);
+  storage_ = std::move(storage_in);
   storage_->importData(config_.import);
 
-  uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_);
+  uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_, api_queue_->FlowControlToken());
 
   updates_disabled_ = false;
 }
@@ -82,7 +82,6 @@ bool Aktualizr::UptaneCycle() {
 
 std::future<void> Aktualizr::RunForever() {
   std::future<void> future = std::async(std::launch::async, [this]() {
-
     std::unique_lock<std::mutex> l(exit_cond_.m);
     bool have_sent_device_data = false;
     while (true) {
@@ -167,7 +166,7 @@ std::vector<SecondaryInfo> Aktualizr::GetSecondaries() const {
 
 std::future<result::CampaignCheck> Aktualizr::CampaignCheck() {
   std::function<result::CampaignCheck()> task([this] { return uptane_client_->campaignCheck(); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<void> Aktualizr::CampaignControl(const std::string &campaign_id, campaign::Cmd cmd) {
@@ -186,13 +185,13 @@ std::future<void> Aktualizr::CampaignControl(const std::string &campaign_id, cam
         break;
     }
   });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
-void Aktualizr::SetCustomHardwareInfo(Json::Value hwinfo) { uptane_client_->setCustomHardwareInfo(move(hwinfo)); }
+void Aktualizr::SetCustomHardwareInfo(Json::Value hwinfo) { uptane_client_->setCustomHardwareInfo(std::move(hwinfo)); }
 std::future<void> Aktualizr::SendDeviceData() {
   std::function<void()> task([this] { uptane_client_->sendDeviceData(); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 // FIXME: [TDX] This solution must be reviewed (we should probably have a method to be used just for the data proxy).
@@ -201,28 +200,27 @@ std::future<void> Aktualizr::SendDeviceData(const Json::Value &hwinfo) {
     uptane_client_->setCustomHardwareInfo(hwinfo);
     uptane_client_->sendDeviceData();
   });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<void> Aktualizr::CompleteSecondaryUpdates() {
   std::function<void()> task([this] { return uptane_client_->completePreviousSecondaryUpdates(); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<result::UpdateCheck> Aktualizr::CheckUpdates() {
   std::function<result::UpdateCheck()> task([this] { return uptane_client_->fetchMeta(); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<result::Download> Aktualizr::Download(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Download(const api::FlowControlToken *)> task(
-      [this, updates](const api::FlowControlToken *token) { return uptane_client_->downloadImages(updates, token); });
-  return api_queue_->enqueue(move(task));
+  std::function<result::Download()> task([this, updates]() { return uptane_client_->downloadImages(updates); });
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<result::Install> Aktualizr::Install(const std::vector<Uptane::Target> &updates) {
   std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstall(updates); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 bool Aktualizr::SetInstallationRawReport(const std::string &custom_raw_report) {
@@ -231,7 +229,7 @@ bool Aktualizr::SetInstallationRawReport(const std::string &custom_raw_report) {
 
 std::future<bool> Aktualizr::SendManifest(const Json::Value &custom) {
   std::function<bool()> task([this, custom]() { return uptane_client_->putManifest(custom); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 result::Pause Aktualizr::Pause() {
@@ -275,7 +273,7 @@ Aktualizr::InstallationLog Aktualizr::GetInstallationLog() {
     std::vector<Uptane::Target> log;
     storage_->loadInstallationLog(serial.ToString(), &log, true);
 
-    ilog.emplace_back(Aktualizr::InstallationLogEntry{serial, move(log)});
+    ilog.emplace_back(Aktualizr::InstallationLogEntry{serial, std::move(log)});
   }
 
   return ilog;
@@ -315,20 +313,17 @@ bool Aktualizr::OfflineUpdateAvailable() {
 std::future<result::UpdateCheck> Aktualizr::CheckUpdatesOffline(const boost::filesystem::path &source_path) {
   std::function<result::UpdateCheck()> task(
       [this, source_path] { return uptane_client_->fetchMetaOffUpd(source_path); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Download(const api::FlowControlToken *)> task(
-      [this, updates](const api::FlowControlToken *token) {
-        return uptane_client_->fetchImagesOffUpd(updates, token);
-      });
-  return api_queue_->enqueue(move(task));
+  std::function<result::Download()> task([this, updates]() { return uptane_client_->fetchImagesOffUpd(updates); });
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane::Target> &updates) {
   std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstallOffUpd(updates); });
-  return api_queue_->enqueue(move(task));
+  return api_queue_->enqueue(std::move(task));
 }
 
 bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_path) {

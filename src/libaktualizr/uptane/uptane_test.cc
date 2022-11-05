@@ -1251,12 +1251,12 @@ TEST(Uptane, SaveAndLoadVersion) {
 class HttpFakeUnstable : public HttpFake {
  public:
   HttpFakeUnstable(const boost::filesystem::path &test_dir_in) : HttpFake(test_dir_in, "hasupdates") {}
-  HttpResponse get(const std::string &url, int64_t maxsize) override {
+  HttpResponse get(const std::string &url, int64_t maxsize, const api::FlowControlToken *flow_control) override {
     if (unstable_valid_count >= unstable_valid_num) {
       return HttpResponse({}, 503, CURLE_OK, "");
     } else {
       ++unstable_valid_count;
-      return HttpFake::get(url, maxsize);
+      return HttpFake::get(url, maxsize, flow_control);
     }
   }
 

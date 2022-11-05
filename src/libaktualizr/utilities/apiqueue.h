@@ -10,49 +10,9 @@
 #include <thread>
 #include <utility>
 
+#include "utilities/flow_control.h"
+
 namespace api {
-
-///
-/// Provides a thread-safe way to pause and terminate task execution.
-/// A task must call canContinue() method to check the current state.
-///
-class FlowControlToken {
- public:
-  ///
-  /// Called by the controlling thread to request the task to pause or resume.
-  /// Has no effect if the task was aborted.
-  /// @return `true` if the state was changed, `false` otherwise.
-  ///
-  bool setPause(bool set_paused);
-
-  ///
-  /// Called by the controlling thread to request the task to abort.
-  /// @return `false` if the task was already aborted, `true` otherwise.
-  ///
-  bool setAbort();
-
-  ///
-  /// Called by the controlled thread to query the currently requested state.
-  /// Sleeps if the state is `Paused` and `blocking == true`.
-  /// @return `true` for `Running` state, `false` for `Aborted`,
-  /// and also `false` for the `Paused` state, if the call is non-blocking.
-  ///
-  bool canContinue(bool blocking = true) const;
-
-  ////
-  //// Sets token to the initial state
-  ////
-  void reset();
-
- private:
-  enum class State {
-    kRunning,  // transitions: ->Paused, ->Aborted
-    kPaused,   // transitions: ->Running, ->Aborted
-    kAborted   // transitions: none
-  } state_{State::kRunning};
-  mutable std::mutex m_;
-  mutable std::condition_variable cv_;
-};
 
 struct Context {
   api::FlowControlToken* flow_control;
@@ -149,6 +109,8 @@ class CommandQueue {
   bool pause(bool do_pause);  // returns true iff pause→resume or resume→pause
   void abort(bool restart_thread = true);
 
+  const api::FlowControlToken* FlowControlToken() const { return &token_; }
+
   template <class R>
   std::future<R> enqueue(std::function<R()>&& function) {
     auto task = std::make_shared<Command<R>>(std::move(function));
@@ -175,7 +137,7 @@ class CommandQueue {
   std::queue<ICommand::Ptr> queue_;
   std::mutex m_;
   std::condition_variable cv_;
-  FlowControlToken token_;
+  class api::FlowControlToken token_;
 };
 
 }  // namespace api

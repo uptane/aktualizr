@@ -32,7 +32,7 @@
 #include "uptane/iterator.h"
 #include "uptane/manifest.h"
 #include "uptane/tuf.h"
-#include "utilities/apiqueue.h"
+#include "utilities/flow_control.h"
 
 class SotaUptaneClient {
  public:
@@ -55,10 +55,10 @@ class SotaUptaneClient {
   };
 
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
-                   std::shared_ptr<event::Channel> events_channel_in);
+                   std::shared_ptr<event::Channel> events_channel_in, const api::FlowControlToken *flow_control);
 
   SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in)
-      : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr) {}
+      : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr, nullptr) {}
 
   void initialize();
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
@@ -70,8 +70,7 @@ class SotaUptaneClient {
    */
   bool attemptProvision();
 
-  result::Download downloadImages(const std::vector<Uptane::Target> &targets,
-                                  const api::FlowControlToken *token = nullptr, UpdateType utype = UpdateType::kOnline);
+  result::Download downloadImages(const std::vector<Uptane::Target> &targets, UpdateType utype = UpdateType::kOnline);
 
   /** See Aktualizr::SetCustomHardwareInfo(Json::Value) */
   void setCustomHardwareInfo(Json::Value hwinfo) { custom_hardware_info_ = std::move(hwinfo); }
@@ -96,8 +95,7 @@ class SotaUptaneClient {
 
 #ifdef BUILD_OFFLINE_UPDATES
   result::UpdateCheck fetchMetaOffUpd(const boost::filesystem::path &source_path);
-  result::Download fetchImagesOffUpd(const std::vector<Uptane::Target> &targets,
-                                     const api::FlowControlToken *token = nullptr);
+  result::Download fetchImagesOffUpd(const std::vector<Uptane::Target> &targets);
   result::Install uptaneInstallOffUpd(const std::vector<Uptane::Target> &updates);
 #endif
 
@@ -159,9 +157,7 @@ class SotaUptaneClient {
   void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
                               UpdateType utype = UpdateType::kOnline);
 
-  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
-                                                const api::FlowControlToken *token = nullptr,
-                                                UpdateType utype = UpdateType::kOnline);
+  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target, UpdateType utype = UpdateType::kOnline);
   data::InstallationResult PackageInstall(const Uptane::Target &target);
   Json::Value AssembleManifest();
   std::exception_ptr getLastException() const { return last_exception; }
@@ -242,6 +238,7 @@ class SotaUptaneClient {
   std::mutex download_mutex;
   Provisioner provisioner_;
   Json::Value custom_hardware_info_{Json::nullValue};
+  const api::FlowControlToken *flow_control_;
 };
 
 #endif  // SOTA_UPTANE_CLIENT_H_

@@ -258,6 +258,8 @@ struct ResultCode {
     kNeedCompletion = 21,
     // Customer specific
     kCustomError = 22,
+    // The operation was explicitly cancelled, either by an offline update or explicit user choice
+    kOperationCancelled = 23,
     // Unknown
     kUnknown = -1,
   };

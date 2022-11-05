@@ -17,6 +17,7 @@
 #include "metafake.h"
 #include "utilities/utils.h"
 
+// TODO: move implementation out of header file
 class HttpFake : public HttpInterface {
  public:
   // old style HttpFake with centralized multi repo and url rewriting
@@ -65,9 +66,14 @@ class HttpFake : public HttpInterface {
     return HttpResponse("", 400, CURLE_OK, "");
   }
 
-  HttpResponse get(const std::string &url, int64_t maxsize) override {
+  HttpResponse get(const std::string &url, int64_t maxsize,
+                   const api::FlowControlToken *flow_control = nullptr) override {
     (void)maxsize;
     std::cout << "URL requested: " << url << "\n";
+
+    if (flow_control != nullptr && flow_control->hasAborted()) {
+      return HttpResponse("", 0, CURLE_ABORTED_BY_CALLBACK, "Canceled by FlowControlToken");
+    }
 
     std::string new_url = url;
     if (!flavor_.empty()) {

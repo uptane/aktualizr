@@ -1,10 +1,12 @@
 #ifndef UPTANE_REPOSITORY_H_
 #define UPTANE_REPOSITORY_H_
 
-#include <cstdint>               // for int64_t
-#include <string>                // for string
+#include <cstdint>  // for int64_t
+#include <string>   // for string
+#include "fetcher.h"
 #include "libaktualizr/types.h"  // for TimeStamp
 #include "uptane/tuf.h"          // for Root, RepositoryType
+#include "utilities/flow_control.h"
 
 class INvStorage;
 
@@ -25,7 +27,8 @@ class RepositoryCommon {
   void verifyRoot(const std::string &root_raw);
   int rootVersion() const { return root.version(); }
   bool rootExpired() const { return root.isExpired(TimeStamp::Now()); }
-  virtual void updateMeta(INvStorage &storage, const IMetadataFetcher &fetcher) = 0;
+  virtual void updateMeta(INvStorage &storage, const IMetadataFetcher &fetcher,
+                          const api::FlowControlToken *flow_control) = 0;
 #ifdef BUILD_OFFLINE_UPDATES
   virtual void updateMetaOffUpd(INvStorage &storage, const OfflineUpdateFetcher &fetcher) = 0;
 #endif

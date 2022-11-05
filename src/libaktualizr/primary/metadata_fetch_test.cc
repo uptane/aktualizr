@@ -13,7 +13,8 @@ class HttpFakeMetaCounter : public HttpFake {
   HttpFakeMetaCounter(const boost::filesystem::path &test_dir_in, const boost::filesystem::path &meta_dir_in)
       : HttpFake(test_dir_in, "", meta_dir_in) {}
 
-  HttpResponse get(const std::string &url, int64_t maxsize) override {
+  HttpResponse get(const std::string &url, int64_t maxsize, const api::FlowControlToken *flow_control) override {
+    (void)flow_control;
     if (url.find("director/1.root.json") != std::string::npos) {
       ++director_1root_count;
     }

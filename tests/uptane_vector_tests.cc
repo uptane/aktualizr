@@ -129,7 +129,8 @@ TEST_P(UptaneVector, Test) {
 
   auto storage = INvStorage::newStorage(config.storage);
   auto http_client = std::make_shared<HttpWrapper>();
-  auto uptane_client = std_::make_unique<SotaUptaneClient>(config, storage, http_client, nullptr);
+  api::FlowControlToken flow_control;
+  auto uptane_client = std_::make_unique<SotaUptaneClient>(config, storage, http_client, nullptr, &flow_control);
   auto ecu_serial = uptane_client->provisioner_.PrimaryEcuSerial();
   auto hw_id = uptane_client->provisioner_.PrimaryHardwareIdentifier();
   EXPECT_EQ(ecu_serial.ToString(), config.provision.primary_ecu_serial);
@@ -198,7 +199,7 @@ TEST_P(UptaneVector, Test) {
 
 std::vector<string> GetVectors() {
   HttpClient http_client;
-  const Json::Value json_vectors = http_client.get(address, HttpInterface::kNoLimit).getJson();
+  const Json::Value json_vectors = http_client.get(address, HttpInterface::kNoLimit, nullptr).getJson();
   std::vector<string> vectors;
   for (Json::ValueConstIterator it = json_vectors.begin(); it != json_vectors.end(); it++) {
     vectors.emplace_back((*it).asString());

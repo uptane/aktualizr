@@ -84,7 +84,9 @@ data::InstallationResult ManagedSecondary::putMetadata(const Uptane::Target &tar
   // 4. NOT SUPPORTED: Download and check the Snapshot metadata file from the Director repository.
   // 5. Download and check the Targets metadata file from the Director repository.
   try {
-    director_repo_->updateMeta(*storage_, metadata);
+    // Flow control is not needed here, we are running locally
+    director_repo_->updateMeta(*storage_, metadata, nullptr);
+
   } catch (const std::exception &e) {
     detected_attack = std::string("Failed to update Director metadata: ") + e.what();
     LOG_ERROR << detected_attack;
@@ -96,7 +98,8 @@ data::InstallationResult ManagedSecondary::putMetadata(const Uptane::Target &tar
   // 8. Download and check the Snapshot metadata file from the Image repository.
   // 9. Download and check the top-level Targets metadata file from the Image repository.
   try {
-    image_repo_->updateMeta(*storage_, metadata);
+    // Flow control is not needed here, we are running locally
+    image_repo_->updateMeta(*storage_, metadata, nullptr);
   } catch (const std::exception &e) {
     detected_attack = std::string("Failed to update Image repo metadata: ") + e.what();
     LOG_ERROR << detected_attack;

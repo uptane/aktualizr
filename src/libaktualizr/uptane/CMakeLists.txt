@@ -24,6 +24,7 @@ set(HEADERS
 
 
 add_library(uptane OBJECT ${SOURCES})
+target_link_libraries(uptane PUBLIC utilities)
 
 add_aktualizr_test(NAME tuf SOURCES tuf_test.cc PROJECT_WORKING_DIRECTORY)
 
@@ -61,6 +62,11 @@ set_tests_properties(test_uptane_network PROPERTIES LABELS "crypto")
 add_aktualizr_test(NAME uptane_serial SOURCES uptane_serial_test.cc
                    PROJECT_WORKING_DIRECTORY
                    LIBRARIES uptane_generator_lib virtual_secondary)
+
+add_aktualizr_test(NAME uptane_cancellation SOURCES uptane_cancellation_test.cc
+                   PROJECT_WORKING_DIRECTORY
+                   LIBRARIES uptane_generator_lib virtual_secondary)
+
 
 if(BUILD_OSTREE)
     # Test that SotaUptaneClient::AssembleManifest() works correctly under OSTree.

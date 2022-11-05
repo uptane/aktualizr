@@ -7,7 +7,7 @@ namespace Uptane {
 
 Targets getTrustedDelegation(const Role &delegate_role, const Targets &parent_targets,
                              const ImageRepository &image_repo, INvStorage &storage, IMetadataFetcher &fetcher,
-                             const bool offline) {
+                             const bool offline, const api::FlowControlToken *flow_control) {
   std::string delegation_meta;
   auto version_in_snapshot = image_repo.getRoleVersion(delegate_role);
 
@@ -29,7 +29,8 @@ Targets getTrustedDelegation(const Role &delegate_role, const Targets &parent_ta
       throw Uptane::DelegationMissing(delegate_role.ToString());
     }
     try {
-      fetcher.fetchLatestRole(&delegation_meta, Uptane::kMaxImageTargetsSize, RepositoryType::Image(), delegate_role);
+      fetcher.fetchLatestRole(&delegation_meta, Uptane::kMaxImageTargetsSize, RepositoryType::Image(), delegate_role,
+                              flow_control);
     } catch (const std::exception &e) {
       LOG_ERROR << "Fetch role error: " << e.what();
       throw Uptane::DelegationMissing(delegate_role.ToString());
@@ -60,8 +61,13 @@ Targets getTrustedDelegation(const Role &delegate_role, const Targets &parent_ta
 
 LazyTargetsList::DelegationIterator::DelegationIterator(const ImageRepository &repo,
                                                         std::shared_ptr<INvStorage> storage,
-                                                        std::shared_ptr<Fetcher> fetcher, bool is_end)
-    : repo_{repo}, storage_{std::move(storage)}, fetcher_{std::move(fetcher)}, is_end_{is_end} {
+                                                        std::shared_ptr<Fetcher> fetcher,
+                                                        const api::FlowControlToken *flow_control, bool is_end)
+    : repo_{repo},
+      storage_{std::move(storage)},
+      fetcher_{std::move(fetcher)},
+      flow_control_{flow_control},
+      is_end_{is_end} {
   tree_ = std::make_shared<DelegatedTargetTreeNode>();
   tree_node_ = tree_.get();
 
@@ -90,10 +96,10 @@ void LazyTargetsList::DelegationIterator::renewTargetsData() {
 
       auto fetched_role = Role(parent_targets->delegated_role_names_[idx], true);
       parent_targets = std::make_shared<const Targets>(
-          getTrustedDelegation(fetched_role, *parent_targets, repo_, *storage_, *fetcher_, false));
+          getTrustedDelegation(fetched_role, *parent_targets, repo_, *storage_, *fetcher_, false, flow_control_));
     }
-    cur_targets_ =
-        std::make_shared<Targets>(getTrustedDelegation(role, *parent_targets, repo_, *storage_, *fetcher_, false));
+    cur_targets_ = std::make_shared<Targets>(
+        getTrustedDelegation(role, *parent_targets, repo_, *storage_, *fetcher_, false, flow_control_));
   }
 }
 

@@ -40,7 +40,8 @@ class TargetCompare {
 
 SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in,
                                    std::shared_ptr<HttpInterface> http_in,
-                                   std::shared_ptr<event::Channel> events_channel_in)
+                                   std::shared_ptr<event::Channel> events_channel_in,
+                                   const api::FlowControlToken *flow_control)
     : config(config_in),
       storage(std::move(storage_in)),
       http(std::move(http_in)),
@@ -48,7 +49,8 @@ SotaUptaneClient::SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage
       key_manager_(std::make_shared<KeyManager>(storage, config.keymanagerConfig())),
       uptane_fetcher(new Uptane::Fetcher(config, http)),
       events_channel(std::move(events_channel_in)),
-      provisioner_(config.provision, storage, http, key_manager_, secondaries) {
+      provisioner_(config.provision, storage, http, key_manager_, secondaries),
+      flow_control_(flow_control) {
   report_queue = std_::make_unique<ReportQueue>(config, http, storage);
   secondary_provider_ = SecondaryProviderBuilder::Build(config, storage, package_manager_);
 }
@@ -437,7 +439,7 @@ void SotaUptaneClient::updateDirectorMeta(UpdateType utype) {
 #endif
     } else {
       requiresProvision();
-      director_repo.updateMeta(*storage, *uptane_fetcher);
+      director_repo.updateMeta(*storage, *uptane_fetcher, flow_control_);
     }
   } catch (const std::exception &e) {
     LOG_ERROR << "Director metadata update failed: " << e.what();
@@ -457,7 +459,7 @@ void SotaUptaneClient::updateImageMeta(UpdateType utype) {
 #endif
     } else {
       requiresProvision();
-      image_repo.updateMeta(*storage, *uptane_fetcher);
+      image_repo.updateMeta(*storage, *uptane_fetcher, flow_control_);
     }
   } catch (const std::exception &e) {
     LOG_ERROR << "Failed to update Image repo metadata: " << e.what();
@@ -681,10 +683,10 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetHelper(const Uptane:
     if (utype == UpdateType::kOffline) {
       // TODO: [OFFUPD] Protect with an #ifdef ??
       delegation = Uptane::getTrustedDelegation(delegate_role, cur_targets, image_repo, *storage,
-                                                *uptane_fetcher_offupd, offline);
+                                                *uptane_fetcher_offupd, offline, flow_control_);
     } else {
-      delegation =
-          Uptane::getTrustedDelegation(delegate_role, cur_targets, image_repo, *storage, *uptane_fetcher, offline);
+      delegation = Uptane::getTrustedDelegation(delegate_role, cur_targets, image_repo, *storage, *uptane_fetcher,
+                                                offline, flow_control_);
     }
     if (delegation.isExpired(TimeStamp::Now())) {
       continue;
@@ -715,8 +717,7 @@ std::unique_ptr<Uptane::Target> SotaUptaneClient::findTargetInDelegationTree(con
   return findTargetHelper(*toplevel_targets, target, 0, false, offline, utype);
 }
 
-result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Target> &targets,
-                                                  const api::FlowControlToken *token, UpdateType utype) {
+result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Target> &targets, UpdateType utype) {
   if (utype != UpdateType::kOffline) {
     requiresAlreadyProvisioned();
   }
@@ -748,7 +749,7 @@ result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Targ
   }
 
   for (const auto &target : targets) {
-    auto res = downloadImage(target, token, utype);
+    auto res = downloadImage(target, utype);
     if (res.first) {
       downloaded_targets.push_back(res.second);
     }
@@ -782,8 +783,7 @@ void SotaUptaneClient::reportResume() {
   report_queue->enqueue(std_::make_unique<DeviceResumedReport>(correlation_id));
 }
 
-std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Target &target,
-                                                                const api::FlowControlToken *token, UpdateType utype) {
+std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Target &target, UpdateType utype) {
   // TODO: [OFFUPD] How should we deal with the correlationId?
   const std::string &correlation_id = director_repo.getCorrelationId();
   // send an event for all ECUs that are touched by this target
@@ -813,16 +813,16 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
       for (; tries < max_tries; tries++) {
         if (utype == UpdateType::kOffline) {
 #ifdef BUILD_OFFLINE_UPDATES
-          success = package_manager_->fetchTargetOffUpd(target, *uptane_fetcher_offupd, keys, prog_cb, token);
+          success = package_manager_->fetchTargetOffUpd(target, *uptane_fetcher_offupd, keys, prog_cb, flow_control_);
 #else
           success = false;
 #endif
         } else {
-          success = package_manager_->fetchTarget(target, *uptane_fetcher, keys, prog_cb, token);
+          success = package_manager_->fetchTarget(target, *uptane_fetcher, keys, prog_cb, flow_control_);
         }
         // Skip trying to fetch the 'target' if control flow token transaction
         // was set to the 'abort' or 'pause' state, see the CommandQueue and FlowControlToken.
-        if (success || (token != nullptr && !token->canContinue(false))) {
+        if (success || (flow_control_ != nullptr && flow_control_->hasAborted())) {
           break;
         } else if (tries < max_tries - 1) {
           std::this_thread::sleep_for(wait);
@@ -858,6 +858,9 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
 void SotaUptaneClient::uptaneIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count,
                                        UpdateType utype) {
   updateDirectorMeta(utype);
+  if (flow_control_ != nullptr && flow_control_->hasAborted()) {
+    return;
+  }
 
   std::vector<Uptane::Target> tmp_targets;
   unsigned int ecus;
@@ -1401,9 +1404,10 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
             // TODO: [OFFUPD] Test this condition; How?
             // TODO: [OFFUPD] Protect with an #ifdef ??
             uptane_fetcher_offupd->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(),
-                                             Uptane::Version(v));
+                                             Uptane::Version(v), flow_control_);
           } else {
-            uptane_fetcher->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(), Uptane::Version(v));
+            uptane_fetcher->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(), Uptane::Version(v),
+                                      flow_control_);
           }
         } catch (const std::exception &e) {
           LOG_ERROR << "Root metadata could not be fetched for Secondary with serial " << secondary.getSerial()
@@ -1581,7 +1585,7 @@ std::vector<result::Install::EcuReport> SotaUptaneClient::sendImagesToEcus(const
 
 Uptane::LazyTargetsList SotaUptaneClient::allTargets() const {
   // TODO: [OFFUPD] Note this used in tests only ATM.
-  return Uptane::LazyTargetsList(image_repo, storage, uptane_fetcher);
+  return Uptane::LazyTargetsList(image_repo, storage, uptane_fetcher, flow_control_);
 }
 
 void SotaUptaneClient::checkAndUpdatePendingSecondaries() {
@@ -1741,9 +1745,8 @@ result::UpdateCheck SotaUptaneClient::fetchMetaOffUpd(const boost::filesystem::p
   return result;
 }
 
-result::Download SotaUptaneClient::fetchImagesOffUpd(const std::vector<Uptane::Target> &targets,
-                                                     const api::FlowControlToken *token) {
-  return downloadImages(targets, token, UpdateType::kOffline);
+result::Download SotaUptaneClient::fetchImagesOffUpd(const std::vector<Uptane::Target> &targets) {
+  return downloadImages(targets, UpdateType::kOffline);
 }
 
 result::Install SotaUptaneClient::uptaneInstallOffUpd(const std::vector<Uptane::Target> &updates) {

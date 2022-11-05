@@ -24,7 +24,8 @@ class DirectorRepository : public RepositoryCommon {
   void checkMetaOffline(INvStorage& storage);
   void dropTargets(INvStorage& storage);
 
-  void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+  void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher,
+                  const api::FlowControlToken* flow_control) override;
   bool matchTargetsWithImageTargets(const std::shared_ptr<const Uptane::Targets>& image_targets) const;
 
 #ifdef BUILD_OFFLINE_UPDATES

@@ -113,7 +113,7 @@ class Handler(SimpleHTTPRequestHandler):
         elif self.path == '/slow_file':
             self.send_response(200)
             self.end_headers()
-            for i in range(5):
+            for i in range(10):
                 self.wfile.write(b'aa')
                 sleep(1)
         elif self.path == '/campaigner/campaigns':

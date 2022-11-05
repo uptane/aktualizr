@@ -1,11 +1,12 @@
 #ifndef UPTANE_FETCHER_H_
 #define UPTANE_FETCHER_H_
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "http/httpinterface.h"
 #include "libaktualizr/config.h"
 #include "tuf.h"
+#include "utilities/flow_control.h"
 
 namespace Uptane {
 
@@ -22,10 +23,25 @@ class IMetadataFetcher {
   IMetadataFetcher& operator=(IMetadataFetcher&&) = delete;
   virtual ~IMetadataFetcher() = default;
 
+  /**
+   * Fetch a role at a version (which might be 'latest').
+   *
+   * If the fetch fails, throw something derived Uptane::Exception
+   * @param result
+   * @param maxsize
+   * @param repo
+   * @param role
+   * @param version
+   * @param flow_control
+   * @throws Uptane::MetadataFetchFailure If fetching metadata fails (e.g. network error)
+   * @throws Uptane::LocallyAborted If the caller aborts with flow_control->hasAborted()
+   */
   virtual void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
-                         Version version) const = 0;
-  virtual void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
-                               const Uptane::Role& role) const = 0;
+                         Version version, const api::FlowControlToken* flow_control = nullptr) const = 0;
+  virtual void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
+                               const api::FlowControlToken* flow_control = nullptr) const {
+    fetchRole(result, maxsize, repo, role, Version(), flow_control);
+  }
 
  protected:
   IMetadataFetcher() = default;
@@ -40,12 +56,8 @@ class Fetcher : public IMetadataFetcher {
       : http(std::move(http_in)),
         repo_server(std::move(repo_server_in)),
         director_server(std::move(director_server_in)) {}
-  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
-                 Version version) const override;
-  void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
-                       const Uptane::Role& role) const override {
-    fetchRole(result, maxsize, repo, role, Version());
-  }
+  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role, Version version,
+                 const api::FlowControlToken* flow_control) const override;
 
   std::string getRepoServer() const { return repo_server; }
 
@@ -62,12 +74,8 @@ class OfflineUpdateFetcher : public IMetadataFetcher {
       throw std::runtime_error("Source path for offline-updates is not defined");
     }
   }
-  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
-                 Version version) const override;
-  void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
-                       const Uptane::Role& role) const override {
-    fetchRole(result, maxsize, repo, role, Version());
-  }
+  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role, Version version,
+                 const api::FlowControlToken* flow_control) const override;
 
   boost::filesystem::path getBasePath() const { return source_path_; }
   boost::filesystem::path getImagesPath() const { return source_path_ / "images"; }

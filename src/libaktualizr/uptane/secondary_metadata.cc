@@ -18,15 +18,10 @@ SecondaryMetadata::SecondaryMetadata(MetaBundle meta_bundle_in) : meta_bundle_(s
 }
 
 void SecondaryMetadata::fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Role& role,
-                                  Version version) const {
+                                  Version version, const api::FlowControlToken* flow_control) const {
   (void)maxsize;
+  (void)flow_control;  // Safe, we are working locally here
   getRoleMetadata(result, repo, role, version);
-}
-
-void SecondaryMetadata::fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo,
-                                        const Role& role) const {
-  (void)maxsize;
-  getRoleMetadata(result, repo, role, Version());
 }
 
 void SecondaryMetadata::getRoleMetadata(std::string* result, const RepositoryType& repo, const Role& role,

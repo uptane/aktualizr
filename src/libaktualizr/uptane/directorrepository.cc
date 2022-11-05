@@ -111,7 +111,8 @@ void DirectorRepository::checkMetaOffline(INvStorage& storage) {
   }
 }
 
-void DirectorRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) {
+void DirectorRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher,
+                                    const api::FlowControlToken* flow_control) {
   // Uptane step 2 (download time) is not implemented yet.
   // Uptane step 3 (download metadata)
 
@@ -128,7 +129,8 @@ void DirectorRepository::updateMeta(INvStorage& storage, const IMetadataFetcher&
   {
     std::string director_targets;
 
-    fetcher.fetchLatestRole(&director_targets, kMaxDirectorTargetsSize, RepositoryType::Director(), Role::Targets());
+    fetcher.fetchLatestRole(&director_targets, kMaxDirectorTargetsSize, RepositoryType::Director(), Role::Targets(),
+                            flow_control);
     int remote_version = extractVersionUntrusted(director_targets);
 
     int local_version;

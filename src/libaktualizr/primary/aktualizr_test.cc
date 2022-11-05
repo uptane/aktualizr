@@ -1912,14 +1912,14 @@ class HttpFakeCampaign : public HttpFake {
   HttpFakeCampaign(const boost::filesystem::path& test_dir_in, const boost::filesystem::path& meta_dir_in)
       : HttpFake(test_dir_in, "", meta_dir_in) {}
 
-  HttpResponse get(const std::string& url, int64_t maxsize) override {
+  HttpResponse get(const std::string& url, int64_t maxsize, const api::FlowControlToken* flow_control) override {
     EXPECT_NE(url.find("campaigner/"), std::string::npos);
     boost::filesystem::path path = meta_dir / url.substr(tls_server.size() + strlen("campaigner/"));
 
     if (url.find("campaigner/campaigns") != std::string::npos) {
       return HttpResponse(Utils::readFile(path.parent_path() / "campaigner/campaigns.json"), 200, CURLE_OK, "");
     }
-    return HttpFake::get(url, maxsize);
+    return HttpFake::get(url, maxsize, flow_control);
   }
 
   HttpResponse handle_event(const std::string& url, const Json::Value& data) override {

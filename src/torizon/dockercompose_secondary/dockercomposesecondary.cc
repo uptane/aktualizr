@@ -74,8 +74,7 @@ void DockerComposeSecondaryConfig::dump(const boost::filesystem::path& file_full
 }
 
 DockerComposeSecondary::DockerComposeSecondary(Primary::DockerComposeSecondaryConfig sconfig_in)
-    : ManagedSecondary(std::move(sconfig_in)) {
-}
+    : ManagedSecondary(std::move(sconfig_in)) {}
 
 /*
  * TODO: As per https://gitlab.int.toradex.com/rd/torizon-core/aktualizr/-/merge_requests/7#note_70291
