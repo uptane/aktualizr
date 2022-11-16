@@ -15,6 +15,12 @@ The changes by Toradex include:
 * Implementation of a **docker-compose secondary**: a virtual secondary responsible for application updates in TorizonCore where applications are implemented as Docker containers and managed via docker-compose.
 * Implementation of a **generic secondary**: another virtual secondary allowing all the package (target) installation logic to be implemented outside of aktualizr; this is currently used by Toradex to implement bootloader updates, for example.
 
+Work by Toradex is done in the following branches:
+
+* toradex-master: this is the main branch for use with kirkstone (TorizonCore 6.x.y).
+* toradex-develop: this is the development branch for use with kirkstone (TorizonCore 6.x.y); new development is done here and merged into toradex-master whenever they need to be available on nightly builds.
+* toradex-dunfell-5.x.y: this is the maintenance branch for use with dunfell (TorizonCore 5.x.y); changes in aktualizr/libatualizr will be back-ported to this branch; also, the now deprecated project aktualizr-torizon will refer to commits on this branch (from its master branch).
+
 The original documentation from the upstream project follows.
 
 '''
