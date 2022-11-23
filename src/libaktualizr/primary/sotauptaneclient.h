@@ -134,6 +134,7 @@ class SotaUptaneClient {
   FRIEND_TEST(Delegation, IterateAll);
   friend class CheckForUpdate;       // for load tests
   friend class ProvisionDeviceTask;  // for load tests
+  friend class SecondaryEcuInstallationJob;
 
   /**
    * This operation requires that the device is provisioned.
@@ -186,8 +187,6 @@ class SotaUptaneClient {
                                                UpdateType utype);
   void sendMetadataToEcus(const std::vector<Uptane::Target> &targets, data::InstallationResult *result,
                           std::string *raw_installation_report, UpdateType utype);
-  std::future<data::InstallationResult> sendFirmwareAsync(SecondaryInterface &secondary, const Uptane::Target &target,
-                                                          UpdateType utype);
   std::vector<result::Install::EcuReport> sendImagesToEcus(const std::vector<Uptane::Target> &targets,
                                                            UpdateType utype);
 

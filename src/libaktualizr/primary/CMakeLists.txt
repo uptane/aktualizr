@@ -2,6 +2,7 @@ set(SOURCES aktualizr.cc
             aktualizr_helpers.cc
             provisioner.cc
             reportqueue.cc
+            secondary_install_job.cc
             secondary_provider.cc
             sotauptaneclient.cc)
 
@@ -9,6 +10,7 @@ set(HEADERS aktualizr_helpers.h
             provisioner.h
             reportqueue.h
             secondary_config.h
+            secondary_install_job.h
             secondary_provider_builder.h
             sotauptaneclient.h)
 

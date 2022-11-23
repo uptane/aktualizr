@@ -9,6 +9,7 @@
 #include "crypto/keymanager.h"
 #include "libaktualizr/campaign.h"
 #include "logging/logging.h"
+#include "primary/secondary_install_job.h"
 #include "provisioner.h"
 #include "uptane/exceptions.h"
 #include "utilities/utils.h"
@@ -1499,52 +1500,12 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
   }
 }
 
-std::future<data::InstallationResult> SotaUptaneClient::sendFirmwareAsync(SecondaryInterface &secondary,
-                                                                          const Uptane::Target &target,
-                                                                          UpdateType utype) {
-  auto f = [this, &secondary, target, utype]() {
-    const std::string &correlation_id = director_repo.getCorrelationId();
-
-    sendEvent<event::InstallStarted>(secondary.getSerial());
-    report_queue->enqueue(std_::make_unique<EcuInstallationStartedReport>(secondary.getSerial(), correlation_id));
-
-    data::InstallationResult result;
-    try {
-      result = secondary.sendFirmware(target);
-      if (result.isSuccess()) {
-        InstallInfo info(utype);
-        if (utype == UpdateType::kOffline) {
-          if (!uptane_fetcher_offupd) {
-            throw std::runtime_error("sendFirmwareAsync: offline fetcher not set");
-          }
-          info.initOffline(uptane_fetcher_offupd->getImagesPath(), uptane_fetcher_offupd->getMetadataPath());
-        }
-        result = secondary.install(target, info);
-      }
-    } catch (const std::exception &ex) {
-      result = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
-    }
-
-    if (result.result_code == data::ResultCode::Numeric::kNeedCompletion) {
-      report_queue->enqueue(std_::make_unique<EcuInstallationAppliedReport>(secondary.getSerial(), correlation_id));
-    } else {
-      report_queue->enqueue(
-          std_::make_unique<EcuInstallationCompletedReport>(secondary.getSerial(), correlation_id, result.isSuccess()));
-    }
-
-    sendEvent<event::InstallTargetComplete>(secondary.getSerial(), result.isSuccess());
-    return result;
-  };
-
-  return std::async(std::launch::async, f);
-}
-
 std::vector<result::Install::EcuReport> SotaUptaneClient::sendImagesToEcus(const std::vector<Uptane::Target> &targets,
                                                                            UpdateType utype) {
-  std::vector<result::Install::EcuReport> reports;
-  std::vector<std::pair<result::Install::EcuReport, std::future<data::InstallationResult>>> firmwareFutures;
-
   const Uptane::EcuSerial &primary_ecu_serial = primaryEcuSerial();
+  auto correlation_id = director_repo.getCorrelationId();
+
+  std::vector<SecondaryEcuInstallationJob> installs;
   // target images should already have been downloaded to metadata_path/targets/
   for (auto targets_it = targets.cbegin(); targets_it != targets.cend(); ++targets_it) {
     for (auto ecus_it = targets_it->ecus().cbegin(); ecus_it != targets_it->ecus().cend(); ++ecus_it) {
@@ -1559,27 +1520,48 @@ std::vector<result::Install::EcuReport> SotaUptaneClient::sendImagesToEcus(const
         LOG_ERROR << "Target " << *targets_it << " has an unknown ECU serial";
         continue;
       }
-
-      SecondaryInterface &sec = *f->second;
-      firmwareFutures.emplace_back(result::Install::EcuReport(*targets_it, ecu_serial, data::InstallationResult()),
-                                   sendFirmwareAsync(sec, *targets_it, utype));
+      installs.emplace_back(*this, *f->second, ecu_serial, *targets_it, correlation_id, utype);
     }
   }
 
-  for (auto &f : firmwareFutures) {
-    data::InstallationResult fut_result = f.second.get();
+  for (auto &install : installs) {
+    install.SendFirmwareAsync();
+  }
 
-    if (fut_result.isSuccess() || fut_result.result_code == data::ResultCode::Numeric::kNeedCompletion) {
-      f.first.update.setCorrelationId(director_repo.getCorrelationId());
-      auto update_mode =
-          fut_result.isSuccess() ? InstalledVersionUpdateMode::kCurrent : InstalledVersionUpdateMode::kPending;
-      storage->saveInstalledVersion(f.first.serial.ToString(), f.first.update, update_mode);
+  bool all_ok = true;
+  for (auto &install : installs) {
+    install.WaitForFirmwareSent();
+    all_ok = all_ok && install.Ok();
+  }
+
+  if (all_ok) {
+    // Continue onto installation
+    for (auto &install : installs) {
+      install.InstallAsync();
     }
 
-    f.first.install_res = fut_result;
-    storage->saveEcuInstallationResult(f.first.serial, f.first.install_res);
-    reports.push_back(f.first);
+    for (auto &install : installs) {
+      install.WaitForInstall();
+    }
   }
+
+  std::vector<result::Install::EcuReport> reports;
+
+  for (auto &install : installs) {
+    auto report = install.InstallationReport();
+    reports.push_back(report);
+
+    if (report.install_res.isSuccess()) {
+      storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
+                                    InstalledVersionUpdateMode::kCurrent);
+    } else if (report.install_res.needCompletion()) {
+      storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
+                                    InstalledVersionUpdateMode::kPending);
+    }
+
+    storage->saveEcuInstallationResult(install.ecu_serial(), report.install_res);
+  }
+
   return reports;
 }
 
