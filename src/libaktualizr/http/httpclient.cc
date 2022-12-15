@@ -162,9 +162,9 @@ HttpResponse HttpClient::get(const std::string& url, int64_t maxsize, const api:
   curlEasySetoptWrapper(curl_get, CURLOPT_POSTFIELDS, "");
   curlEasySetoptWrapper(curl_get, CURLOPT_URL, url.c_str());
   curlEasySetoptWrapper(curl_get, CURLOPT_HTTPGET, 1L);
-  curlEasySetoptWrapper(curl_get, CURLOPT_NOPROGRESS, 0);
   if (token != nullptr) {
     // Handle cancellation
+    curlEasySetoptWrapper(curl_get, CURLOPT_NOPROGRESS, 0);
     curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFOFUNCTION, ProgressHandler);
     curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFODATA, token);
   }
