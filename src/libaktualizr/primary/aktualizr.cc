@@ -294,8 +294,9 @@ bool Aktualizr::OfflineUpdateAvailable() {
   OffUpdSourceState old_state = offupd_source_state_;
   OffUpdSourceState cur_state = OffUpdSourceState::Unknown;
 
-  if (bf::exists(config_.uptane.offline_updates_source)) {
-    if (bf::is_directory(config_.uptane.offline_updates_source / update_subdir)) {
+  boost::system::error_code ec;
+  if (bf::exists(config_.uptane.offline_updates_source, ec)) {
+    if (bf::is_directory(config_.uptane.offline_updates_source / update_subdir, ec)) {
       cur_state = OffUpdSourceState::SourceExists;
     } else {
       cur_state = OffUpdSourceState::SourceExistsNoContent;

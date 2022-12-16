@@ -36,14 +36,18 @@ void OfflineUpdateFetcher::fetchRole(std::string* result, int64_t maxsize, Repos
     path = getMetadataPath() / "image-repo" / version.RoleFileName(role);
   }
 
-  if (!boost::filesystem::exists(path)) {
+  boost::system::error_code ec;
+  if (!boost::filesystem::exists(path, ec)) {
     throw Uptane::MetadataFetchFailure(repo.ToString(), path.string());
   }
 
   std::ifstream file_input(path.c_str());
   file_input.seekg(0, std::ifstream::end);
   int64_t file_size = file_input.tellg();
-  // [OFFUPD] Maybe throw a better error here?
+  // [OFFUPD] We may need improvements here especially for unreliable media like NFS:
+  // - Maybe throw a better error;
+  // - Handle the case where tellg() returns -1;
+  // - Handle the case where an error happens during read() (if (!file_input)).
   if (file_size > maxsize) {
     throw Uptane::MetadataFetchFailure(repo.ToString(), path.string());
   }
