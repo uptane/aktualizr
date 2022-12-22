@@ -2,7 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master", "2019.5-docs", "2019.6-docs", "2019.7-docs", "2019.8-docs", "2019.9-docs", "2019.10-docs", "2019.11-docs", "2020.1-docs", "2020.2-docs", "2020.3-docs", "2020.4-docs", "2020.5-docs", "2020.6-docs", "2020.7-docs", "2020.8-docs", "2020.9-docs", "2020.10-docs", "feat/new-auth-for-sumo" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
   schedule:
