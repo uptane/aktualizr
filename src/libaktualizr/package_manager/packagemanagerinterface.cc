@@ -87,7 +87,7 @@ static int ProgressHandler(void* clientp, curl_off_t dltotal, curl_off_t dlnow, 
   if (ds->token != nullptr && ds->token->hasAborted()) {
     return 1;
   }
-  return CURL_PROGRESSFUNC_CONTINUE;
+  return 0;
 }
 
 static void restoreHasherState(MultiPartHasher& hasher, std::ifstream data) {

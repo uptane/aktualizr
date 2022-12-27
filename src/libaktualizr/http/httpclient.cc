@@ -41,21 +41,21 @@ static int ProgressHandler(void* clientp, curl_off_t dltotal, curl_off_t dlnow, 
   (void)ulnow;
   if (clientp == nullptr) {
     LOG_ERROR << "ProgressHandler given null user pointer";
-    return CURL_PROGRESSFUNC_CONTINUE;  // Let the download continue
+    return 0;  // Let the download continue
   }
 
   auto* token = static_cast<api::FlowControlToken*>(clientp);
 
   if (!token->IsValid()) {
     LOG_ERROR << "ProgressHandler given a thing that isn't a FlowControlToken";
-    return CURL_PROGRESSFUNC_CONTINUE;
+    return 0;
   }
 
   if (token->hasAborted()) {
     // Abort download
     return 1;
   }
-  return CURL_PROGRESSFUNC_CONTINUE;
+  return 0;
 }
 
 HttpClient::HttpClient(const std::vector<std::string>* extra_headers) {
