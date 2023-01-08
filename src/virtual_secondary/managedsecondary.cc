@@ -241,13 +241,21 @@ data::InstallationResult ManagedSecondary::putRoot(const std::string &root, cons
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
-data::InstallationResult ManagedSecondary::sendFirmware(const Uptane::Target &target) {
+data::InstallationResult ManagedSecondary::sendFirmware(const Uptane::Target &target, const InstallInfo &install_info,
+                                                        const api::FlowControlToken *flow_control) {
   (void)target;
+  (void)install_info;
+  (void)flow_control;
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
-data::InstallationResult ManagedSecondary::install(const Uptane::Target &target, const InstallInfo &info) {
+data::InstallationResult ManagedSecondary::install(const Uptane::Target &target, const InstallInfo &info,
+                                                   const api::FlowControlToken *flow_control) {
   (void)info;
+  if (flow_control != nullptr && flow_control->hasAborted()) {
+    return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
+  }
+
   // TODO: check that the target is actually valid.
   auto str = secondary_provider_->getTargetFileHandle(target);
   std::ofstream out_file(sconfig.firmware_path.string(), std::ios::binary);

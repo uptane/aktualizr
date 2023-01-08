@@ -3,13 +3,12 @@
 
 #include <string>
 #include <vector>
+#include "utilities/flow_control.h"
 
 class CommandRunner {
  public:
-  CommandRunner() = default;
-
-  bool run(const std::string& cmd);
-  std::vector<std::string> runResult(const std::string& cmd);
+  static bool run(const std::string& cmd, const api::FlowControlToken* flow_control = nullptr);
+  static std::vector<std::string> runResult(const std::string& cmd);
 };
 
 #endif  // COMMAND_RUNNER_H_

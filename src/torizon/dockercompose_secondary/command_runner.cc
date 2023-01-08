@@ -5,9 +5,25 @@
 #include "logging/logging.h"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-bool CommandRunner::run(const std::string& cmd) {
+bool CommandRunner::run(const std::string& cmd, const api::FlowControlToken* flow_control) {
   LOG_INFO << "Running command: " << cmd;
-  return boost::process::system(cmd) == 0;
+  boost::process::child c(cmd);
+
+  while (!c.wait_for(std::chrono::milliseconds(100))) {
+    if (flow_control != nullptr && flow_control->hasAborted()) {
+      LOG_INFO << "Killing child process due to flow_control abort";
+      auto pid = c.id();
+      kill(pid, SIGTERM);
+      // Give it 30s to exit cleanly
+      if (!c.wait_for(std::chrono::seconds(30))) {
+        LOG_WARNING << "Process didn't respond to SIGTERM, sending SIGKILL";
+        c.terminate();
+      }
+      return false;
+    }
+  }
+
+  return c.exit_code() == 0;
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

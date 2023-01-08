@@ -23,6 +23,15 @@ add_aktualizr_test(
   LIBRARIES torizon_dockercompose_secondary virtual_secondary
 )
 
+add_aktualizr_test(
+    NAME command_runner
+    SOURCES command_runner_test.cc
+    LIBRARIES torizon_dockercompose_secondary
+    NO_VALGRIND
+)
+
+set_tests_properties(test_command_runner PROPERTIES TIMEOUT 30)
+
 aktualizr_source_file_checks(${HEADERS} ${SOURCES} ${TEST_SOURCES})
 
 add_subdirectory("tests")

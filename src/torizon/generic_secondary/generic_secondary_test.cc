@@ -417,7 +417,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
   {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "terminate-with-signal-TERM");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kGeneralError);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kGeneralError);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -427,7 +427,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"value\":}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kGeneralError);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kGeneralError);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -437,7 +437,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-65");
     setenv("TEST_JSON_OUTPUT", "{this should be ignored}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kInstallFailed);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kInstallFailed);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -447,7 +447,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-5");
     setenv("TEST_JSON_OUTPUT", "{this should be ignored}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kInstallFailed);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kInstallFailed);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -457,7 +457,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"message\":\"lacking required field\"}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kGeneralError);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kGeneralError);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -467,7 +467,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"message\":\"something failed\", \"status\": \"failed\"}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kInstallFailed);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kInstallFailed);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -477,7 +477,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"message\":\"something failed\", \"status\": \"failed\"}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kInstallFailed);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kInstallFailed);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -487,7 +487,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallFailure) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"message\":\"something failed\", \"status\": \"weird-status\"}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kGeneralError);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kGeneralError);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -516,7 +516,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallSuccess) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-64");
     setenv("TEST_JSON_OUTPUT", "{irrelevant output}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kOk);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kOk);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -526,7 +526,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallSuccess) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"status\": \"ok\", \"message\": \"everything went fine\"}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kOk);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kOk);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_FALSE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }
@@ -555,7 +555,7 @@ TEST_F(TorizonGenericSecondaryTest, InstallPending) {
     touch(sconfig_->firmware_path);
     setenv("TEST_COMMAND", "exit-with-json-output-code-0");
     setenv("TEST_JSON_OUTPUT", "{\"status\": \"need-completion\"}");
-    EXPECT_EQ(secondary_->install(target, info).result_code, data::ResultCode::Numeric::kNeedCompletion);
+    EXPECT_EQ(secondary_->install(target, info, nullptr).result_code, data::ResultCode::Numeric::kNeedCompletion);
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path));
     EXPECT_TRUE(boost::filesystem::exists(sconfig_->firmware_path.string() + ".new"));
   }

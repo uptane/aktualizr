@@ -57,9 +57,27 @@ class SecondaryInterface {
   virtual int32_t getRootVersion(bool director) const = 0;
   virtual data::InstallationResult putRoot(const std::string& root, bool director) = 0;
 
-  virtual data::InstallationResult sendFirmware(const Uptane::Target& target) = 0;
-  virtual data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) = 0;
-  virtual data::InstallationResult install(const Uptane::Target& target) { return install(target, InstallInfo()); }
+  /**
+   * Send firmware to a device. This operation should be both idempotent and
+   * not commit installing the new version. The to extent it is possible, the
+   * implementation should pre-flight the installation at this point and report
+   * errors at this point (when the entire installation can be cleanly aborted)
+   * and not during the install operation, because this can leave a multi-ecu
+   * update partially applied.
+   */
+  virtual data::InstallationResult sendFirmware(const Uptane::Target& target, const InstallInfo& install_info,
+                                                const api::FlowControlToken* flow_control) = 0;
+
+  /**
+   * Commit to installing an update.
+   */
+  virtual data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info,
+                                           const api::FlowControlToken* flow_control) = 0;
+
+  /**
+   * If the new firmware isn't available until after a reboot, then this
+   * is called on the first reboot.
+   */
   virtual boost::optional<data::InstallationResult> completePendingInstall(const Uptane::Target& target) {
     (void)target;
     return boost::none;

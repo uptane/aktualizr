@@ -34,19 +34,20 @@ class DockerComposeSecondary : public ManagedSecondary {
 
   ~DockerComposeSecondary() override = default;
 
+  // SecondaryInterface implementation
   std::string Type() const override { return DockerComposeSecondaryConfig::Type; }
-
   bool ping() const override { return true; }
-
- private:
-  bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const override;
-  data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
-  boost::optional<data::InstallationResult> completePendingInstall(const Uptane::Target& target) override {
-    return completeInstall(target);
-  }
-  data::InstallationResult completeInstall(const Uptane::Target& target);
+  data::InstallationResult sendFirmware(const Uptane::Target& target, const InstallInfo& install_info,
+                                        const api::FlowControlToken* flow_control) override;
+  data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info,
+                                   const api::FlowControlToken* flow_control) override;
+  boost::optional<data::InstallationResult> completePendingInstall(const Uptane::Target& target) override;
   void rollbackPendingInstall() override;
 
+ protected:
+  bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const override;
+
+ private:
   /**
    * Load Docker images from an offline-update image.
    */
@@ -54,6 +55,17 @@ class DockerComposeSecondary : public ManagedSecondary {
                                const boost::filesystem::path& images_path,
                                const boost::filesystem::path& manifests_path,
                                boost::filesystem::path* compose_out = nullptr);
+
+  data::InstallationResult installCommon(const Uptane::Target& target, const api::FlowControlToken* flow_control);
+  boost::filesystem::path composeFile() const { return sconfig.firmware_path; }
+
+  boost::filesystem::path composeFileNew() const {
+    auto res = composeFile();
+    res += ".tmp";
+    return res;
+  }
+
+  ComposeManager compose_manager_{};
 };
 
 }  // namespace Primary

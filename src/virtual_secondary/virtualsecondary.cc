@@ -90,7 +90,8 @@ data::InstallationResult VirtualSecondary::putRoot(const std::string& root, bool
   return ManagedSecondary::putRoot(root, director);
 }
 
-data::InstallationResult VirtualSecondary::sendFirmware(const Uptane::Target& target) {
+data::InstallationResult VirtualSecondary::sendFirmware(const Uptane::Target& target, const InstallInfo& install_info,
+                                                        const api::FlowControlToken* flow_control) {
   if (fiu_fail((std::string("secondary_sendfirmware_") + getSerial().ToString()).c_str()) != 0) {
     // Put the injected failure string into the ResultCode so that it shows up
     // in the device's concatenated InstallationResult.
@@ -98,10 +99,11 @@ data::InstallationResult VirtualSecondary::sendFirmware(const Uptane::Target& ta
         data::ResultCode(data::ResultCode::Numeric::kDownloadFailed, fault_injection_last_info()), "Forced failure");
   }
 
-  return ManagedSecondary::sendFirmware(target);
+  return ManagedSecondary::sendFirmware(target, install_info, flow_control);
 }
 
-data::InstallationResult VirtualSecondary::install(const Uptane::Target& target, const InstallInfo& info) {
+data::InstallationResult VirtualSecondary::install(const Uptane::Target& target, const InstallInfo& info,
+                                                   const api::FlowControlToken* flow_control) {
   if (fiu_fail((std::string("secondary_install_") + getSerial().ToString()).c_str()) != 0) {
     // Put the injected failure string into the ResultCode so that it shows up
     // in the device's concatenated InstallationResult.
@@ -109,7 +111,7 @@ data::InstallationResult VirtualSecondary::install(const Uptane::Target& target,
         data::ResultCode(data::ResultCode::Numeric::kInstallFailed, fault_injection_last_info()), "Forced failure");
   }
 
-  return ManagedSecondary::install(target, info);
+  return ManagedSecondary::install(target, info, flow_control);
 }
 
 }  // namespace Primary

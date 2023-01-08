@@ -1,37 +1,24 @@
 #ifndef COMPOSE_MANAGER_H_
 #define COMPOSE_MANAGER_H_
 
+#include <boost/filesystem/path.hpp>
 #include <string>
 #include "command_runner.h"
+#include "libaktualizr/types.h"
+#include "utilities/flow_control.h"
 
 class ComposeManager {
-  const std::string compose_program_ = "/usr/bin/docker-compose";
-  const std::string printenv_program_ = "/usr/bin/fw_printenv rollback";
-  std::string compose_file_current_;
-  std::string compose_file_new_;
-  std::string compose_cmd_;
-
-  CommandRunner cmd;
-
-  bool pull(const std::string &compose_file);
-  bool up(const std::string &compose_file);
-  bool down(const std::string &compose_file);
-
-  bool cleanup();
-
-  bool completeUpdate();
-
  public:
-  ComposeManager(const std::string &compose_file_current, const std::string &compose_file_new);
+  ComposeManager();
 
-  bool update(bool offline, bool sync);
-  bool pendingUpdate();
-  bool rollback();
+  bool pull(const boost::filesystem::path &compose_file, const api::FlowControlToken *flow_control);
+  bool up(const boost::filesystem::path &compose_file);
+  bool down(const boost::filesystem::path &compose_file);
+  bool cleanup();
   bool checkRollback();
 
-  bool containers_stopped;
-  bool sync_update;
-  bool reboot;
+ private:
+  const std::string compose_cmd_;
 };
 
 #endif  // COMPOSE_MANAGER_H_

@@ -591,10 +591,12 @@ class SecondaryInterfaceMock : public SecondaryInterface {
   data::InstallationResult putRoot(const std::string &, bool) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
-  virtual data::InstallationResult sendFirmware(const Uptane::Target &) override {
+  virtual data::InstallationResult sendFirmware(const Uptane::Target &, const InstallInfo &,
+                                                const api::FlowControlToken *) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
-  virtual data::InstallationResult install(const Uptane::Target &, const InstallInfo &) override {
+  virtual data::InstallationResult install(const Uptane::Target &, const InstallInfo &,
+                                           const api::FlowControlToken *) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
   data::InstallationResult putMetadataOffUpd(const Uptane::Target &target,

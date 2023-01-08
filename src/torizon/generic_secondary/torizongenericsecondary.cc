@@ -211,7 +211,12 @@ void TorizonGenericSecondary::getInstallVars(VarMap& vars, const Uptane::Target&
   // vars["SECONDARY_METADATA_PATH_OFFLINE"] = "{}";
 }
 
-data::InstallationResult TorizonGenericSecondary::install(const Uptane::Target& target, const InstallInfo& info) {
+data::InstallationResult TorizonGenericSecondary::install(const Uptane::Target& target, const InstallInfo& info,
+                                                          const api::FlowControlToken* flow_control) {
+  if (flow_control != nullptr && flow_control->hasAborted()) {
+    return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
+  }
+
   const std::string action{"install"};
 
   // Create new firmware file with a temporary name.

@@ -12,6 +12,7 @@
 #include "libaktualizr/secondary_provider.h"
 #include "logging/logging.h"
 #include "uptane/tuf.h"
+#include "utilities/flow_control.h"
 #include "utilities/utils.h"
 
 namespace Uptane {
@@ -358,18 +359,27 @@ bool IpUptaneSecondary::ping() const {
   return resp->present() == AKIpUptaneMes_PR_getInfoResp;
 }
 
-data::InstallationResult IpUptaneSecondary::sendFirmware(const Uptane::Target& target) {
-  data::InstallationResult send_result;
-  if (protocol_version == 2) {
-    send_result = sendFirmware_v2(target);
-  } else if (protocol_version == 1) {
-    send_result = sendFirmware_v1(target);
-  } else {
-    LOG_ERROR << "Unexpected protocol version: " << protocol_version;
-    send_result = data::InstallationResult(data::ResultCode::Numeric::kInternalError,
-                                           "Unexpected protocol version: " + std::to_string(protocol_version));
+data::InstallationResult IpUptaneSecondary::sendFirmware(const Uptane::Target& target, const InstallInfo& install_info,
+                                                         const api::FlowControlToken* flow_control) {
+  if (flow_control != nullptr && flow_control->hasAborted()) {
+    // TODO: Add an abort message to the IPUptane protocol and allow aborts
+    // during firmware transfer
+    return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
   }
-  return send_result;
+
+  if (install_info.getUpdateType() != UpdateType::kOnline) {
+    return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                    "IpUptaneSecondary doesn't support offline updates");
+  }
+  if (protocol_version == 2) {
+    return sendFirmware_v2(target);
+  }
+  if (protocol_version == 1) {
+    return sendFirmware_v1(target);
+  }
+  LOG_ERROR << "Unexpected protocol version: " << protocol_version;
+  return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
+                                  "Unexpected protocol version: " + std::to_string(protocol_version));
 }
 
 data::InstallationResult IpUptaneSecondary::sendFirmware_v1(const Uptane::Target& target) {
@@ -416,8 +426,16 @@ data::InstallationResult IpUptaneSecondary::sendFirmware_v2(const Uptane::Target
   }
 }
 
-data::InstallationResult IpUptaneSecondary::install(const Uptane::Target& target, const InstallInfo& info) {
+data::InstallationResult IpUptaneSecondary::install(const Uptane::Target& target, const InstallInfo& info,
+                                                    const api::FlowControlToken* flow_control) {
   (void)info;
+
+  if (flow_control != nullptr && flow_control->hasAborted()) {
+    // TODO: Add an abort message to the IPUptane protocol and allow aborts
+    // during installation
+    return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
+  }
+
   data::InstallationResult install_result;
   if (protocol_version == 2) {
     install_result = install_v2(target);

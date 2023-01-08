@@ -65,8 +65,10 @@ class ManagedSecondary : public SecondaryInterface {
   int getRootVersion(bool director) const override;
   data::InstallationResult putRoot(const std::string& root, bool director) override;
 
-  data::InstallationResult sendFirmware(const Uptane::Target& target) override;
-  data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info) override;
+  data::InstallationResult sendFirmware(const Uptane::Target& target, const InstallInfo& install_info,
+                                        const api::FlowControlToken* flow_control) override;
+  data::InstallationResult install(const Uptane::Target& target, const InstallInfo& info,
+                                   const api::FlowControlToken* flow_control) override;
 
   Uptane::Manifest getManifest() const override;
 

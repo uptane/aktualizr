@@ -583,7 +583,8 @@ class SecondaryRpcCommon : public ::testing::Test {
       verifyMetadata(secondary_.metadata());
     }
 
-    result = ip_secondary_->sendFirmware(target);
+    // Offline and cancellation unsupported at the moment
+    result = ip_secondary_->sendFirmware(target, InstallInfo(), nullptr);
     if (handler_version == HandlerVersion::kV2Failure) {
       EXPECT_EQ(result.result_code, data::ResultCode::Numeric::kDownloadFailed);
       EXPECT_EQ(result.description, secondary_.upload_data_failure);
@@ -591,7 +592,7 @@ class SecondaryRpcCommon : public ::testing::Test {
       EXPECT_TRUE(result.isSuccess());
     }
 
-    result = ip_secondary_->install(target);
+    result = ip_secondary_->install(target, InstallInfo(), nullptr);
     if (handler_version == HandlerVersion::kV2Failure) {
       EXPECT_EQ(result.result_code, data::ResultCode::Numeric::kInstallFailed);
       EXPECT_EQ(result.description, secondary_.installation_failure);
@@ -617,7 +618,8 @@ class SecondaryRpcCommon : public ::testing::Test {
       verifyMetadata(secondary_.metadata());
     }
 
-    result = ip_secondary_->sendFirmware(target);
+    // Offline and cancelling not supported at the moment
+    result = ip_secondary_->sendFirmware(target, InstallInfo(), nullptr);
     if (handler_version == HandlerVersion::kV2Failure) {
       EXPECT_EQ(result.result_code, data::ResultCode::Numeric::kDownloadFailed);
       EXPECT_EQ(result.description, secondary_.ostree_failure);
@@ -625,7 +627,7 @@ class SecondaryRpcCommon : public ::testing::Test {
       EXPECT_TRUE(result.isSuccess());
     }
 
-    result = ip_secondary_->install(target);
+    result = ip_secondary_->install(target, InstallInfo(), nullptr);
     if (handler_version == HandlerVersion::kV2Failure) {
       EXPECT_EQ(result.result_code, data::ResultCode::Numeric::kInstallFailed);
       EXPECT_EQ(result.description, secondary_.installation_failure);
@@ -810,8 +812,8 @@ TEST(SecondaryTcpServer, TestIpSecondaryIfSecondaryIsNotRunning) {
   EXPECT_FALSE(ip_secondary->putRoot("director-root-v2", true).isSuccess());
   EXPECT_FALSE(ip_secondary->putRoot("image-root-v2", false).isSuccess());
   EXPECT_FALSE(ip_secondary->putMetadata(target).isSuccess());
-  EXPECT_FALSE(ip_secondary->sendFirmware(target).isSuccess());
-  EXPECT_FALSE(ip_secondary->install(target).isSuccess());
+  EXPECT_FALSE(ip_secondary->sendFirmware(target, InstallInfo(), nullptr).isSuccess());
+  EXPECT_FALSE(ip_secondary->install(target, InstallInfo(), nullptr).isSuccess());
 }
 
 /* This class returns a positive result for every message. The test cases verify

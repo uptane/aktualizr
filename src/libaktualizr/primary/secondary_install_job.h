@@ -2,12 +2,12 @@
 #define AKTUALIZR_SECONDARYINSTALLATIONJOB_H
 
 #include "libaktualizr/results.h"
+#include "libaktualizr/secondaryinterface.h"
 #include "libaktualizr/types.h"
 
 #include <future>
 
 class SotaUptaneClient;
-class SecondaryInterface;
 
 /**
  * This represents the job of installing firmware on a secondary.
@@ -18,16 +18,7 @@ class SecondaryEcuInstallationJob {
  public:
   SecondaryEcuInstallationJob(SotaUptaneClient& uptane_client, SecondaryInterface& secondary,
                               const Uptane::EcuSerial& ecu_serial, const Uptane::Target& target,
-                              const std::string& correlation_id, UpdateType update_type)
-      : uptane_client_{uptane_client},
-        secondary_{secondary},
-        target_{std::move(target)},
-        ecu_serial_{ecu_serial},
-        correlation_id_{correlation_id},
-        update_type_{update_type} {
-    // TODO: necessary?
-    target_.setCorrelationId(correlation_id);
-  }
+                              const std::string& correlation_id, UpdateType update_type);
 
   /**
    * Start sending the firmware to the secondary
@@ -69,8 +60,8 @@ class SecondaryEcuInstallationJob {
   Uptane::Target target_;
   Uptane::EcuSerial ecu_serial_;
   std::string correlation_id_;
-  UpdateType update_type_;
-  data::InstallationResult installation_result_{};
+  InstallInfo install_info_;
+  data::InstallationResult installation_result_{};  // default ctor => success
   std::future<void> firmware_send_;
   std::future<void> install_;
   bool have_installed_{false};

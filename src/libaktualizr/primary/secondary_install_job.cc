@@ -2,18 +2,45 @@
 #include "logging/logging.h"
 #include "primary/sotauptaneclient.h"
 
+SecondaryEcuInstallationJob::SecondaryEcuInstallationJob(SotaUptaneClient& uptane_client, SecondaryInterface& secondary,
+                                                         const Uptane::EcuSerial& ecu_serial,
+                                                         const Uptane::Target& target,
+                                                         const std::string& correlation_id, UpdateType update_type)
+    : uptane_client_{uptane_client},
+      secondary_{secondary},
+      target_{std::move(target)},
+      ecu_serial_{ecu_serial},
+      correlation_id_{correlation_id},
+      install_info_{update_type} {
+  target_.setCorrelationId(correlation_id);  // TODO: necessary?
+
+  if (update_type == UpdateType::kOffline) {
+    if (uptane_client_.uptane_fetcher_offupd) {
+      install_info_.initOffline(uptane_client_.uptane_fetcher_offupd->getImagesPath(),
+                                uptane_client_.uptane_fetcher_offupd->getMetadataPath());
+    } else {
+      installation_result_ = data::InstallationResult(data::ResultCode(data::ResultCode::Numeric::kGeneralError),
+                                                      "sendFirmwareAsync: offline fetcher not set");
+    }
+  }
+}
+
 void SecondaryEcuInstallationJob::SendFirmwareAsync() {
   firmware_send_ = std::async(std::launch::async, &SecondaryEcuInstallationJob::SendFirmware, this);
 }
 
 // Called in bg thread from SendFirmwareAsync
 void SecondaryEcuInstallationJob::SendFirmware() {
+  if (!installation_result_.isSuccess()) {
+    // Can fail in the ctor, but we can't report it until now
+    return;
+  }
   uptane_client_.sendEvent<event::InstallStarted>(ecu_serial_);
   uptane_client_.report_queue->enqueue(std_::make_unique<EcuInstallationStartedReport>(ecu_serial_, correlation_id_));
 
   try {
-    installation_result_ = secondary_.sendFirmware(target_);
-  } catch (const std::exception &ex) {
+    installation_result_ = secondary_.sendFirmware(target_, install_info_, uptane_client_.flow_control_);
+  } catch (const std::exception& ex) {
     installation_result_ = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
   }
 }
@@ -32,18 +59,8 @@ void SecondaryEcuInstallationJob::Install() {
   }
 
   try {
-    InstallInfo info(update_type_);
-    if (update_type_ == UpdateType::kOffline) {
-      if (!uptane_client_.uptane_fetcher_offupd) {
-        installation_result_ = data::InstallationResult(data::ResultCode(data::ResultCode::Numeric::kGeneralError),
-                                                        "sendFirmwareAsync: offline fetcher not set");
-        return;
-      }
-      info.initOffline(uptane_client_.uptane_fetcher_offupd->getImagesPath(),
-                       uptane_client_.uptane_fetcher_offupd->getMetadataPath());
-    }
-    installation_result_ = secondary_.install(target_, info);
-  } catch (const std::exception &ex) {
+    installation_result_ = secondary_.install(target_, install_info_, uptane_client_.flow_control_);
+  } catch (const std::exception& ex) {
     installation_result_ = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
   }
 
