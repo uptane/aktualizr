@@ -20,7 +20,7 @@ bool ComposeManager::pull(const std::string &compose_file) {
 
 bool ComposeManager::up(const std::string &compose_file) {
   LOG_INFO << "Running docker-compose up";
-  return cmd.run(compose_cmd_ + compose_file + " -p torizon up --detach --remove-orphans");
+  return cmd.run(compose_cmd_ + compose_file + " -p torizon up --detach --remove-orphans --wait");
 }
 
 bool ComposeManager::down(const std::string &compose_file) {
