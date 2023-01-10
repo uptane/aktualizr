@@ -1,10 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <boost/filesystem.hpp>
-
 #include "httpfake.h"
 #include "libaktualizr/config.h"
-#include "package_manager/ostreemanager.h"
 #include "storage/invstorage.h"
 #include "uptane_test_common.h"
 #include "utilities/utils.h"
