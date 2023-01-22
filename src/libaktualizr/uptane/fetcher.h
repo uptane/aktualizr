@@ -37,9 +37,15 @@ class IMetadataFetcher {
    * @throws Uptane::LocallyAborted If the caller aborts with flow_control->hasAborted()
    */
   virtual void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
-                         Version version, const api::FlowControlToken* flow_control = nullptr) const = 0;
-  virtual void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
-                               const api::FlowControlToken* flow_control = nullptr) const {
+                         Version version, const api::FlowControlToken* flow_control) const = 0;
+
+  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
+                 Version version) const {
+    return fetchRole(result, maxsize, repo, role, version, nullptr);
+  }
+
+  void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
+                       const api::FlowControlToken* flow_control = nullptr) const {
     fetchRole(result, maxsize, repo, role, Version(), flow_control);
   }
 

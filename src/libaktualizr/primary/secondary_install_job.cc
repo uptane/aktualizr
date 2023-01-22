@@ -2,13 +2,18 @@
 #include "logging/logging.h"
 #include "primary/sotauptaneclient.h"
 
-SecondaryEcuInstallationJob::SecondaryEcuInstallationJob(SotaUptaneClient& uptane_client, SecondaryInterface& secondary,
-                                                         const Uptane::EcuSerial& ecu_serial,
-                                                         const Uptane::Target& target,
-                                                         const std::string& correlation_id, UpdateType update_type)
+// These are passed as const reference not value because they are references,
+// not rvalues at the call site.
+SecondaryEcuInstallationJob::SecondaryEcuInstallationJob(
+    SotaUptaneClient& uptane_client, SecondaryInterface& secondary,
+    const Uptane::EcuSerial& ecu_serial,  // NOLINT(modernize-pass-by-value)
+    const Uptane::Target& target,         // NOLINT(modernize-pass-by-value)
+    const std::string& correlation_id,    // NOLINT(modernize-pass-by-value)
+    UpdateType update_type)
+
     : uptane_client_{uptane_client},
       secondary_{secondary},
-      target_{std::move(target)},
+      target_{target},
       ecu_serial_{ecu_serial},
       correlation_id_{correlation_id},
       install_info_{update_type} {

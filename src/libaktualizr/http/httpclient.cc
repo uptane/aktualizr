@@ -148,7 +148,7 @@ void HttpClient::setCerts(const std::string& ca, CryptoSource ca_source, const s
   pkcs11_key = (pkey_source == CryptoSource::kPkcs11);
 }
 
-HttpResponse HttpClient::get(const std::string& url, int64_t maxsize, const api::FlowControlToken* token) {
+HttpResponse HttpClient::get(const std::string& url, int64_t maxsize, const api::FlowControlToken* flow_control) {
   CURL* curl_get = Utils::curlDupHandleWrapper(curl, pkcs11_key);
 
   curlEasySetoptWrapper(curl_get, CURLOPT_HTTPHEADER, headers);
@@ -162,11 +162,11 @@ HttpResponse HttpClient::get(const std::string& url, int64_t maxsize, const api:
   curlEasySetoptWrapper(curl_get, CURLOPT_POSTFIELDS, "");
   curlEasySetoptWrapper(curl_get, CURLOPT_URL, url.c_str());
   curlEasySetoptWrapper(curl_get, CURLOPT_HTTPGET, 1L);
-  if (token != nullptr) {
+  if (flow_control != nullptr) {
     // Handle cancellation
     curlEasySetoptWrapper(curl_get, CURLOPT_NOPROGRESS, 0);
     curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFOFUNCTION, ProgressHandler);
-    curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFODATA, token);
+    curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFODATA, flow_control);
   }
 
   LOG_DEBUG << "GET " << url;

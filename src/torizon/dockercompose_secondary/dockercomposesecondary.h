@@ -4,6 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <string>
 
+#include "compose_manager.h"
 #include "libaktualizr/types.h"
 #include "managedsecondary.h"
 

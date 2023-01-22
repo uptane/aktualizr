@@ -13,6 +13,7 @@ namespace api {
 class FlowControlToken {
  public:
   FlowControlToken() = default;
+  ~FlowControlToken() = default;
 
   // Non-copyable, non,moveable
   FlowControlToken(const FlowControlToken&) = delete;

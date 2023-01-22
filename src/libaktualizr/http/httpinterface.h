@@ -40,8 +40,8 @@ class HttpInterface {
  public:
   HttpInterface() = default;
   virtual ~HttpInterface() = default;
-  virtual HttpResponse get(const std::string &url, int64_t maxsize,
-                           const api::FlowControlToken *flow_control = nullptr) = 0;
+  virtual HttpResponse get(const std::string &url, int64_t maxsize, const api::FlowControlToken *flow_control) = 0;
+  HttpResponse get(const std::string &url, int64_t maxsize) { return get(url, maxsize, nullptr); }
   virtual HttpResponse post(const std::string &url, const std::string &content_type, const std::string &data) = 0;
   virtual HttpResponse post(const std::string &url, const Json::Value &data) = 0;
   virtual HttpResponse put(const std::string &url, const std::string &content_type, const std::string &data) = 0;
