@@ -187,7 +187,11 @@ data::InstallationResult DockerComposeSecondary::installCommon(const Uptane::Tar
     // Attempt recovery
     boost::filesystem::remove(composeFileNew());
     const char* description;
-    if (!compose_manager_.up(composeFile())) {
+    if (!boost::filesystem::exists(composeFile())) {
+      LOG_ERROR << "docker-compose up of new image failed, and also could not recover"
+                   " because the old image is not on disk";
+      description = "Docker compose up failed, and no old image to restore";
+    } else if (!compose_manager_.up(composeFile())) {
       LOG_ERROR << "docker-compose up of new image failed, and also could not recover"
                    " by docker-compose up on the old image";
       description = "Docker compose up failed, and restore failed";
