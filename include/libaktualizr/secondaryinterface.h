@@ -82,6 +82,10 @@ class SecondaryInterface {
     (void)target;
     return boost::none;
   }
+
+  /**
+   * Called after completePendingInstall if the install failed.
+   */
   virtual void rollbackPendingInstall() {}
 
 #ifdef BUILD_OFFLINE_UPDATES

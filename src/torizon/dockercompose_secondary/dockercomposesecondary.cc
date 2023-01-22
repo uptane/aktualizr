@@ -172,7 +172,9 @@ boost::optional<data::InstallationResult> DockerComposeSecondary::completePendin
 // Shared logic between completePendingInstall() and install()
 data::InstallationResult DockerComposeSecondary::installCommon(const Uptane::Target& target,
                                                                const api::FlowControlToken* flow_control) {
-  (void)flow_control;  // TODO
+  // Don't try to abort during installation. The images were already fetched in
+  // sendFirmware(), so this step should complete within a bounded time.
+  (void)flow_control;
 
   if (boost::filesystem::exists(composeFile())) {
     if (!compose_manager_.down(composeFile())) {
@@ -186,18 +188,25 @@ data::InstallationResult DockerComposeSecondary::installCommon(const Uptane::Tar
     boost::filesystem::remove(composeFileNew());
     const char* description;
     if (!compose_manager_.up(composeFile())) {
-      LOG_ERROR << "docker-compose up of new image failed, and "
-                   "also could not recover by docker-compose up on the old image";
+      LOG_ERROR << "docker-compose up of new image failed, and also could not recover"
+                   " by docker-compose up on the old image";
       description = "Docker compose up failed, and restore failed";
+      // Don't attempt to clean up the old images. Neither of them appear to
+      // work, and we are leaving the system in a potentially broken state.
+      // Prefer to keep things around that might aid recovery, at the risk of
+      // consuming disk space and other resources.
     } else {
+      LOG_WARNING << "docker-compose up of new image failed, recovered via docker-compose up on the old image";
       description = "Docker compose up failed (restore ok)";
+      // Only clean up old images on this somewhat-happy path.
+      compose_manager_.cleanup();
     }
-    compose_manager_.cleanup();
     return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, description);
   }
 
   boost::filesystem::rename(composeFileNew(), composeFile());
   Utils::writeFile(sconfig.target_name_path, target.filename());
+  compose_manager_.cleanup();
   return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
 }
 
@@ -209,13 +218,31 @@ void DockerComposeSecondary::rollbackPendingInstall() {
   boost::filesystem::remove(composeFileNew());
 
   if (compose_manager_.checkRollback()) {
-    // OS rollback detected, need to rollback just the compose secondary.
-    compose_manager_.up(composeFile());
+    // We are being asked to complete a pending synchronous install. However
+    // the OS has triggered a rollback. The following things just happened:
+    // 1) User requested a synchronous install of OSTree base OS + docker
+    //    compose secondary.
+    // 2) The OSTree update was installed, and Aktualizr intended to update
+    //    the docker compose secondary after a reboot
+    // 3) The device rebooted
+    // 4) The new OS version was broken and didn't boot. U-Boot triggered a
+    //    rollback because the bootcount was exceeded
+    // 5) We're now booted in the previous OS version.
+    // 6) DockerComposeSecondary::completePendingInstall() detected the
+    //    rollback and failed the install without making any docker changes
+    // 7) sotauptaneclient noted the installation failure and called us to tidy
+    //    things up.
     compose_manager_.cleanup();
   } else {
-    // Failed to complete pending compose update, need to rollback
-    // the primary, compose secondary, and reboot the system.
-    compose_manager_.cleanup();
+    // In this case (following on from above):
+    // 4) The device rebooted into the new OS successfully
+    // 5) DockerComposeSecondary::completePendingInstall() called
+    //    DockerComposeSecondary::installCommon() which attempted to install
+    //    the new docker-compose secondaries
+    // 6) docker-compose up failed
+    // 7) DockerComposeSecondary::completePendingInstall() will have attempted
+    //    to revert to the previous docker-compose file.
+    // 7) We now need to revert to the old OS image
     CommandRunner::run("fw_setenv rollback 1");
     CommandRunner::run("reboot");
   }
