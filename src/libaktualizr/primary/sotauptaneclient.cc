@@ -1594,6 +1594,8 @@ void SotaUptaneClient::checkAndUpdatePendingSecondaries() {
       boost::optional<Uptane::Target> pending_version;
       storage->loadInstalledVersions(serial.ToString(), nullptr, &pending_version);
 
+      LOG_INFO << "Trying to complete pending update " << pending_ecu.second << " on Secondary with serial "
+               << pending_ecu.first;
       auto opt_install_res = sec->completePendingInstall(*pending_version);
       if (opt_install_res) {
         if (opt_install_res->isSuccess()) {

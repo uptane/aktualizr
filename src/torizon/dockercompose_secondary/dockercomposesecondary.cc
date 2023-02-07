@@ -110,6 +110,8 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
           return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "Aborted in docker-pull");
         }
         LOG_ERROR << "Error running docker-compose pull";
+        // TODO: Should we delete the temporary file? Or use a different file (e.g. .pull instead of .tmp)?
+        // TODO: Should we run the cleanup function? (say some images were downloaded but others not)
         return data::InstallationResult(data::ResultCode::Numeric::kDownloadFailed, "docker compose pull failed");
       }
       break;
@@ -120,6 +122,8 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
       boost::filesystem::path compose_out;
 
       if (!loadDockerImages(composeFileNew(), target.sha256Hash(), img_path, man_path, &compose_out)) {
+        // TODO: Should we delete the temporary file? Or use a different file (e.g. .pull instead of .tmp)?
+        // TODO: Should we run the cleanup function? (say some images were downloaded but others not)
         return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
                                         "Loading offline docker images failed");
       }
@@ -154,6 +158,12 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
 // TODO: Consider returning a different result code to ask for a reboot
 // OR giving a delay for the reboot: `shutdown +1`.
 boost::optional<data::InstallationResult> DockerComposeSecondary::completePendingInstall(const Uptane::Target& target) {
+  bool sync_update = secondary_provider_->pendingPrimaryUpdate();
+  if (sync_update) {
+    // Primary update needs to complete first.
+    return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
+  }
+
   LOG_INFO << "Finishing pending container updates via docker-compose";
   if (!boost::filesystem::exists(composeFileNew())) {
     // Should never reach here in normal operation.
