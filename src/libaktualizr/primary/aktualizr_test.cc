@@ -1694,6 +1694,37 @@ TEST(Aktualizr, TargetAutoremove) {
   }
 }
 
+TEST(Aktualizr, MultibyteUnicodeChars) {
+  TemporaryDirectory temp_dir;
+  const boost::filesystem::path local_metadir = temp_dir / "metadir";
+  Utils::createDirectories(local_metadir, S_IRWXU);
+  auto http = std::make_shared<HttpFake>(temp_dir.Path(), "", local_metadir / "repo");
+
+  UptaneRepo repo{local_metadir, "2025-07-04T16:33:27Z", "id0"};
+  repo.generateRepo(KeyType::kED25519);
+  const std::string hwid = "primary_hw";
+  std::string target_name = "\u30C4\U0001F600.txt";
+  repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", target_name, hwid);
+  repo.addTarget(target_name, hwid, "CA:FE:A6:D2:84:9D");
+  repo.signTargets();
+
+  Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http->tls_server);
+  auto storage = INvStorage::newStorage(conf.storage);
+  UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
+
+  aktualizr.Initialize();
+  result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
+  aktualizr.Download(update_result.updates).get();
+
+  EXPECT_EQ(aktualizr.GetStoredTargets().size(), 1);
+
+  result::Install install_result = aktualizr.Install(update_result.updates).get();
+  EXPECT_TRUE(install_result.dev_report.success);
+
+  std::vector<Uptane::Target> targets = aktualizr.GetStoredTargets();
+  ASSERT_EQ(targets.size(), 1);
+  EXPECT_EQ(targets[0].filename(), target_name);
+}
 /*
  * Initialize -> Install -> nothing to install.
  *
