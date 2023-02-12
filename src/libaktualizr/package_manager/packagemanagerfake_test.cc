@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
 
-#include <fstream>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include <boost/filesystem.hpp>
 
+#include "crypto/crypto.h"
 #include "crypto/keymanager.h"
 #include "httpfake.h"
 #include "libaktualizr/config.h"
@@ -14,7 +15,6 @@
 #include "package_manager/packagemanagerfake.h"
 #include "storage/invstorage.h"
 #include "uptane/fetcher.h"
-#include "uptane/tuf.h"
 #include "utilities/utils.h"
 
 // Test creating, appending and reading binary targets.
