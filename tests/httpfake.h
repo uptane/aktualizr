@@ -11,6 +11,7 @@
 
 #include "json/json.h"
 
+#include <curl/curl.h>  // curl_easy_unescape
 #include "crypto/crypto.h"
 #include "http/httpinterface.h"
 #include "logging/logging.h"
@@ -129,13 +130,29 @@ class HttpFake : public HttpInterface {
     (void)progress_cb;
 
     std::cout << "URL requested: " << url << "\n";
-    const boost::filesystem::path path = meta_dir / url.substr(tls_server.size());
+    std::string path_segment = url.substr(tls_server.size());
+
+    int fn_length;
+    char *fn = curl_easy_unescape(nullptr, path_segment.data(), static_cast<int>(path_segment.size()), &fn_length);
+    if (fn == nullptr) {
+      std::cout << "Could not decode url. Trying it un-decoded\n";
+    } else {
+      path_segment.clear();
+      path_segment.append(fn, static_cast<size_t>(fn_length));
+      curl_free(fn);
+    }
+    const boost::filesystem::path path = meta_dir / path_segment;
     std::cout << "file served: " << path << "\n";
 
     std::promise<HttpResponse> resp_promise;
     auto resp_future = resp_promise.get_future();
     std::thread(
         [path, write_cb, progress_cb, userp, url](std::promise<HttpResponse> promise) {
+          if (!boost::filesystem::exists(path)) {
+            std::cout << "File not found on disk!\n";
+            promise.set_value(HttpResponse("", 404, CURLE_OK, ""));
+            return;
+          }
           const std::string content = Utils::readFile(path.string());
           for (unsigned int i = 0; i < content.size(); ++i) {
             write_cb(const_cast<char *>(&content[i]), 1, 1, userp);
