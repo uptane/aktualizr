@@ -221,6 +221,12 @@ bool DockerComposeSecondary::getFirmwareInfo(Uptane::InstalledImageInfo& firmwar
 data::InstallationResult DockerComposeSecondary::completeInstall(const Uptane::Target& target) {
   (void)target;
 
+  bool sync_update = secondary_provider_->pendingPrimaryUpdate();
+  if (sync_update) {
+    // Primary update needs to complete first.
+    return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
+  }
+
   std::string compose_file = sconfig.firmware_path.string();
   std::string compose_file_new = compose_file + ".tmp";
   ComposeManager pending_check(compose_file, compose_file_new);
