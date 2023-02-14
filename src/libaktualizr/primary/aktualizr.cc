@@ -111,6 +111,7 @@ std::future<void> Aktualizr::RunForever() {
             if (OfflineUpdateAvailable()) {
               if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
                 quit = true;
+                break;
               }
             }
           } catch (SotaUptaneClient::ProvisioningFailed &e) {
