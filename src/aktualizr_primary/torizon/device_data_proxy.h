@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <future>
+#include <mutex>
 #include "libaktualizr/aktualizr.h"
 
 class DeviceDataProxy {
@@ -11,22 +12,25 @@ class DeviceDataProxy {
   std::atomic<bool> running;
   std::atomic<bool> enabled;
   std::string status_message;
+  std::mutex stop_mutex;
+  Aktualizr* aktualizr;
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
   int cancel_pipe[2];
   uint16_t port;
 
   int ConnectionCreate() const;
   static int ConnectionSetNonblock(int socketfd);
-  static void SendDeviceData(Aktualizr& aktualizr, std::string& str_data);
-  void ReportStatus(Aktualizr& aktualizr, bool error);
+  void SendDeviceData(std::string& str_data);
+  void ReportStatus(bool error);
 
   static std::string FindAndReplaceString(std::string str, const std::string& from, const std::string& to);
 
  public:
-  DeviceDataProxy();
+  DeviceDataProxy(Aktualizr* aktualizr_in);
+  ~DeviceDataProxy();
   void Initialize(uint16_t p);
-  void Start(Aktualizr& aktualizr);
-  void Stop(Aktualizr& aktualizr, bool error);
+  void Start();
+  void Stop(bool error, bool hard_stop = false);
 };
 
 #endif  // DEVICE_DATA_PROXY_H_

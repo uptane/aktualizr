@@ -11,10 +11,15 @@
 static const uint16_t default_port = 8850;
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
-DeviceDataProxy::DeviceDataProxy() {
+DeviceDataProxy::DeviceDataProxy(Aktualizr* aktualizr_in) {
   port = default_port;
   running = false;
   enabled = false;
+  aktualizr = aktualizr_in;
+}
+
+DeviceDataProxy::~DeviceDataProxy() {
+  Stop(false, true);
 }
 
 void DeviceDataProxy::Initialize(uint16_t p) {
@@ -98,18 +103,18 @@ std::string DeviceDataProxy::FindAndReplaceString(std::string str, const std::st
   return str;
 }
 
-void DeviceDataProxy::SendDeviceData(Aktualizr& aktualizr, std::string& str_data) {
+void DeviceDataProxy::SendDeviceData(std::string& str_data) {
   if (!str_data.empty()) {
     LOG_INFO << "PROXY: sending device data to Torizon OTA.";
     str_data = "{" + FindAndReplaceString(str_data, "}\n{", ",") + "}";
     Json::Value json_data = Utils::parseJSON(str_data);
     LOG_DEBUG << "PROXY: Sending Json formatted message:" << std::endl << json_data;
-    aktualizr.SendDeviceData(json_data).get();
+    aktualizr->SendDeviceData(json_data).get();
     str_data.clear();
   }
 }
 
-void DeviceDataProxy::ReportStatus(Aktualizr& aktualizr, bool error) {
+void DeviceDataProxy::ReportStatus(bool error) {
   std::string str_data;
 
   // start proxy info
@@ -136,11 +141,11 @@ void DeviceDataProxy::ReportStatus(Aktualizr& aktualizr, bool error) {
   // end proxy info
   str_data += "}";
 
-  SendDeviceData(aktualizr, str_data);
+  SendDeviceData(str_data);
 }
 
-void DeviceDataProxy::Start(Aktualizr& aktualizr) {
-  future = std::async(std::launch::async, [this, &aktualizr]() {
+void DeviceDataProxy::Start() {
+  future = std::async(std::launch::async, [this]() {
     LOG_INFO << "PROXY: starting thread.";
 
     std::string device_buffered_data;
@@ -152,7 +157,7 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
     if ((listener_socket = ConnectionCreate()) == -1) {
       status_message = "could not create connection";
       LOG_ERROR << "PROXY: " << status_message << "! Exiting...";
-      ReportStatus(aktualizr, true);
+      ReportStatus(true);
       return;
     }
 
@@ -187,14 +192,14 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
         if (++epoll_errors >= 5) {
           status_message = "maximum epoll errors reached";
           LOG_ERROR << "PROXY: " << status_message << ". Exiting thread!";
-          ReportStatus(aktualizr, true);
+          ReportStatus(true);
           break;
         }
       }
 
       // timer expired, send data (if available) to Torizon OTA
       else if (ret == 0) {
-        SendDeviceData(aktualizr, device_buffered_data);
+        SendDeviceData(device_buffered_data);
         timeout = -1;
       }
 
@@ -284,7 +289,8 @@ void DeviceDataProxy::Start(Aktualizr& aktualizr) {
   });
 }
 
-void DeviceDataProxy::Stop(Aktualizr& aktualizr, bool error) {
+void DeviceDataProxy::Stop(bool error, bool hard_stop) {
+  std::lock_guard<std::mutex> lock(stop_mutex);
   if (enabled) {
     if (running) {
 #pragma GCC diagnostic push
@@ -296,6 +302,8 @@ void DeviceDataProxy::Stop(Aktualizr& aktualizr, bool error) {
     if (!error) {
       status_message = "execution stopped by the user";
     }
-    ReportStatus(aktualizr, error);
+    if (!hard_stop) {
+      ReportStatus(error);
+    }
   }
 }

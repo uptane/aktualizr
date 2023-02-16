@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef TORIZON
     // configure device data proxy
-    DeviceDataProxy proxy;
+    DeviceDataProxy proxy(&aktualizr);
     if (commandline_map.count("enable-data-proxy") != 0) {
       // proxy conflicts with hwinfo-file
       if (commandline_map.count("hwinfo-file") != 0) {
@@ -180,9 +180,9 @@ int main(int argc, char *argv[]) {
       // start proxy
       try {
         proxy.Initialize(port);
-        proxy.Start(aktualizr);
+        proxy.Start();
       } catch (const std::exception &ex) {
-        proxy.Stop(aktualizr, true);
+        proxy.Stop(true);
         LOG_ERROR << "PROXY: error: " << ex.what();
       }
     }
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
     // handle unix signals
 #ifdef TORIZON
     SigHandler::get().start([&aktualizr, &proxy]() {
-      proxy.Stop(aktualizr, false);
+      proxy.Stop(false);
       aktualizr.Abort();
       aktualizr.Shutdown();
     });
