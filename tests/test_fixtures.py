@@ -19,6 +19,7 @@ from threading import Thread
 from fake_http_server.fake_test_server import FakeTestServerBackground
 from sota_tools.treehub_server import create_repo
 from shutil import copyfileobj
+from random import randint
 
 
 logger = logging.getLogger(__name__)
@@ -37,10 +38,12 @@ class CopyThread(Thread):
 class Aktualizr:
 
     def __init__(self, aktualizr_primary_exe, aktualizr_info_exe, id,
-                 uptane_server, wait_port=9040, wait_timeout=60, log_level=1,
+                 uptane_server, wait_port=None, wait_timeout=60, log_level=1,
                  primary_port=None, secondaries=None, secondary_wait_sec=600, output_logs=True,
                  run_mode='once', director=None, image_repo=None,
                  sysroot=None, treehub=None, ostree_mock_path=None, **kwargs):
+        if wait_port is None:
+            wait_port = randint(9040, 9540)
         self.id = id
         self._aktualizr_primary_exe = aktualizr_primary_exe
         self._aktualizr_info_exe = aktualizr_info_exe
