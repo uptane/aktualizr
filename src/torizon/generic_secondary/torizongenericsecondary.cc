@@ -482,7 +482,7 @@ TorizonGenericSecondary::ActionHandlerResult TorizonGenericSecondary::callAction
   // Wait action-handler to finish.
   // ---
 
-  LOG_DEBUG << "Action-handler " << config_.action_handler_path << " started; waiting for it to end";
+  LOG_DEBUG << "Action-handler " << config_.action_handler_path << " (action=" << action << ") started";
 
   // TODO: [TORIZON] Should we consider a timeout for the command?
   //
@@ -498,13 +498,13 @@ TorizonGenericSecondary::ActionHandlerResult TorizonGenericSecondary::callAction
   }
 
   if (WIFSIGNALED(action_proc.native_exit_code())) {
-    LOG_WARNING << "Action-handler " << config_.action_handler_path << " was terminated by signal #"
-                << WTERMSIG(action_proc.native_exit_code());
+    LOG_WARNING << "Action-handler " << config_.action_handler_path << " (action=" << action << ")"
+                << " terminated by signal #" << WTERMSIG(action_proc.native_exit_code());
     return ActionHandlerResult::NotAvailable;
   }
 
-  LOG_DEBUG << "Action-handler " << config_.action_handler_path << " finished with exit code "
-            << action_proc.exit_code();
+  LOG_DEBUG << "Action-handler " << config_.action_handler_path << " (action=" << action << ")"
+            << " finished with exit code " << action_proc.exit_code();
 
   // ---
   // Handle action-handler exit codes.
@@ -530,8 +530,9 @@ TorizonGenericSecondary::ActionHandlerResult TorizonGenericSecondary::callAction
 #endif
       break;
     default:
-      LOG_WARNING << "Action-handler " << config_.action_handler_path << " returned an exit code of "
-                  << action_proc.exit_code() << " which is unexpected at the moment and will be handled as an error";
+      LOG_WARNING << "Action-handler " << config_.action_handler_path << " (action=" << action << ")"
+                  << " returned an exit code of " << action_proc.exit_code()
+                  << " which is unexpected at the moment and will be handled as an error";
       break;
   }
 
@@ -551,8 +552,8 @@ TorizonGenericSecondary::ActionHandlerResult TorizonGenericSecondary::callAction
 #endif
     } else {
       handler_result = ActionHandlerResult::ProcNoOutput;
-      LOG_WARNING << "Output of action-handler " << config_.action_handler_path
-                  << " could not be parsed (expecting JSON string)";
+      LOG_WARNING << "Action-handler " << config_.action_handler_path << " (action=" << action << ")"
+                  << " output could not be parsed (expecting JSON string)";
       LOG_DEBUG << "JSON parse errors" << errors;
     }
   }

@@ -18,9 +18,7 @@ DeviceDataProxy::DeviceDataProxy(Aktualizr* aktualizr_in) {
   aktualizr = aktualizr_in;
 }
 
-DeviceDataProxy::~DeviceDataProxy() {
-  Stop(false, true);
-}
+DeviceDataProxy::~DeviceDataProxy() { Stop(false, true); }
 
 void DeviceDataProxy::Initialize(uint16_t p) {
   LOG_INFO << "PROXY: initializing...";
@@ -108,7 +106,7 @@ void DeviceDataProxy::SendDeviceData(std::string& str_data) {
     LOG_INFO << "PROXY: sending device data to Torizon OTA.";
     str_data = "{" + FindAndReplaceString(str_data, "}\n{", ",") + "}";
     Json::Value json_data = Utils::parseJSON(str_data);
-    LOG_DEBUG << "PROXY: Sending Json formatted message:" << std::endl << json_data;
+    LOG_TRACE << "PROXY: Sending Json formatted message:" << std::endl << json_data;
     aktualizr->SendDeviceData(json_data).get();
     str_data.clear();
   }
@@ -244,7 +242,7 @@ void DeviceDataProxy::Start() {
         } while (bytesReceived == MAX_BUF_LENGTH);
 
         if (!str_data.empty()) {
-          LOG_DEBUG << "PROXY: Data received."
+          LOG_TRACE << "PROXY: Data received."
                     << " SIZE=" << str_data.size() << " DATA=" << str_data;
 
           // received data should be inside brackets -> { ... }
