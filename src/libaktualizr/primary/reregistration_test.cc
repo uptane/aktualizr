@@ -5,6 +5,7 @@
 
 #include "httpfake.h"
 #include "libaktualizr/config.h"
+#include "metafake.h"
 #include "uptane_test_common.h"
 #include "virtualsecondary.h"
 
@@ -204,7 +205,7 @@ int main(int argc, char** argv) {
 
   TemporaryDirectory tmp_dir;
   fake_meta_dir = tmp_dir.Path();
-  MetaFake meta_fake(fake_meta_dir);
+  CreateFakeRepoMetaData(fake_meta_dir);
 
   return RUN_ALL_TESTS();
 }
