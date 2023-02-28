@@ -289,26 +289,27 @@ TEST(Aktualizr, FullWithUpdates) {
         break;
       }
       case 4: {
-        // Primary always gets installed first. (Not a requirement, just how it
-        // works at present.)
+        // Downloads to secondaries run first (Not a requirement, just how it
+        // works at present)
+        ASSERT_EQ(event->variant, "InstallStarted");
+        const auto install_started = dynamic_cast<event::InstallStarted*>(event.get());
+        EXPECT_EQ(install_started->serial.ToString(), "secondary_ecu_serial");
+        break;
+      }
+      case 5: {
+        // Primary always gets installed
         ASSERT_EQ(event->variant, "InstallStarted");
         const auto install_started = dynamic_cast<event::InstallStarted*>(event.get());
         EXPECT_EQ(install_started->serial.ToString(), "CA:FE:A6:D2:84:9D");
         break;
       }
-      case 5: {
+      case 6: {
         // Primary should complete before Secondary begins. (Again not a
         // requirement per se.)
         ASSERT_EQ(event->variant, "InstallTargetComplete");
         const auto install_complete = dynamic_cast<event::InstallTargetComplete*>(event.get());
         EXPECT_EQ(install_complete->serial.ToString(), "CA:FE:A6:D2:84:9D");
         EXPECT_TRUE(install_complete->success);
-        break;
-      }
-      case 6: {
-        ASSERT_EQ(event->variant, "InstallStarted");
-        const auto install_started = dynamic_cast<event::InstallStarted*>(event.get());
-        EXPECT_EQ(install_started->serial.ToString(), "secondary_ecu_serial");
         break;
       }
       case 7: {
@@ -1759,26 +1760,25 @@ TEST(Aktualizr, InstallWithUpdates) {
         break;
       }
       case 5: {
-        // Primary always gets installed first. (Not a requirement, just how it
-        // works at present.)
+        // Secondary downloads first. (Not a requirement, just how it works at present.)
+        ASSERT_EQ(event->variant, "InstallStarted");
+        const auto install_started = dynamic_cast<event::InstallStarted*>(event.get());
+        EXPECT_EQ(install_started->serial.ToString(), "secondary_ecu_serial");
+        break;
+      }
+      case 6: {
         ASSERT_EQ(event->variant, "InstallStarted");
         const auto install_started = dynamic_cast<event::InstallStarted*>(event.get());
         EXPECT_EQ(install_started->serial.ToString(), "CA:FE:A6:D2:84:9D");
         break;
       }
-      case 6: {
+      case 7: {
         // Primary should complete before Secondary begins. (Again not a
         // requirement per se.)
         ASSERT_EQ(event->variant, "InstallTargetComplete");
         const auto install_complete = dynamic_cast<event::InstallTargetComplete*>(event.get());
         EXPECT_EQ(install_complete->serial.ToString(), "CA:FE:A6:D2:84:9D");
         EXPECT_TRUE(install_complete->success);
-        break;
-      }
-      case 7: {
-        ASSERT_EQ(event->variant, "InstallStarted");
-        const auto install_started = dynamic_cast<event::InstallStarted*>(event.get());
-        EXPECT_EQ(install_started->serial.ToString(), "secondary_ecu_serial");
         break;
       }
       case 8: {

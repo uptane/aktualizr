@@ -169,8 +169,6 @@ class SotaUptaneClient {
                                                    const api::FlowControlToken *token = nullptr);
 #endif
 
-  static std::vector<Uptane::Target> findForEcu(const std::vector<Uptane::Target> &targets,
-                                                const Uptane::EcuSerial &ecu_id);
   data::InstallationResult PackageInstallSetResult(const Uptane::Target &target);
   void finalizeAfterReboot();
   // Part of sendDeviceData()
@@ -187,8 +185,6 @@ class SotaUptaneClient {
                                                UpdateType utype);
   void sendMetadataToEcus(const std::vector<Uptane::Target> &targets, data::InstallationResult *result,
                           std::string *raw_installation_report, UpdateType utype);
-  std::vector<result::Install::EcuReport> sendImagesToEcus(const std::vector<Uptane::Target> &targets,
-                                                           UpdateType utype);
 
   bool putManifestSimple(const Json::Value &custom = Json::nullValue);
   void getNewTargets(std::vector<Uptane::Target> *new_targets, unsigned int *ecus_count = nullptr);

@@ -96,17 +96,6 @@ bool SotaUptaneClient::attemptProvision() {
   return true;
 }
 
-std::vector<Uptane::Target> SotaUptaneClient::findForEcu(const std::vector<Uptane::Target> &targets,
-                                                         const Uptane::EcuSerial &ecu_id) {
-  std::vector<Uptane::Target> result;
-  for (auto it = targets.begin(); it != targets.end(); ++it) {
-    if (it->ecus().find(ecu_id) != it->ecus().end()) {
-      result.push_back(*it);
-    }
-  }
-  return result;
-}
-
 data::InstallationResult SotaUptaneClient::PackageInstall(const Uptane::Target &target) {
   LOG_INFO << "Installing package using " << package_manager_->name() << " package manager";
   try {
@@ -1148,7 +1137,35 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
     }
 
     // Uptane step 5 (send time to all ECUs) is not implemented yet.
-    std::vector<Uptane::Target> primary_updates = findForEcu(updates, primary_ecu_serial);
+
+    // target images should already have been downloaded to metadata_path/targets/
+
+    // Collect the installations that are needed
+    std::vector<Uptane::Target> primary_installs;
+    std::vector<SecondaryEcuInstallationJob> secondary_installs;
+
+    for (auto update = updates.cbegin(); update != updates.cend(); ++update) {
+      for (auto ecusIt = update->ecus().cbegin(); ecusIt != update->ecus().cend(); ++ecusIt) {
+        const Uptane::EcuSerial &ecu_serial = ecusIt->first;
+
+        if (!update->IsForEcu(ecu_serial)) {
+          continue;
+        }
+
+        if (primary_ecu_serial == ecu_serial) {
+          auto primary_update = *update;
+          primary_update.setCorrelationId(correlation_id);
+          primary_installs.push_back(primary_update);
+        } else {
+          auto f = secondaries.find(ecu_serial);
+          if (f != secondaries.end()) {
+            secondary_installs.emplace_back(*this, *f->second, ecu_serial, *update, correlation_id, utype);
+          } else {
+            LOG_ERROR << "Target " << *update << " has an unknown ECU serial";
+          }
+        }
+      }
+    }
 
     //   6 - send metadata to all the ECUs
     data::InstallationResult metadata_res;
@@ -1159,11 +1176,29 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
       return std::make_tuple(result, rr);
     }
 
+    // Send the firmware to all secondary ECUs. Note we want to do this before
+    // committing the first install
+
+    for (auto &install : secondary_installs) {
+      install.SendFirmwareAsync();
+    }
+
+    bool all_secondary_firmware_sent = true;
+    for (auto &install : secondary_installs) {
+      install.WaitForFirmwareSent();
+      all_secondary_firmware_sent = all_secondary_firmware_sent && install.Ok();
+    }
+
+    if (!all_secondary_firmware_sent) {
+      // TODO: What are the requirements for this report?
+      result.dev_report = {false, data::ResultCode::Numeric::kDownloadFailed, "Failed to download to Secondary"};
+      return std::make_tuple(result, "Secondary download failed");
+    }
+
     //   7 - send images to ECUs (deploy for OSTree)
-    if (!primary_updates.empty()) {
+    if (!primary_installs.empty()) {
       // assuming one OSTree OS per Primary => there can be only one OSTree update
-      Uptane::Target primary_update = primary_updates[0];
-      primary_update.setCorrelationId(correlation_id);
+      Uptane::Target const primary_update = primary_installs[0];
 
       report_queue->enqueue(std_::make_unique<EcuInstallationStartedReport>(primary_ecu_serial, correlation_id));
       sendEvent<event::InstallStarted>(primary_ecu_serial);
@@ -1194,8 +1229,30 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
       LOG_INFO << "No update to install on Primary";
     }
 
-    auto sec_reports = sendImagesToEcus(updates, utype);
-    result.ecu_reports.insert(result.ecu_reports.end(), sec_reports.begin(), sec_reports.end());
+    // Install on secondaries
+    for (auto &install : secondary_installs) {
+      install.InstallAsync();
+    }
+
+    for (auto &install : secondary_installs) {
+      install.WaitForInstall();
+    }
+
+    for (auto &install : secondary_installs) {
+      auto report = install.InstallationReport();
+      result.ecu_reports.push_back(report);
+
+      if (report.install_res.isSuccess()) {
+        storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
+                                      InstalledVersionUpdateMode::kCurrent);
+      } else if (report.install_res.needCompletion()) {
+        storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
+                                      InstalledVersionUpdateMode::kPending);
+      }
+
+      storage->saveEcuInstallationResult(install.ecu_serial(), report.install_res);
+    }
+
     computeDeviceInstallationResult(&result.dev_report, &rr);
 
     return std::make_tuple(result, rr);
@@ -1506,71 +1563,6 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
   if (result != nullptr) {
     *result = final_result;
   }
-}
-
-std::vector<result::Install::EcuReport> SotaUptaneClient::sendImagesToEcus(const std::vector<Uptane::Target> &targets,
-                                                                           UpdateType utype) {
-  const Uptane::EcuSerial &primary_ecu_serial = primaryEcuSerial();
-  auto correlation_id = director_repo.getCorrelationId();
-
-  std::vector<SecondaryEcuInstallationJob> installs;
-  // target images should already have been downloaded to metadata_path/targets/
-  for (auto targets_it = targets.cbegin(); targets_it != targets.cend(); ++targets_it) {
-    for (auto ecus_it = targets_it->ecus().cbegin(); ecus_it != targets_it->ecus().cend(); ++ecus_it) {
-      const Uptane::EcuSerial &ecu_serial = ecus_it->first;
-
-      if (primary_ecu_serial == ecu_serial) {
-        continue;
-      }
-
-      auto f = secondaries.find(ecu_serial);
-      if (f == secondaries.end()) {
-        LOG_ERROR << "Target " << *targets_it << " has an unknown ECU serial";
-        continue;
-      }
-      installs.emplace_back(*this, *f->second, ecu_serial, *targets_it, correlation_id, utype);
-    }
-  }
-
-  for (auto &install : installs) {
-    install.SendFirmwareAsync();
-  }
-
-  bool all_ok = true;
-  for (auto &install : installs) {
-    install.WaitForFirmwareSent();
-    all_ok = all_ok && install.Ok();
-  }
-
-  if (all_ok) {
-    // Continue onto installation
-    for (auto &install : installs) {
-      install.InstallAsync();
-    }
-
-    for (auto &install : installs) {
-      install.WaitForInstall();
-    }
-  }
-
-  std::vector<result::Install::EcuReport> reports;
-
-  for (auto &install : installs) {
-    auto report = install.InstallationReport();
-    reports.push_back(report);
-
-    if (report.install_res.isSuccess()) {
-      storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
-                                    InstalledVersionUpdateMode::kCurrent);
-    } else if (report.install_res.needCompletion()) {
-      storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
-                                    InstalledVersionUpdateMode::kPending);
-    }
-
-    storage->saveEcuInstallationResult(install.ecu_serial(), report.install_res);
-  }
-
-  return reports;
 }
 
 Uptane::LazyTargetsList SotaUptaneClient::allTargets() const {

@@ -41,6 +41,7 @@ void SecondaryEcuInstallationJob::SendFirmware() {
     return;
   }
   uptane_client_.sendEvent<event::InstallStarted>(ecu_serial_);
+  // TODO: Is this the right time to send EcuInstallationStartedReport
   uptane_client_.report_queue->enqueue(std_::make_unique<EcuInstallationStartedReport>(ecu_serial_, correlation_id_));
 
   try {
