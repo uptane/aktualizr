@@ -870,8 +870,6 @@ void SotaUptaneClient::uptaneIteration(std::vector<Uptane::Target> *targets, uns
     getNewTargets(&tmp_targets, &ecus);
   } catch (const std::exception &e) {
     LOG_ERROR << "Inconsistency between Director metadata and available ECUs: " << e.what();
-    storeInstallationFailure(
-        data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     throw;
   }
 
@@ -962,6 +960,16 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   unsigned int ecus_count = 0;
   try {
     uptaneIteration(&updates, &ecus_count, utype);
+  } catch (const Uptane::Exception &e) {
+    // TODO: Consider using this check throughout sotauptaneclient for more consistent exception handling.
+    if (e.getPersistence() == Uptane::Persistence::kPermanent && utype == UpdateType::kOnline) {
+      LOG_ERROR << "Unable to verify metadata.";
+      storeInstallationFailure(
+          data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
+    }
+    last_exception = std::current_exception();
+    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
+    return result;
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
     result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
