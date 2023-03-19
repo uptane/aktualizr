@@ -162,13 +162,44 @@ static ssize_t arch_reader(struct archive *arch, void *client_data, const void *
   return archctrl->read();
 }
 
+/**
+ * Determine if the given path is relative and refers to a path inside the tree (that is, after
+ * normalization there are no dot-dot's).
+ */
+static bool is_path_within_tree(const boost::filesystem::path &fpath) {
+  if (!fpath.is_relative()) {
+    return false;
+  }
+  const boost::filesystem::path prefix{"test"};
+  const boost::filesystem::path prepended((prefix / fpath).lexically_normal());
+  return (prepended.begin() != prepended.end()) && (*prepended.begin() == "test");
+}
+
+/**
+ * Normalize the given relative path by making it absolute, doing lexical normalization and then
+ * making it relative again. Examples of the normalization:
+ *
+ * - "a/b/c.txt" -> "a/b/c.txt"
+ * - "./a/b/c.txt" -> "a/b/c.txt"
+ * - "a/x/../b/c.txt" -> "a/b/c.txt"
+ * - "./a/x/../b/c.txt" -> "a/b/c.txt"
+ *
+ */
+static boost::filesystem::path normalize_relative_path(const boost::filesystem::path &fpath) {
+  const boost::filesystem::path base{"/"};
+  return boost::filesystem::absolute(fpath, base).lexically_normal().lexically_relative(base);
+}
+
+/**
+ * Convert the given file path inside a tarball into a key to index metamap_.
+ */
+static std::string tar_fpath_to_key(const std::string &fpath) { return normalize_relative_path(fpath).string(); }
+
 bool DockerTarballLoader::loadMetadataEntryJson(archive *arch, archive_entry *entry) {
   const boost::filesystem::path pathname{archive_entry_pathname(entry)};
 
-  // TODO: We might call archive_entry_size() to allocate the buffer.
-  //       However, the size is not guaranteed to be always set.
-
-  // Load the JSON file into memory.
+  // Load the JSON file into memory; we cannot call archive_entry_size() to allocate the buffer
+  // here because that information is not guaranteed to be always set.
   using JsonBufferType = std::array<uint8_t, MAX_JSON_FILE_SIZE_BYTES + 1>;
   auto buffer = std_::make_unique<JsonBufferType>();
   ssize_t count = archive_read_data(arch, reinterpret_cast<void *>(buffer->data()), buffer->size());
@@ -191,14 +222,13 @@ bool DockerTarballLoader::loadMetadataEntryJson(archive *arch, archive_entry *en
 
   // Store metadata information (keyed by file name).
   MetaInfo info(digest, root);
-  MetadataMap::value_type value(pathname.string(), info);
-  std::pair<MetadataMap::iterator, bool> res;
-  res = metamap_.insert(value);
-  // LOG_INFO << "Inserted: (" << value.first
-  //          << ", " << value.second.sha256_ << ")";
+  MetadataMap::value_type value(tar_fpath_to_key(pathname.string()), info);
+  bool present_before = metamap_.find(value.first) != metamap_.end();
+  metamap_[value.first] = value.second;
 
-  if (!res.second) {
+  if (present_before) {
     LOG_WARNING << "Archive has duplicate file: " << pathname.string();
+    metastats_.nfiles_duplicate++;
     return false;
   }
 
@@ -236,14 +266,13 @@ bool DockerTarballLoader::loadMetadataEntryOther(archive *arch, archive_entry *e
 
   // Store metadata information (keyed by file name).
   MetaInfo info(digest);
-  MetadataMap::value_type value(pathname.string(), info);
-  std::pair<MetadataMap::iterator, bool> res;
-  res = metamap_.insert(value);
-  // LOG_INFO << "Inserted: (" << value.first
-  //          << ", " << value.second.sha256_ << ")";
+  MetadataMap::value_type value(tar_fpath_to_key(pathname.string()), info);
+  bool present_before = metamap_.find(value.first) != metamap_.end();
+  metamap_[value.first] = value.second;
 
-  if (!res.second) {
+  if (present_before) {
     LOG_WARNING << "Archive has duplicate file: " << pathname.string();
+    metastats_.nfiles_duplicate++;
     return false;
   }
 
@@ -260,16 +289,49 @@ bool DockerTarballLoader::loadMetadataEntryOther(archive *arch, archive_entry *e
 }
 
 bool DockerTarballLoader::loadMetadataEntry(archive *arch, archive_entry *entry) {
-  // Ensure path name is good (relative and not using '.' or '..').
   const boost::filesystem::path pathname{archive_entry_pathname(entry)};
-  if (!pathname.is_relative() || (pathname.lexically_normal() != pathname)) {
-    LOG_WARNING << "Found in archive a file with non-relative name: " << pathname.string();
+  if (!is_path_within_tree(pathname)) {
+    LOG_WARNING << "Found in archive a file name referring outside the archive: " << pathname;
     return false;
   }
 
   // Ensure file type is good.
-  if (archive_entry_filetype(entry) != AE_IFREG && archive_entry_filetype(entry) != AE_IFDIR) {
-    LOG_WARNING << "Found in archive a file with bad file type: " << archive_entry_filetype(entry);
+  if (archive_entry_filetype(entry) == AE_IFLNK) {
+    const boost::filesystem::path lnkto_org{archive_entry_symlink(entry)};
+    if (!lnkto_org.is_relative()) {
+      LOG_WARNING << "Found in archive a file (" << pathname.string() << ") that is a symlink to " << lnkto_org
+                  << " which is not relative (ignoring it).";
+      return false;
+    }
+
+    // Resolve the link which should result into a path inside the archive.
+    const boost::filesystem::path lnkto(normalize_relative_path(pathname.parent_path() / lnkto_org));
+    if (!is_path_within_tree(lnkto)) {
+      LOG_WARNING << "Found in archive a file (" << pathname.string() << ") that is a symlink to " << lnkto_org
+                  << " which points outside the archive (ignoring it).";
+      return false;
+    }
+
+    // Store metadata information (keyed by file name).
+    MetaInfo info(lnkto);
+    MetadataMap::value_type value(tar_fpath_to_key(pathname.string()), info);
+    bool present_before = metamap_.find(value.first) != metamap_.end();
+    metamap_[value.first] = value.second;
+
+    if (present_before) {
+      LOG_WARNING << "Archive has duplicate file: " << pathname.string();
+      metastats_.nfiles_duplicate++;
+      return false;
+    }
+
+    // We currently do not keep statistics on links.
+    // metastats_.nfiles_links++;
+
+    return true;
+
+  } else if (archive_entry_filetype(entry) != AE_IFREG && archive_entry_filetype(entry) != AE_IFDIR) {
+    LOG_WARNING << "Found in archive a file (" << pathname.string() << ") with bad file type (oct=" << std::oct
+                << archive_entry_filetype(entry) << std::dec << ")";
     return false;
   }
 
@@ -288,7 +350,7 @@ bool DockerTarballLoader::loadMetadataEntry(archive *arch, archive_entry *entry)
   }
 }
 
-void DockerTarballLoader::loadMetadata() {
+bool DockerTarballLoader::loadMetadata() {
   archive *arch;
   archive_entry *entry;
 
@@ -311,23 +373,53 @@ void DockerTarballLoader::loadMetadata() {
   org_tarball_digest_ = archctrl->getHexDigest();
   org_tarball_length_ = archctrl->nread();
   LOG_DEBUG << "1st pass: tarball sha256=" << org_tarball_digest_ << ", len=" << org_tarball_length_;
-
   LOG_TRACE << "nbytes_other: " << metastats_.nbytes_other << ", nfiles_other: " << metastats_.nfiles_other;
   LOG_TRACE << "nbytes_json: " << metastats_.nbytes_json << ", nfiles_json: " << metastats_.nfiles_json;
 
-  LOG_TRACE << "Files in tarball:";
+  // Translate links into corresponding targets (limit maximum number of links to links).
+  for (int iter = 0; iter < 3; iter++) {
+    bool found = false;
+    for (auto &elem : metamap_) {
+      auto elem_linkto = elem.second.getLinkto();
+      if (!elem_linkto.empty()) {
+        // This entry refers to a link; check to see if the link target is known and if it is replace
+        // the link by its target.
+        auto target = metamap_.find(tar_fpath_to_key(elem_linkto.string()));
+        if (target != metamap_.end() && !target->second.getSHA256().empty()) {
+          LOG_TRACE << elem.first << " remapped to sha256:" << target->second.getSHA256();
+          elem.second = target->second;
+          found = true;
+        }
+      }
+    }
+    if (!found) {
+      // No links found anymore.
+      break;
+    }
+  }
+
+  LOG_TRACE << "Digests of the files in the tarball:";
   for (auto &value : metamap_) {
     LOG_TRACE << value.second.getSHA256() << ": " << value.first;
   }
+
+  if (metastats_.nfiles_duplicate > 0) {
+    LOG_WARNING << "loadMetadata: failing due to the presence of duplicates";
+    return false;
+  }
+
+  return true;
 }
 
-Json::Value DockerTarballLoader::metamapGetRoot(const std::string &key) {
+Json::Value DockerTarballLoader::metamapGetRoot(const std::string &fpath) {
+  const std::string key(tar_fpath_to_key(fpath));
   auto it = metamap_.find(key);
   ensure(it != metamap_.end(), "Key '" + key + "' not found in metamap");
   return it->second.getRoot();
 }
 
-std::string DockerTarballLoader::metamapGetSHA256(const std::string &key) {
+std::string DockerTarballLoader::metamapGetSHA256(const std::string &fpath) {
+  const std::string key(tar_fpath_to_key(fpath));
   auto it = metamap_.find(key);
   ensure(it != metamap_.end(), "Key '" + key + "' not found in metamap");
   return it->second.getSHA256();

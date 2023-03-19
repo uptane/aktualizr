@@ -24,3 +24,5 @@ add_aktualizr_test(
 )
 
 aktualizr_source_file_checks(${HEADERS} ${SOURCES} ${TEST_SOURCES})
+
+add_subdirectory("tests")

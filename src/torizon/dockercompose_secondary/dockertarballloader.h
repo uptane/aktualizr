@@ -20,13 +20,18 @@ class DockerTarballLoader {
  public:
   class MetaInfo {
    protected:
-    std::string sha256_;  // Metadata file's digest.
-    Json::Value root_;    // Metadata in the file.
+    std::string sha256_;             // Metadata file's digest.
+    Json::Value root_;               // Metadata in the file (in case it's a JSON file).
+    boost::filesystem::path lnkto_;  // Target file if it's symbolic link.
+
    public:
+    MetaInfo() = default;
     explicit MetaInfo(std::string sha256) : sha256_(std::move(sha256)) {}
+    explicit MetaInfo(boost::filesystem::path lnkto) : lnkto_(std::move(lnkto)) {}
     MetaInfo(std::string sha256, Json::Value &root) : sha256_(std::move(sha256)), root_(root) {}
     Json::Value &getRoot() { return root_; }
     std::string &getSHA256() { return sha256_; }
+    boost::filesystem::path &getLinkto() { return lnkto_; }
   };
 
   using MetadataMap = std::map<std::string, MetaInfo>;
@@ -34,11 +39,13 @@ class DockerTarballLoader {
   struct MetaStats {
     uint32_t nfiles_json{0};
     uint32_t nfiles_other{0};
+    uint32_t nfiles_duplicate{0};
     uint64_t nbytes_json{0};
     uint64_t nbytes_other{0};
     void clear() {
       nfiles_json = 0;
       nfiles_other = 0;
+      nfiles_duplicate = 0;
       nbytes_json = 0;
       nbytes_other = 0;
     }
@@ -56,7 +63,7 @@ class DockerTarballLoader {
    * Parse tarball archive and load all metadata (JSON) files into
    * memory. It also determines the sha256 of all files in the tarball.
    */
-  void loadMetadata();
+  bool loadMetadata();
 
   /**
    * Validate the metadata loaded by loadMetadata().
@@ -87,8 +94,8 @@ class DockerTarballLoader {
   bool loadMetadataEntryJson(archive *arch, archive_entry *entry);
   bool loadMetadataEntryOther(archive *arch, archive_entry *entry);
 
-  Json::Value metamapGetRoot(const std::string &key);
-  std::string metamapGetSHA256(const std::string &key);
+  Json::Value metamapGetRoot(const std::string &fpath);
+  std::string metamapGetSHA256(const std::string &fpath);
 };
 
 #endif /* SECONDARY_DOCKERTARBALLLOADER_H_ */

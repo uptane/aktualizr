@@ -857,8 +857,7 @@ static void doInstallImage(const boost::filesystem::path &tarball,
   // LOG_INFO << "Preparing to install " << tarball;
   // Run actual tarball loader.
   DockerTarballLoader tbloader(tarball);
-  tbloader.loadMetadata();
-  if (!tbloader.validateMetadata(&expected_contents) || !tbloader.loadImages()) {
+  if (!tbloader.loadMetadata() || !tbloader.validateMetadata(&expected_contents) || !tbloader.loadImages()) {
     LOG_WARNING << "Loading of tarballs aborted!";
     throw std::runtime_error("Failed to load docker tarball " + tarball.filename().string());
   }
