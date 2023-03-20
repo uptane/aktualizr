@@ -58,8 +58,19 @@ class DockerComposeSecondary : public ManagedSecondary {
                                boost::filesystem::path* compose_out = nullptr);
 
   data::InstallationResult installCommon(const Uptane::Target& target, const api::FlowControlToken* flow_control);
+
+  /**
+   * The name of the docker-compose file that we are managing
+   */
   boost::filesystem::path composeFile() const { return sconfig.firmware_path; }
 
+  /**
+   * If this file exists, then docker-compose.service in meta-toradex-torizon won't call docker-compose up at all during
+   * boot.
+   *
+   * It is created to signify that Aktualizr is responsible for running docker-compose up, because it is part of a
+   * synchronous update, and Aktualizr needs to check whether we are booted into the new image or got rolled back.
+   */
   boost::filesystem::path composeFileNew() const {
     auto res = composeFile();
     res += ".tmp";

@@ -28,6 +28,7 @@ struct Utils {
                         bool create_directories = true);
   static void writeFile(const boost::filesystem::path &filename, const Json::Value &content,
                         bool create_directories = true);
+  static void writeFile(const boost::filesystem::path &filename, std::istream &&content);
   static void copyDir(const boost::filesystem::path &from, const boost::filesystem::path &to);
   static std::string readFileFromArchive(std::istream &as, const std::string &filename, bool trim = false);
   static void writeArchive(const std::map<std::string, std::string> &entries, std::ostream &as);

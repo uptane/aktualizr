@@ -335,6 +335,16 @@ TEST(Utils, writeFileJson) {
   EXPECT_EQ(result_json["key"].asString(), val["key"].asString());
 }
 
+TEST(Utils, writeFileStream) {
+  TemporaryFile temp_file;
+  std::string s = "Hello world";
+  std::stringstream content{s};
+
+  Utils::writeFile(temp_file.Path(), std::move(content));
+
+  EXPECT_EQ(Utils::readFile(temp_file.Path()), s);
+}
+
 TEST(Utils, shell) {
   std::string out;
   int statuscode = Utils::shell("ls /", &out);

@@ -343,6 +343,28 @@ void Utils::writeFile(const boost::filesystem::path &filename, const Json::Value
   Utils::writeFile(filename, jsonToStr(content), create_directories);
 }
 
+void Utils::writeFile(const boost::filesystem::path &filename, std::istream &&content) {
+  // also replace the target file atomically by creating filename.new and
+  // renaming it to the target file name
+  boost::filesystem::path tmpFilename = filename;
+  tmpFilename += ".new";
+
+  std::ofstream file(tmpFilename.c_str());
+  if (!file.good()) {
+    throw std::runtime_error(std::string("Error opening file ") + tmpFilename.string());
+  }
+
+  static constexpr size_t buf_len = 1024;
+  std::array<char, buf_len> buf{};
+  do {
+    content.read(buf.data(), buf_len);
+    file.write(buf.data(), content.gcount());
+  } while (content.gcount() != 0);
+  file.close();
+
+  boost::filesystem::rename(tmpFilename, filename);
+}
+
 std::string Utils::jsonToStr(const Json::Value &json) {
   std::stringstream ss;
   ss << json;

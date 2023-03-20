@@ -81,37 +81,19 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
     return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
   }
 
-  auto tgt_stream = secondary_provider_->getTargetFileHandle(target);
-
-  /* Here we try to make container updates "as atomic as possible". So we save
-   * the updated docker-compose file with another name (<firmware_path>.tmp), run
-   * docker-compose commands to pull and run the containers, and if it fails
-   * we still have the previous docker-compose file to "rollback" to the current
-   * version of the containers.
-   */
-
-  // Just a temp file used to atomically write the "tmp" compose file
-  std::string compose_temp = composeFile().string();
-  compose_temp += ".temporary";
-
-  // Save new compose file in a temporary file.
-  std::ofstream out_file(compose_temp, std::ios::binary);
-  out_file << tgt_stream.rdbuf();
-  tgt_stream.close();
-  out_file.close();
-
-  boost::filesystem::rename(compose_temp, composeFileNew());
+  Utils::writeFile(composeFileNew(), secondary_provider_->getTargetFileHandle(target));
 
   switch (install_info.getUpdateType()) {
     case UpdateType::kOnline:
       // Only try to pull images upon an online update.
       if (!compose_manager_.pull(composeFileNew(), flow_control)) {
+        // Tidy up: remove the tmp file, and delete any partial downloads
+        boost::filesystem::remove(composeFileNew());
+        compose_manager_.cleanup();
         if (flow_control != nullptr && flow_control->hasAborted()) {
           return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "Aborted in docker-pull");
         }
         LOG_ERROR << "Error running docker-compose pull";
-        // TODO: Should we delete the temporary file? Or use a different file (e.g. .pull instead of .tmp)?
-        // TODO: Should we run the cleanup function? (say some images were downloaded but others not)
         return data::InstallationResult(data::ResultCode::Numeric::kDownloadFailed, "docker compose pull failed");
       }
       break;
@@ -122,8 +104,8 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
       boost::filesystem::path compose_out;
 
       if (!loadDockerImages(composeFileNew(), target.sha256Hash(), img_path, man_path, &compose_out)) {
-        // TODO: Should we delete the temporary file? Or use a different file (e.g. .pull instead of .tmp)?
-        // TODO: Should we run the cleanup function? (say some images were downloaded but others not)
+        boost::filesystem::remove(composeFileNew());
+        compose_manager_.cleanup();
         return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
                                         "Loading offline docker images failed");
       }
@@ -246,6 +228,11 @@ void DockerComposeSecondary::rollbackPendingInstall() {
     //    rollback and failed the install without making any docker changes
     // 7) sotauptaneclient noted the installation failure and called us to tidy
     //    things up.
+
+    // systemd didn't start either image. We've deleted composeFileNew() so
+    // it will start docker-compose on the next boot, but this time we have to
+    // trigger it.
+    compose_manager_.up(composeFile());
     compose_manager_.cleanup();
   } else {
     // In this case (following on from above):
