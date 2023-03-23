@@ -12,8 +12,6 @@
 
 using std::stringstream;
 
-namespace bpo = boost::program_options;
-
 namespace Primary {
 
 constexpr const char* const DockerComposeSecondaryConfig::Type;
