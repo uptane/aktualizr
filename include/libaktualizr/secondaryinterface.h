@@ -59,11 +59,11 @@ class SecondaryInterface {
 
   /**
    * Send firmware to a device. This operation should be both idempotent and
-   * not commit installing the new version. The to extent it is possible, the
-   * implementation should pre-flight the installation at this point and report
-   * errors at this point (when the entire installation can be cleanly aborted)
-   * and not during the install operation, because this can leave a multi-ecu
-   * update partially applied.
+   * not commit to installing the new version. Where practical, the
+   * implementation should pre-flight the installation and report errors now,
+   * while the entire installation can be cleanly aborted.
+   * Failures reported later (during SecondaryInterface::install()) can leave
+   * a multi-ecu update partially applied.
    */
   virtual data::InstallationResult sendFirmware(const Uptane::Target& target, const InstallInfo& install_info,
                                                 const api::FlowControlToken* flow_control) = 0;
