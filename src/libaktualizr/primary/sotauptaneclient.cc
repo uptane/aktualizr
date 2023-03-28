@@ -1148,10 +1148,6 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
       for (auto ecusIt = update->ecus().cbegin(); ecusIt != update->ecus().cend(); ++ecusIt) {
         const Uptane::EcuSerial &ecu_serial = ecusIt->first;
 
-        if (!update->IsForEcu(ecu_serial)) {
-          continue;
-        }
-
         if (primary_ecu_serial == ecu_serial) {
           auto primary_update = *update;
           primary_update.setCorrelationId(correlation_id);
