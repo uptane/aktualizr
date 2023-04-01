@@ -118,6 +118,7 @@ const std::map<data::ResultCode::Numeric, const char *> data::ResultCode::string
     {ResultCode::Numeric::kGeneralError, "GENERAL_ERROR"},
     {ResultCode::Numeric::kNeedCompletion, "NEED_COMPLETION"},
     {ResultCode::Numeric::kCustomError, "CUSTOM_ERROR"},
+    {ResultCode::Numeric::kOperationCancelled, "OPERATION_CANCELLED"},
     {ResultCode::Numeric::kUnknown, "UNKNOWN"},
 };
 

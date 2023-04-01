@@ -1180,14 +1180,17 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
     }
 
     bool all_secondary_firmware_sent = true;
+    data::InstallationResult first_error;
     for (auto &install : secondary_installs) {
       install.WaitForFirmwareSent();
-      all_secondary_firmware_sent = all_secondary_firmware_sent && install.Ok();
+      if (!install.Ok() && all_secondary_firmware_sent) {
+        all_secondary_firmware_sent = false;
+        first_error = install.InstallationReport().install_res;
+      }
     }
 
     if (!all_secondary_firmware_sent) {
-      // TODO: What are the requirements for this report?
-      result.dev_report = {false, data::ResultCode::Numeric::kDownloadFailed, "Failed to download to Secondary"};
+      result.dev_report = first_error;
       return std::make_tuple(result, "Secondary download failed");
     }
 

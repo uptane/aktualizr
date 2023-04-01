@@ -29,10 +29,12 @@ target_link_libraries(uptane PUBLIC utilities)
 add_aktualizr_test(NAME tuf SOURCES tuf_test.cc PROJECT_WORKING_DIRECTORY)
 
 if(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
-    add_aktualizr_test(NAME uptane_ci SOURCES uptane_ci_test.cc PROJECT_WORKING_DIRECTORY
-                        ARGS ${SOTA_PACKED_CREDENTIALS} ${PROJECT_BINARY_DIR}/ostree_repo)
+    add_aktualizr_test(NAME uptane_ci SOURCES uptane_ci_test.cc
+                       PROJECT_WORKING_DIRECTORY
+                       LIBRARIES virtual_secondary
+                       ARGS ${SOTA_PACKED_CREDENTIALS} ${PROJECT_BINARY_DIR}/ostree_repo)
     set_tests_properties(test_uptane_ci PROPERTIES LABELS "credentials")
-    target_link_libraries(t_uptane_ci virtual_secondary)
+
 else(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
     list(APPEND TEST_SOURCES uptane_ci_test.cc)
 endif(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
@@ -84,5 +86,10 @@ endif(BUILD_OSTREE)
 add_aktualizr_test(NAME director SOURCES director_test.cc
                    PROJECT_WORKING_DIRECTORY
                    ARGS "$<TARGET_FILE:uptane-generator>")
+
+add_aktualizr_test(NAME uptane_update_failure
+                   SOURCES uptane_update_failure_test.cc
+                   PROJECT_WORKING_DIRECTORY
+                   LIBRARIES virtual_secondary uptane_generator_lib)
 
 aktualizr_source_file_checks(${SOURCES} ${HEADERS} ${TEST_SOURCES})
