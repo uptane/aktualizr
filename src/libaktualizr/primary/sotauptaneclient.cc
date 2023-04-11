@@ -1195,6 +1195,7 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
     }
 
     //   7 - send images to ECUs (deploy for OSTree)
+    bool primary_install_failed = false;
     if (!primary_installs.empty()) {
       // assuming one OSTree OS per Primary => there can be only one OSTree update
       Uptane::Target const primary_update = primary_installs[0];
@@ -1222,6 +1223,7 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
         report_queue->enqueue(
             std_::make_unique<EcuInstallationCompletedReport>(primary_ecu_serial, correlation_id, false));
         sendEvent<event::InstallTargetComplete>(primary_ecu_serial, false);
+        primary_install_failed = true;
       }
       result.ecu_reports.emplace(result.ecu_reports.begin(), primary_update, primary_ecu_serial, install_res);
     } else {
@@ -1229,27 +1231,31 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
     }
 
     // Install on secondaries
-    for (auto &install : secondary_installs) {
-      install.InstallAsync();
-    }
-
-    for (auto &install : secondary_installs) {
-      install.WaitForInstall();
-    }
-
-    for (auto &install : secondary_installs) {
-      auto report = install.InstallationReport();
-      result.ecu_reports.push_back(report);
-
-      if (report.install_res.isSuccess()) {
-        storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
-                                      InstalledVersionUpdateMode::kCurrent);
-      } else if (report.install_res.needCompletion()) {
-        storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
-                                      InstalledVersionUpdateMode::kPending);
+    if (!primary_install_failed) {
+      for (auto &install : secondary_installs) {
+        install.InstallAsync();
       }
 
-      storage->saveEcuInstallationResult(install.ecu_serial(), report.install_res);
+      for (auto &install : secondary_installs) {
+        install.WaitForInstall();
+      }
+
+      for (auto &install : secondary_installs) {
+        auto report = install.InstallationReport();
+        result.ecu_reports.push_back(report);
+
+        if (report.install_res.isSuccess()) {
+          storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
+                                        InstalledVersionUpdateMode::kCurrent);
+        } else if (report.install_res.needCompletion()) {
+          storage->saveInstalledVersion(install.ecu_serial().ToString(), install.target(),
+                                        InstalledVersionUpdateMode::kPending);
+        }
+
+        storage->saveEcuInstallationResult(install.ecu_serial(), report.install_res);
+      }
+    } else {
+      LOG_WARNING << "Skipping installation on secondaries since primary install failed";
     }
 
     computeDeviceInstallationResult(&result.dev_report, &rr);

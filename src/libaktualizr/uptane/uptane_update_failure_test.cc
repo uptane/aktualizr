@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <fstream>
 #include <iostream>
 #include <memory>
 
@@ -8,7 +7,6 @@
 #include <boost/polymorphic_pointer_cast.hpp>
 
 #include "libaktualizr/packagemanagerfactory.h"
-#include "libaktualizr/packagemanagerinterface.h"
 
 #include "http/httpclient.h"
 #include "httpfake.h"
@@ -148,8 +146,13 @@ class FailingSecondary : public SecondaryInterface {
   bool abort_during_send_firmware{false};
 };
 
+struct TestOptions {
+  bool fail_primary_install{false};
+  bool primary_installs_on_reboot{true};
+};
+
 struct TestScaffolding {
-  TestScaffolding()
+  explicit TestScaffolding(TestOptions test_options = TestOptions())
       : conf{"tests/config/basic.toml"},
         temp_dir{},
         http{std::make_shared<HttpFake>(temp_dir.Path(), "hasupdates")},
@@ -161,7 +164,8 @@ struct TestScaffolding {
     conf.uptane.force_install_completion = true;
     conf.pacman.images_path = temp_dir.Path() / "images";
     conf.bootloader.reboot_sentinel_dir = temp_dir.Path();
-    conf.pacman.fake_need_reboot = true;
+    conf.pacman.fake_need_reboot = test_options.primary_installs_on_reboot;
+    conf.pacman.fake_fail_install = test_options.fail_primary_install;
 
     conf.storage.path = temp_dir.Path();
     conf.tls.server = http->tls_server;
@@ -337,6 +341,161 @@ TEST(UptaneUpdateFailure, Cancellation) {
   EXPECT_EQ(install_result.dev_report.result_code, data::ResultCode::Numeric::kOperationCancelled);
   EXPECT_EQ(s.secondary->install_calls, 0);
   EXPECT_EQ(s.secondary->send_firmware_calls, 1);
+}
+
+/**
+ * A sync update where both primary and secondary install without reboot
+ */
+TEST(UptaneUpdateFailure, SuccessNoReboot) {
+  TestOptions test_options;
+  test_options.primary_installs_on_reboot = false;
+  TestScaffolding s{test_options};  // NOLINT
+  s.dut->initialize();
+
+  result::UpdateCheck const update_result = s.dut->fetchMeta();
+  result::Download const download_result = s.dut->downloadImages(update_result.updates);
+  EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
+
+  s.expected_install_report = data::ResultCode::Numeric::kOk;
+  result::Install const install_result = s.dut->uptaneInstall(download_result.updates);
+
+  EXPECT_TRUE(install_result.dev_report.isSuccess());
+  EXPECT_FALSE(s.secondary->was_sync_update);
+  EXPECT_EQ(install_result.dev_report.result_code, data::ResultCode::Numeric::kOk);
+  EXPECT_EQ(s.secondary->install_calls, 1);
+  EXPECT_EQ(s.secondary->send_firmware_calls, 1);
+}
+
+/**
+ * The primary can install without a reboot, and the installation on it fails.
+ */
+TEST(UptaneUpdateFailure, PrimaryInstallFailureNoReboot) {
+  TestOptions test_options;
+  test_options.primary_installs_on_reboot = false;
+  test_options.fail_primary_install = true;
+  TestScaffolding s{test_options};  // NOLINT
+  s.dut->initialize();
+
+  result::UpdateCheck const update_result = s.dut->fetchMeta();
+  result::Download const download_result = s.dut->downloadImages(update_result.updates);
+  EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
+
+  s.expected_install_report = data::ResultCode::Numeric::kInstallFailed;
+  result::Install const install_result = s.dut->uptaneInstall(download_result.updates);
+
+  EXPECT_FALSE(install_result.dev_report.isSuccess());
+  EXPECT_FALSE(s.secondary->was_sync_update);
+  EXPECT_EQ(install_result.dev_report.result_code,
+            data::ResultCode(data::ResultCode::Numeric::kInstallFailed, "primary_hw:INSTALL_FAILED"));
+  EXPECT_EQ(s.secondary->send_firmware_calls, 1);
+  EXPECT_EQ(s.secondary->install_calls, 0);
+
+  // Check the manifest that was reported to the backend
+  s.dut->putManifest();
+  auto manifest = s.http->last_manifest["signed"];
+  auto report = manifest["installation_report"];
+
+  auto expected_report = Utils::parseJSON(R"(
+  {
+          "content_type" : "application/vnd.com.here.otac.installationReport.v1",
+          "report" :
+          {
+                  "correlation_id" : "id0",
+                  "items" :
+                  [
+                          {
+                                  "ecu" : "CA:FE:A6:D2:84:9D",
+                                  "result" :
+                                  {
+                                          "code" : "INSTALL_FAILED",
+                                          "description" : "PackageManagerFake install failed because of fake_fail_install",
+                                          "success" : false
+                                  }
+                          }
+                  ],
+                  "raw_report" : "Installation failed on one or more ECUs",
+                  "result" :
+                  {
+                          "code" : "primary_hw:INSTALL_FAILED",
+                          "description" : "Installation failed on one or more ECUs",
+                          "success" : false
+                  }
+          }
+  })");
+  EXPECT_EQ(expected_report, report);
+}
+
+/**
+ * The primary needs a reboot to install, and on the reboot the installation fails.
+ */
+TEST(UptaneUpdateFailure, PrimaryInstallFailure) {
+  TestOptions test_options;
+  test_options.fail_primary_install = true;
+  TestScaffolding s{test_options};  // NOLINT
+  s.dut->initialize();
+
+  result::UpdateCheck const update_result = s.dut->fetchMeta();
+  result::Download const download_result = s.dut->downloadImages(update_result.updates);
+  EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
+
+  s.expected_install_report = data::ResultCode::Numeric::kNeedCompletion;
+  result::Install const install_result = s.dut->uptaneInstall(download_result.updates);
+
+  EXPECT_FALSE(install_result.dev_report.isSuccess());
+  EXPECT_EQ(install_result.dev_report.result_code, data::ResultCode::Numeric::kNeedCompletion);
+  EXPECT_EQ(s.secondary->install_calls, 0);
+  EXPECT_EQ(s.secondary->send_firmware_calls, 1);
+
+  // Simulate a reboot
+  s.Reboot();
+  // The AllInstallsComplete event isn't sent
+  // s.expected_install_report = data::ResultCode::Numeric::kVerificationFailed;
+  EXPECT_NO_THROW(s.dut->initialize());
+
+  // Check the manifest that was reported to the backend
+  auto manifest = s.http->last_manifest["signed"];
+  auto report = manifest["installation_report"];
+  // std::cout << "Actual installation report is:" << report;
+
+  auto expected_report = Utils::parseJSON(R"(
+  {
+    "content_type" : "application/vnd.com.here.otac.installationReport.v1",
+    "report" :
+    {
+      "correlation_id" : "id0",
+      "items" :
+      [
+        {
+          "ecu" : "CA:FE:A6:D2:84:9D",
+          "result" :
+          {
+            "code" : "INSTALL_FAILED",
+            "description" : "PackageManagerFake install failed after reboot because of fake_fail_install",
+            "success" : false
+          }
+        },
+        {
+          "ecu" : "secondary_ecu_serial",
+          "result" :
+          {
+            "code" : "OK",
+            "description" : "",
+            "success" : true
+          }
+        }
+      ],
+      "raw_report" : "Installation failed on one or more ECUs",
+      "result" :
+      {
+        "code" : "primary_hw:INSTALL_FAILED",
+        "description" : "Installation failed on one or more ECUs",
+        "success" : false
+      }
+    }
+  })");
+  EXPECT_EQ(expected_report, report);
+
+  EXPECT_EQ(s.secondary->install_calls, 0);
 }
 
 #ifndef __NO_MAIN__
