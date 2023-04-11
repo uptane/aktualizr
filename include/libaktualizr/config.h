@@ -103,6 +103,7 @@ struct PackageConfig {
 
   // Options for simulation
   bool fake_need_reboot{false};
+  bool fake_fail_install{false};
   BootedType booted{BootedType::kBooted};
 
   // for specialized configuration

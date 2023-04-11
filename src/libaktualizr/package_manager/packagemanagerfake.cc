@@ -35,10 +35,10 @@ data::InstallationResult PackageManagerFake::install(const Uptane::Target& targe
   if (fiu_fail("fake_package_install") != 0) {
     std::string failure_cause = fault_injection_last_info();
     if (failure_cause.empty()) {
-      return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "");
+      return {data::ResultCode::Numeric::kInstallFailed, ""};
     }
     LOG_DEBUG << "Causing installation failure with message: " << failure_cause;
-    return data::InstallationResult(data::ResultCode(data::ResultCode::Numeric::kInstallFailed, failure_cause), "");
+    return {data::ResultCode(data::ResultCode::Numeric::kInstallFailed, failure_cause), ""};
   }
 
   if (config.fake_need_reboot) {
@@ -46,10 +46,15 @@ data::InstallationResult PackageManagerFake::install(const Uptane::Target& targe
     if (bootloader_ != nullptr) {
       bootloader_->rebootFlagSet();
     }
-    return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "Application successful, need reboot");
+    return {data::ResultCode::Numeric::kNeedCompletion, "Application successful, need reboot"};
   }
 
-  return data::InstallationResult(data::ResultCode::Numeric::kOk, "Installing package was successful");
+  if (config.fake_fail_install) {
+    return {data::ResultCode::Numeric::kInstallFailed,
+            "PackageManagerFake install failed because of fake_fail_install"};
+  }
+
+  return {data::ResultCode::Numeric::kOk, "Installing package was successful"};
 }
 
 void PackageManagerFake::completeInstall() const {
@@ -82,6 +87,10 @@ data::InstallationResult PackageManagerFake::finalizeInstall(const Uptane::Targe
             data::InstallationResult(data::ResultCode(data::ResultCode::Numeric::kInstallFailed, failure_cause),
                                      "Failed to finalize the pending update installation");
       }
+    } else if (config.fake_fail_install) {
+      install_res =
+          data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
+                                   "PackageManagerFake install failed after reboot because of fake_fail_install");
     } else {
       install_res = data::InstallationResult(data::ResultCode::Numeric::kOk, "Installing fake package was successful");
     }
