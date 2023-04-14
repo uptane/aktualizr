@@ -111,12 +111,11 @@ bool ComposeManager::rollback() {
 
   if (containers_stopped) {
     up(compose_file_current_);
+    cleanup();
     containers_stopped = false;
   }
 
   remove(compose_file_new_.c_str());
-
-  cleanup();
 
   if (sync_update) {
     cmd.run("fw_setenv rollback 1");
