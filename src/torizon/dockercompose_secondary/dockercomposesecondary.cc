@@ -81,6 +81,8 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
     return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
   }
 
+  compose_manager_.cleanup();  // See rollbackPendingInstall() for cases where this isn't a no-op.
+
   Utils::writeFile(composeFileNew(), secondary_provider_->getTargetFileHandle(target));
 
   switch (install_info.getUpdateType()) {
@@ -124,54 +126,22 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
 data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& target, const InstallInfo& info,
                                                          const api::FlowControlToken* flow_control) {
   (void)info;
-  LOG_INFO << "Updating containers via docker-compose";
-
-  bool sync_update = secondary_provider_->pendingPrimaryUpdate();
-  if (sync_update) {
-    // For a synchronous update, most of this step happens on reboot.
-    LOG_INFO << "OSTree update pending. This is a synchronous update transaction.";
-    return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
-  }
-
-  // This is the case that applies without a reboot (non-synchronous)
-  return installCommon(target, flow_control);
-}
-
-// TODO: Consider returning a different result code to ask for a reboot
-// OR giving a delay for the reboot: `shutdown +1`.
-boost::optional<data::InstallationResult> DockerComposeSecondary::completePendingInstall(const Uptane::Target& target) {
-  bool sync_update = secondary_provider_->pendingPrimaryUpdate();
-  if (sync_update) {
-    // Primary update needs to complete first.
-    return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "");
-  }
-
-  LOG_INFO << "Finishing pending container updates via docker-compose";
-  if (!boost::filesystem::exists(composeFileNew())) {
-    // Should never reach here in normal operation.
-    LOG_ERROR << "ComposeManager::pendingUpdate : " << composeFileNew() << " does not exist";
-    return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
-                                    "completePendingInstall can't find composeFileNew()");
-  }
-
-  if (compose_manager_.checkRollback()) {
-    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "bootloader rolled back OS update");
-  }
-
-  return installCommon(target, nullptr);
-}
-
-// Shared logic between completePendingInstall() and install()
-data::InstallationResult DockerComposeSecondary::installCommon(const Uptane::Target& target,
-                                                               const api::FlowControlToken* flow_control) {
   // Don't try to abort during installation. The images were already fetched in
   // sendFirmware(), so this step should complete within a bounded time.
   (void)flow_control;
+  LOG_INFO << "Updating containers via docker-compose";
+
+  bool const sync_update = secondary_provider_->pendingPrimaryUpdate();
+  if (sync_update) {
+    // For a synchronous update, most of this step happens on reboot.
+    LOG_INFO << "OSTree update pending. This is a synchronous update transaction.";
+    return {data::ResultCode::Numeric::kNeedCompletion, ""};
+  }
 
   if (boost::filesystem::exists(composeFile())) {
     if (!compose_manager_.down(composeFile())) {
       LOG_ERROR << "docker-compose down of old image failed";
-      return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "Docker compose down failed");
+      return {data::ResultCode::Numeric::kInstallFailed, "Docker compose down failed"};
     }
   }
 
@@ -197,13 +167,50 @@ data::InstallationResult DockerComposeSecondary::installCommon(const Uptane::Tar
       // Only clean up old images on this somewhat-happy path.
       compose_manager_.cleanup();
     }
-    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, description);
+    return {data::ResultCode::Numeric::kInstallFailed, description};
   }
 
   boost::filesystem::rename(composeFileNew(), composeFile());
   Utils::writeFile(sconfig.target_name_path, target.filename());
   compose_manager_.cleanup();
-  return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
+  return {data::ResultCode::Numeric::kOk, ""};
+}
+
+/**
+ * This is called on reboot to complete an installation
+ */
+boost::optional<data::InstallationResult> DockerComposeSecondary::completePendingInstall(const Uptane::Target& target) {
+  bool const sync_update = secondary_provider_->pendingPrimaryUpdate();
+  if (sync_update) {
+    // Even though we've rebooted, the primary hasn't installed. Wait for it to finish
+    return {{data::ResultCode::Numeric::kNeedCompletion, ""}};
+  }
+
+  LOG_INFO << "Finishing pending container updates via docker-compose";
+
+  if (!boost::filesystem::exists(composeFileNew())) {
+    // Should never reach here in normal operation.
+    LOG_ERROR << "ComposeManager::pendingUpdate : " << composeFileNew() << " does not exist";
+    return {{data::ResultCode::Numeric::kInternalError, "completePendingInstall can't find composeFileNew()"}};
+  }
+
+  if (compose_manager_.checkRollback()) {
+    // The primary failed to install. We are now booted into the old OS image. Fail our installation without attempting
+    // an install. rollbackPendingInstall() will tidy things up
+    return {{data::ResultCode::Numeric::kInstallFailed, "bootloader rolled back OS update"}};
+  }
+
+  if (!compose_manager_.up(composeFileNew())) {
+    LOG_ERROR << "docker-compose up of new image failed during synchronous update";
+    // The primary installed OK, but we failed. Recovery will be in rollbackPendingInstall()
+    return {{data::ResultCode::Numeric::kInstallFailed, "Docker compose up failed"}};
+  }
+
+  // Install was OK
+  boost::filesystem::rename(composeFileNew(), composeFile());
+  Utils::writeFile(sconfig.target_name_path, target.filename());
+  compose_manager_.cleanup();
+  return {{data::ResultCode::Numeric::kOk, ""}};
 }
 
 void DockerComposeSecondary::rollbackPendingInstall() {
@@ -237,13 +244,17 @@ void DockerComposeSecondary::rollbackPendingInstall() {
   } else {
     // In this case (following on from above):
     // 4) The device rebooted into the new OS successfully
-    // 5) DockerComposeSecondary::completePendingInstall() called
-    //    DockerComposeSecondary::installCommon() which attempted to install
-    //    the new docker-compose secondaries
+    // 5) DockerComposeSecondary::completePendingInstall() was called to perform the install
     // 6) docker-compose up failed
-    // 7) DockerComposeSecondary::completePendingInstall() will have attempted
-    //    to revert to the previous docker-compose file.
-    // 7) We now need to revert to the old OS image
+
+    // We need to:
+    //  a) Remove composeFileNew() so systemd starts the old image
+    //  b) Revert to the old OS image
+    //  c) Prune the images that we downloaded
+    // Step a) was done at the top of this function. We'll do step b) shortly. Step c) is trickier. Pruning images
+    // requires the ones we want to keep to be running. We can't start them now, because we are running an incompatible
+    // OS version (if not then a sync OS update is unnecessary). Since this case should be rare we'll keep the images
+    // around and clear them up before the next download.
     CommandRunner::run("fw_setenv rollback 1");
     CommandRunner::run("reboot");
   }

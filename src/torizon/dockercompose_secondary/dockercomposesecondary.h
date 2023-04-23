@@ -57,8 +57,6 @@ class DockerComposeSecondary : public ManagedSecondary {
                                const boost::filesystem::path& manifests_path,
                                boost::filesystem::path* compose_out = nullptr);
 
-  data::InstallationResult installCommon(const Uptane::Target& target, const api::FlowControlToken* flow_control);
-
   /**
    * The name of the docker-compose file that we are managing
    */
