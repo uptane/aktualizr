@@ -398,6 +398,7 @@ void SotaUptaneClient::initialize() {
 
   uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, provisioner_.PrimaryEcuSerial());
 
+  startupCleanSecondaries();
   completePreviousSecondaryUpdates();
 
   finalizeAfterReboot();
@@ -1573,6 +1574,25 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
 Uptane::LazyTargetsList SotaUptaneClient::allTargets() const {
   // TODO: [OFFUPD] Note this used in tests only ATM.
   return Uptane::LazyTargetsList(image_repo, storage, uptane_fetcher, flow_control_);
+}
+
+void SotaUptaneClient::startupCleanSecondaries() {
+  // Find all ECUs without pending updates...
+  std::vector<std::pair<Uptane::EcuSerial, Hash>> pending_ecus;
+  storage->getPendingEcus(&pending_ecus);
+
+  std::set<Uptane::EcuSerial> pending_serials;
+  for (const auto &ecu : pending_ecus) {
+    pending_serials.insert(ecu.first);
+  }
+
+  // ...and call cleanStartup() on them.
+  for (const auto &secondary : secondaries) {
+    if (pending_serials.find(secondary.first) != pending_serials.end()) {
+      continue;
+    }
+    secondary.second->cleanStartup();
+  }
 }
 
 void SotaUptaneClient::checkAndUpdatePendingSecondaries() {

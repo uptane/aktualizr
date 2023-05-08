@@ -75,6 +75,13 @@ class SecondaryInterface {
                                            const api::FlowControlToken* flow_control) = 0;
 
   /**
+   * Perform housekeeping after reboot if there isn't a pending installation.
+   * If there is a pending install, then completePendingInstall() will be
+   * called instead.
+   */
+  virtual void cleanStartup() {}
+
+  /**
    * If the new firmware isn't available until after a reboot, then this
    * is called on the first reboot.
    */

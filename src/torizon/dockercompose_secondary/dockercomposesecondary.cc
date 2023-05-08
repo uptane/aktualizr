@@ -90,8 +90,8 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
       // Only try to pull images upon an online update.
       if (!compose_manager_.pull(composeFileNew(), flow_control)) {
         // Tidy up: remove the tmp file, and delete any partial downloads
-        boost::filesystem::remove(composeFileNew());
         compose_manager_.cleanup();
+        boost::filesystem::remove(composeFileNew());
         if (flow_control != nullptr && flow_control->hasAborted()) {
           return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "Aborted in docker-pull");
         }
@@ -106,8 +106,8 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
       boost::filesystem::path compose_out;
 
       if (!loadDockerImages(composeFileNew(), target.sha256Hash(), img_path, man_path, &compose_out)) {
-        boost::filesystem::remove(composeFileNew());
         compose_manager_.cleanup();
+        boost::filesystem::remove(composeFileNew());
         return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
                                         "Loading offline docker images failed");
       }
@@ -147,7 +147,6 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
 
   if (!compose_manager_.up(composeFileNew())) {
     // Attempt recovery
-    boost::filesystem::remove(composeFileNew());
     const char* description;
     if (!boost::filesystem::exists(composeFile())) {
       LOG_ERROR << "docker-compose up of new image failed, and also could not recover"
@@ -167,6 +166,7 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
       // Only clean up old images on this somewhat-happy path.
       compose_manager_.cleanup();
     }
+    boost::filesystem::remove(composeFileNew());
     return {data::ResultCode::Numeric::kInstallFailed, description};
   }
 
@@ -218,8 +218,6 @@ void DockerComposeSecondary::rollbackPendingInstall() {
   // This function handles a failed sync update and
   // performs a rollback on the needed ECUs to ensure sync.
 
-  boost::filesystem::remove(composeFileNew());
-
   if (compose_manager_.checkRollback()) {
     // We are being asked to complete a pending synchronous install. However
     // the OS has triggered a rollback. The following things just happened:
@@ -236,11 +234,12 @@ void DockerComposeSecondary::rollbackPendingInstall() {
     // 7) sotauptaneclient noted the installation failure and called us to tidy
     //    things up.
 
-    // systemd didn't start either image. We've deleted composeFileNew() so
-    // it will start docker-compose on the next boot, but this time we have to
-    // trigger it.
+    // systemd didn't start either image. Start the old image manually, and
+    // delete composeFileNew() so systemd will start docker-compose
+    // automatically next time.
     compose_manager_.up(composeFile());
     compose_manager_.cleanup();
+    boost::filesystem::remove(composeFileNew());
   } else {
     // In this case (following on from above):
     // 4) The device rebooted into the new OS successfully
@@ -248,15 +247,34 @@ void DockerComposeSecondary::rollbackPendingInstall() {
     // 6) docker-compose up failed
 
     // We need to:
-    //  a) Remove composeFileNew() so systemd starts the old image
-    //  b) Revert to the old OS image
-    //  c) Prune the images that we downloaded
-    // Step a) was done at the top of this function. We'll do step b) shortly. Step c) is trickier. Pruning images
-    // requires the ones we want to keep to be running. We can't start them now, because we are running an incompatible
-    // OS version (if not then a sync OS update is unnecessary). Since this case should be rare we'll keep the images
-    // around and clear them up before the next download.
+    //  a) Revert to the old OS image
+    //  b) Start the old docker-compose image
+    //  c) Prune the images that were downloaded
+    //  d) Remove composeFileNew() so systemd starts the old image in the future
+    // Perform step a) now. On reboot the following will happen:
+    //  7) OSTree will boot the old image
+    //  8) systemd will see composeFileNew() and won't start either image
+    //  9) Aktualizr will see that there is no pending installs (it already failed) and calls
+    // 10) DockerComposeSecondary::cleanStartup(), which sees composeFileNew(), and performs steps b,c and d.
+    // Note step b/c must be after a, because the old docker image may only be
+    // compatible with the old OS image. If they ran on the new OS, then a
+    // synchronous update would have been unnecessary.
     CommandRunner::run("fw_setenv rollback 1");
     CommandRunner::run("reboot");
+  }
+}
+
+void DockerComposeSecondary::cleanStartup() {
+  // If no install is pending, then we were downloading an update when the power went off
+  // clean up what is left behind
+  if (boost::filesystem::exists(composeFileNew())) {
+    LOG_WARNING << "Cleaning up leftover docker_compose.tmp file";
+    if (boost::filesystem::exists(composeFile())) {  // A fresh image won't have an old compose file
+      compose_manager_.up(composeFile());
+    }
+    compose_manager_.cleanup();
+    // Remove after cleanup, because its existence tells us that cleanup() is needed.
+    boost::filesystem::remove(composeFileNew());
   }
 }
 

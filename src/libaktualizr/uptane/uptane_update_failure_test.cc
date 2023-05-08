@@ -123,6 +123,8 @@ class FailingSecondary : public SecondaryInterface {
 
   void rollbackPendingInstall() override { rollback_pending_install_calls++; }
 
+  void cleanStartup() override { nothing_pending_calls++; }
+
   data::InstallationResult putMetadataOffUpd(const Uptane::Target &, const Uptane::OfflineUpdateFetcher &) override {
     return {data::ResultCode::Numeric::kInternalError, "SecondaryInterfaceMock::putMetadataOffUpd not implemented"};
   }
@@ -138,6 +140,7 @@ class FailingSecondary : public SecondaryInterface {
   int install_calls{0};
   int complete_pending_install_calls{0};
   int rollback_pending_install_calls{0};
+  int nothing_pending_calls{0};
   // This result is used for both install and completePendingInstall
   data::ResultCode::Numeric install_result{data::ResultCode::Numeric::kOk};
   bool was_sync_update{false};
@@ -223,6 +226,8 @@ TEST(UptaneUpdateFailure, SynchronousSecondaryUpdatesSuccess) {
   TestScaffolding s;  // NOLINT
 
   EXPECT_NO_THROW(s.dut->initialize());
+  EXPECT_EQ(s.secondary->nothing_pending_calls, 1);
+
   result::UpdateCheck const update_result = s.dut->fetchMeta();
   EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
   // Preparatory work
@@ -245,6 +250,7 @@ TEST(UptaneUpdateFailure, SynchronousSecondaryUpdatesSuccess) {
   s.Reboot();
   s.expected_install_report = data::ResultCode::Numeric::kOk;
   EXPECT_NO_THROW(s.dut->initialize());
+  EXPECT_EQ(s.secondary->nothing_pending_calls, 1) << "Shouldn't be called when there is a pending update";
 
   EXPECT_EQ(s.secondary->send_firmware_calls, 1);
   EXPECT_EQ(s.secondary->install_calls, 0);

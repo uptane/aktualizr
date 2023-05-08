@@ -44,6 +44,7 @@ class DockerComposeSecondary : public ManagedSecondary {
                                    const api::FlowControlToken* flow_control) override;
   boost::optional<data::InstallationResult> completePendingInstall(const Uptane::Target& target) override;
   void rollbackPendingInstall() override;
+  void cleanStartup() override;
 
  protected:
   bool getFirmwareInfo(Uptane::InstalledImageInfo& firmware_info) const override;

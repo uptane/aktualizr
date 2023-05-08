@@ -200,6 +200,7 @@ class SotaUptaneClient {
                                                    const Uptane::Target &queried_target, int level, bool terminating,
                                                    bool offline, UpdateType utype);
   Uptane::LazyTargetsList allTargets() const;
+  void startupCleanSecondaries();
   void checkAndUpdatePendingSecondaries();
   Uptane::EcuSerial primaryEcuSerial() { return provisioner_.PrimaryEcuSerial(); }
   boost::optional<Uptane::HardwareIdentifier> getEcuHwId(const Uptane::EcuSerial &serial);
