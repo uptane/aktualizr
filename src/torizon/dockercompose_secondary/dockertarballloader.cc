@@ -354,7 +354,7 @@ bool DockerTarballLoader::loadMetadata() {
   archive *arch;
   archive_entry *entry;
 
-  LOG_INFO << "Loading metadata from tarball: " << tarball_.string();
+  LOG_INFO << "Loading metadata from tarball: " << tarball_;
   auto archctrl = std_::make_unique<ArchiveCtrl>(tarball_);
 
   arch = archive_read_new();
@@ -407,6 +407,8 @@ bool DockerTarballLoader::loadMetadata() {
     LOG_WARNING << "loadMetadata: failing due to the presence of duplicates";
     return false;
   }
+
+  LOG_INFO << "Successfully loaded metadata from tarball: " << tarball_;
 
   return true;
 }
@@ -534,11 +536,14 @@ bool DockerTarballLoader::validateMetadata(StringToStringSet *expected_tags_per_
 }
 
 bool DockerTarballLoader::loadImages() {
+  // NOLINTNEXTLINE(clang-analyzer-core.NonNullParamChecker)
+  LOG_INFO << "Loading images from tarball: " << tarball_;
+
   // Open tarball as raw binary data.
   std::ifstream infile(tarball_.string(), std::ios::binary);
-  // NOLINTNEXTLINE(clang-analyzer-core.NonNullParamChecker)
   if (!infile) {
-    LOG_WARNING << "Could not open '" << tarball_.string() << "'";
+    // NOLINTNEXTLINE(clang-analyzer-core.NonNullParamChecker)
+    LOG_WARNING << "Could not open tarball: " << tarball_;
     return false;
   }
 
@@ -630,8 +635,8 @@ bool DockerTarballLoader::loadImages() {
 
   } else {
     // Digest changed from first time we took it.
-    LOG_WARNING << "Digest of '" << tarball_.string() << "' has changed from '" << org_tarball_digest_ << "' to '"
-                << new_digest << "'";
+    LOG_WARNING << "Digest of " << tarball_ << " has changed from '" << org_tarball_digest_ << "' to '" << new_digest
+                << "'";
   }
 
   docker_stdin.flush();
