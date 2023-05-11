@@ -81,16 +81,15 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
     return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "");
   }
 
-  compose_manager_.cleanup();  // See rollbackPendingInstall() for cases where this isn't a no-op.
-
   Utils::writeFile(composeFileNew(), secondary_provider_->getTargetFileHandle(target));
 
   switch (install_info.getUpdateType()) {
     case UpdateType::kOnline:
       // Only try to pull images upon an online update.
       if (!compose_manager_.pull(composeFileNew(), flow_control)) {
-        // Tidy up: remove the tmp file, and delete any partial downloads
-        compose_manager_.cleanup();
+        // Perform some basic cleaning up; we do not get rid of partial downloads here to avoid removing images from
+        // not-so-short lived containers (since currently pruning is done based on what containers are running).
+        // TODO: Prune images not referenced by the current compose file (future improvement).
         boost::filesystem::remove(composeFileNew());
         if (flow_control != nullptr && flow_control->hasAborted()) {
           return data::InstallationResult(data::ResultCode::Numeric::kOperationCancelled, "Aborted in docker-pull");
@@ -106,7 +105,9 @@ data::InstallationResult DockerComposeSecondary::sendFirmware(const Uptane::Targ
       boost::filesystem::path compose_out;
 
       if (!loadDockerImages(composeFileNew(), target.sha256Hash(), img_path, man_path, &compose_out)) {
-        compose_manager_.cleanup();
+        // Perform some basic cleaning up; we do not get rid of partial downloads here to avoid removing images from
+        // not-so-short lived containers (since currently pruning is done based on what containers are running).
+        // TODO: Prune images not referenced by the current compose file (future improvement).
         boost::filesystem::remove(composeFileNew());
         return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed,
                                         "Loading offline docker images failed");
@@ -170,9 +171,10 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
     return {data::ResultCode::Numeric::kInstallFailed, description};
   }
 
+  compose_manager_.cleanup();
+  // Rename after cleanup, because the temporary file existence tells us that cleanup() is needed.
   boost::filesystem::rename(composeFileNew(), composeFile());
   Utils::writeFile(sconfig.target_name_path, target.filename());
-  compose_manager_.cleanup();
   return {data::ResultCode::Numeric::kOk, ""};
 }
 
@@ -180,11 +182,20 @@ data::InstallationResult DockerComposeSecondary::install(const Uptane::Target& t
  * This is called on reboot to complete an installation
  */
 boost::optional<data::InstallationResult> DockerComposeSecondary::completePendingInstall(const Uptane::Target& target) {
-  bool const sync_update = secondary_provider_->pendingPrimaryUpdate();
-  if (sync_update) {
-    // Even though we've rebooted, the primary hasn't installed. Wait for it to finish
-    return {{data::ResultCode::Numeric::kNeedCompletion, ""}};
-  }
+  // TODO: We would like to have a condition like this here:
+  //
+  // if (!reboot_detected) {
+  //   return {{data::ResultCode::Numeric::kNeedCompletion, ""}};
+  // }
+  //
+  // That would be a protection for the cases where:
+  //
+  // - The main program loop continues to run even after a reboot was requested.
+  // - The program gets restarted after a reboot is requested.
+  //
+  // Both of these should not happen normally but when testing Aktualizr we usually disable the ostree-pending-reboot
+  // service in which case the situation can happen. To solve this, in addition to disabling the said service, one
+  // should also set "Restart=no" in the aktualizr-torizon.service configuration.
 
   LOG_INFO << "Finishing pending container updates via docker-compose";
 
@@ -207,9 +218,10 @@ boost::optional<data::InstallationResult> DockerComposeSecondary::completePendin
   }
 
   // Install was OK
+  compose_manager_.cleanup();
+  // Rename after cleanup, because the temporary file existence tells us that cleanup() is needed.
   boost::filesystem::rename(composeFileNew(), composeFile());
   Utils::writeFile(sconfig.target_name_path, target.filename());
-  compose_manager_.cleanup();
   return {{data::ResultCode::Numeric::kOk, ""}};
 }
 
