@@ -409,9 +409,9 @@ void SotaUptaneClient::initialize() {
 
   uptane_manifest = std::make_shared<Uptane::ManifestIssuer>(key_manager_, provisioner_.PrimaryEcuSerial());
 
-  finalizeAfterReboot();
-
   completePreviousSecondaryUpdates();
+
+  finalizeAfterReboot();
 
   attemptProvision();
 }
