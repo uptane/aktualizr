@@ -1,7 +1,8 @@
 #ifndef AKTUALIZR_LIBAKTUALIZRC_H
 #define AKTUALIZR_LIBAKTUALIZRC_H
 
-#include <stdint.h> // for uint8_t
+/* NOLINTNEXTLINE(modernize-deprecated-headers, hicpp-deprecated-headers)  */
+#include <stdint.h>  // for uint8_t
 
 #ifdef __cplusplus
 #include "libaktualizr/aktualizr.h"
@@ -26,7 +27,7 @@ int Aktualizr_initialize(Aktualizr *a);
 int Aktualizr_uptane_cycle(Aktualizr *a);
 void Aktualizr_destroy(Aktualizr *a);
 
-int Aktualizr_set_signal_handler(Aktualizr *a, void (*handler)(const char* event_name));
+int Aktualizr_set_signal_handler(Aktualizr *a, void (*handler)(const char *event_name));
 
 Campaign *Aktualizr_campaigns_check(Aktualizr *a);
 int Aktualizr_campaign_accept(Aktualizr *a, Campaign *c);
@@ -50,15 +51,11 @@ int Aktualizr_send_manifest(Aktualizr *a, const char *manifest);
 int Aktualizr_send_device_data(Aktualizr *a);
 
 StorageTargetHandle *Aktualizr_open_stored_target(Aktualizr *a, const Target *t);
-size_t Aktualizr_read_stored_target(StorageTargetHandle *handle, uint8_t* buf, size_t size);
+size_t Aktualizr_read_stored_target(StorageTargetHandle *handle, uint8_t *buf, size_t size);
 int Aktualizr_close_stored_target(StorageTargetHandle *handle);
 
-typedef enum {
-  kSuccess = 0,
-  kAlreadyPaused,
-  kAlreadyRunning,
-  kError }
-Pause_Status_C;
+/* NOLINTNEXTLINE(modernize-use-using) */
+typedef enum { kSuccess = 0, kAlreadyPaused, kAlreadyRunning, kError } Pause_Status_C;
 
 Pause_Status_C Aktualizr_pause(Aktualizr *a);
 Pause_Status_C Aktualizr_resume(Aktualizr *a);
@@ -68,4 +65,4 @@ void Aktualizr_abort(Aktualizr *a);
 }
 #endif
 
-#endif //AKTUALIZR_LIBAKTUALIZR_H
+#endif  // AKTUALIZR_LIBAKTUALIZR_H

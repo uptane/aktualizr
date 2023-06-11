@@ -125,7 +125,7 @@ class Aktualizr {
 
   // FIXME: [TDX] We should probably have a method to be used just for the data proxy.
   //              Notice the parameter hwinfo here is being "abused" by the data proxy.
-  std::future<void> SendDeviceData(const Json::Value &hwinfo);
+  std::future<void> SendDeviceData(const Json::Value& hwinfo);
 
   /**
    * Complete previous secondary updates if any is pending.
@@ -239,13 +239,13 @@ class Aktualizr {
    * TODO: [OFFUPD] Remove after MVP.
    * Counterpart of CheckUpdates() for the offline-update case.
    */
-  std::future<result::UpdateCheck> CheckUpdatesOffline(const boost::filesystem::path &source_path);
+  std::future<result::UpdateCheck> CheckUpdatesOffline(const boost::filesystem::path& source_path);
 
   /**
    * TODO: [OFFUPD] Explain.
    * Counterpart of Download() for the offline-update case.
    */
-  std::future<result::Download> FetchImagesOffline(const std::vector<Uptane::Target> &updates);
+  std::future<result::Download> FetchImagesOffline(const std::vector<Uptane::Target>& updates);
 
   /**
    * TODO: [OFFUPD] Explain.
@@ -257,7 +257,7 @@ class Aktualizr {
    * TODO: [OFFUPD] Explain.
    * Counterpart of UptaneCycle() for the offline-update case.
    */
-  bool CheckAndInstallOffline(const boost::filesystem::path &source_path);
+  bool CheckAndInstallOffline(const boost::filesystem::path& source_path);
 #endif
 
   /**

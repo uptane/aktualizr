@@ -1,0 +1,12 @@
+aktualizr_source_file_checks(
+        aktualizr.h
+        campaign.h
+        config.h
+        events.h
+        packagemanagerfactory.h
+        packagemanagerinterface.h
+        results.h
+        secondary_provider.h
+        secondaryinterface.h
+        types.h
+)

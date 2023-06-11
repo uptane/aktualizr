@@ -412,6 +412,7 @@ set_source_files_properties(${PROJECT_BINARY_DIR}/jsoncpp/jsoncpp.cc PROPERTIES
 add_library(jsoncpp OBJECT ${PROJECT_BINARY_DIR}/jsoncpp/jsoncpp.cc)
 
 add_subdirectory("config")
+add_subdirectory("include")
 add_subdirectory("src")
 add_subdirectory("tests" EXCLUDE_FROM_ALL)
 add_subdirectory("docs/doxygen")
