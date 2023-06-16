@@ -303,7 +303,7 @@ data::InstallationResult TorizonGenericSecondary::install(const Uptane::Target& 
 
   maybeFinishInstall(result_code, new_fwpath, new_tgtname);
 
-  return data::InstallationResult(result_code, "");
+  return data::InstallationResult(result_code, output["message"].asString());
 }
 
 void TorizonGenericSecondary::getCompleteInstallVars(VarMap& vars, const Uptane::Target& target) const {
@@ -387,7 +387,7 @@ data::InstallationResult TorizonGenericSecondary::completeInstall(const Uptane::
 
   maybeFinishInstall(result_code, getNewFirmwarePath(), getNewTargetNamePath());
 
-  return data::InstallationResult(result_code, "");
+  return data::InstallationResult(result_code, output["message"].asString());
 }
 
 const TorizonGenericSecondary::VarMap& TorizonGenericSecondary::getSharedVars(bool update) const {
