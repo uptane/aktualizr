@@ -83,6 +83,12 @@ class Aktualizr {
   void Shutdown();
 
   /**
+   *
+   * @return
+   */
+  std::future<bool> AttemptProvision();
+
+  /**
    * Check for campaigns.
    * Campaigns are a concept outside of Uptane, and allow for user approval of
    * updates before the contents of the update are known.
@@ -253,11 +259,6 @@ class Aktualizr {
    */
   std::future<result::Install> InstallOffline(const std::vector<Uptane::Target>& updates);
 
-  /**
-   * TODO: [OFFUPD] Explain.
-   * Counterpart of UptaneCycle() for the offline-update case.
-   */
-  bool CheckAndInstallOffline(const boost::filesystem::path& source_path);
 #endif
 
   /**
@@ -395,7 +396,71 @@ class Aktualizr {
    */
   boost::signals2::connection SetSignalHandler(const SigHandler& handler);
 
+ protected:
+  Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in, const std::shared_ptr<HttpInterface>& http_in);
+
+  std::shared_ptr<SotaUptaneClient> uptane_client_;
+
  private:
+  enum class UpdateCycleState {
+    /**
+     * The device is not provisioned. If op_bool_ is valid, then we are attempting to provision. Otherwise we are idle,
+     * unprovisioned and waiting for a timer to expire before trying again.
+     * */
+    kUnprovisioned,
+    /** We started sending the device data, and are waiting for it to complete. */
+    kSendingDeviceData,
+    /** No update is in progress, but we are provisioned. */
+    kIdle,
+    /** We started sending the manifest, and are waiting for it to complete. */
+    kSendingManifest,
+    /** We started checking for updates, and are waiting for it to complete. */
+    kCheckingForUpdates,
+    /** We are downloading an update, and are waiting for it to complete.*/
+    kDownloading,
+    /** We are installing an update, and are waiting for it to complete. */
+    kInstalling,
+#ifdef BUILD_OFFLINE_UPDATES
+    /** An offline update is available, and we are running CheckUpdatesOffline() to see if it should be installed */
+    kCheckingForUpdatesOffline,
+    /** We are fetching updates from removable media with FetchImagesOffline() */
+    kFetchingImagesOffline,
+    /** We are installing an offline update. */
+    kInstallingOffline,
+#endif
+    /**
+     * We have finished installing an update, and the system needs to reboot to complete the install.
+     * This is a final state for the RunForever() state machine: we call completeInstall() and exit the loop.
+     */
+    kAwaitReboot,
+  };
+  friend std::ostream& operator<<(std::ostream& os, Aktualizr::UpdateCycleState state);
+
+  enum class ExitReason {
+    kNoUpdates,
+    kRebootRequired,
+    kStopRequested,
+  };
+
+  /**
+   * Run the main update loop until we have a reason to exit.
+   * exit_cond_.run_mode determines whether to exit after one update check or to keep going until we have an update that
+   * requires a reboot to apply..
+   * @return The reason for stopping.
+   */
+  ExitReason RunUpdateLoop();
+
+  UpdateCycleState state_{UpdateCycleState::kUnprovisioned};
+  // These hold a running operation for the current state
+  std::future<void> op_void_;
+  std::future<bool> op_bool_;
+  std::future<result::UpdateCheck> op_update_check_;
+  std::future<result::Download> op_download_;
+  std::future<result::Install> op_install_;
+
+  using Clock = std::chrono::steady_clock;
+  Clock::time_point next_online_poll_;
+  Clock::time_point next_offline_poll_;
   // Make sure this is declared before SotaUptaneClient to prevent Valgrind
   // complaints with destructors.
   Config config_;
@@ -411,16 +476,19 @@ class Aktualizr {
   };
   OffUpdSourceState offupd_source_state_{OffUpdSourceState::Unknown};
 
- protected:
-  Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in, const std::shared_ptr<HttpInterface>& http_in);
-
-  std::shared_ptr<SotaUptaneClient> uptane_client_;
-
- private:
+  enum class RunMode {
+    kOnce,               // Run one update cycle and stop
+    kUntilRebootNeeded,  // Run 'forever' i.e. until a reboot is needed
+    kStop,               // Stop the update cycle immediately
+  };
   struct {
     std::mutex m;
     std::condition_variable cv;
-    bool flag = false;
+    RunMode run_mode = RunMode::kStop;
+    RunMode get() {
+      std::lock_guard<std::mutex> const guard{m};
+      return run_mode;
+    }
   } exit_cond_;
 
   std::shared_ptr<INvStorage> storage_;

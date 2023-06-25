@@ -125,9 +125,11 @@ class FailingSecondary : public SecondaryInterface {
 
   void cleanStartup() override { nothing_pending_calls++; }
 
+#ifdef BUILD_OFFLINE_UPDATES
   data::InstallationResult putMetadataOffUpd(const Uptane::Target &, const Uptane::OfflineUpdateFetcher &) override {
     return {data::ResultCode::Numeric::kInternalError, "SecondaryInterfaceMock::putMetadataOffUpd not implemented"};
   }
+#endif
 
   std::shared_ptr<SecondaryProvider> secondary_provider;
   PublicKey public_key;

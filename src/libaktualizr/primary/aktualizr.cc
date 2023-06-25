@@ -44,109 +44,299 @@ void Aktualizr::Initialize() {
 void Aktualizr::DisableUpdates(bool status) { updates_disabled_ = status; }
 
 bool Aktualizr::UptaneCycle() {
-  result::UpdateCheck update_result = CheckUpdates().get();
-  if (update_result.updates.empty() || updates_disabled_) {
-    if (update_result.status == result::UpdateStatus::kError) {
-      // If the metadata verification failed, inform the backend immediately.
-      SendManifest().get();
+  {
+    std::lock_guard<std::mutex> const lock{exit_cond_.m};
+    if (exit_cond_.run_mode != RunMode::kStop) {
+      LOG_WARNING
+          << "UptaneCycle() was called in parallel with either UptaneCycle() or RunForever(). This is not supported";
     }
-    return true;
+    exit_cond_.run_mode = RunMode::kOnce;
   }
-
-  result::Download download_result = Download(update_result.updates).get();
-  if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
-    if (download_result.status != result::DownloadStatus::kNothingToDownload) {
-      // If the download failed, inform the backend immediately.
-      SendManifest().get();
-    }
-    return true;
-  }
-
-  Install(download_result.updates).get();
-
-  if (uptane_client_->isInstallCompletionRequired()) {
-    // If there are some pending updates then effectively either reboot (OSTree) or aktualizr restart (fake pack mngr)
-    // is required to apply the update(s)
-    LOG_INFO << "Exiting aktualizr so that pending updates can be applied after reboot";
-    return false;
-  }
-
-  if (!uptane_client_->hasPendingUpdates()) {
-    // If updates were applied and no any reboot/finalization is required then send/put manifest
-    // as soon as possible, don't wait for config_.uptane.polling_sec
-    SendManifest().get();
-  }
-
-  return true;
+  auto res = RunUpdateLoop();
+  // false -> reboot required
+  return res != ExitReason::kRebootRequired;
 }
 
 std::future<void> Aktualizr::RunForever() {
-  std::future<void> future = std::async(std::launch::async, [this]() {
-    std::unique_lock<std::mutex> l(exit_cond_.m);
-    bool have_sent_device_data = false;
-    while (true) {
-      try {
-        if (!have_sent_device_data) {
-          // Can throw SotaUptaneClient::ProvisioningFailed
-          SendDeviceData().get();
-          have_sent_device_data = true;
-        }
-
-        // TODO: [OFFUPD] The "!enable_offline_updates" below should be removed after the MVP.
-        if (config_.uptane.enable_online_updates && !config_.uptane.enable_offline_updates) {
-          if (!UptaneCycle()) {
-            break;
-          }
-        }
-      } catch (SotaUptaneClient::ProvisioningFailed &e) {
-        LOG_DEBUG << "Not provisioned yet: " << e.what();
-      }
-
-#ifdef BUILD_OFFLINE_UPDATES
-      if (config_.uptane.enable_offline_updates) {
-        // Check update directory while waiting for next polling cycle.
-        bool quit = false;
-        for (auto loop = config_.uptane.polling_sec; loop > 0; loop--) {
-          try {
-            if (OfflineUpdateAvailable()) {
-              if (!CheckAndInstallOffline(config_.uptane.offline_updates_source)) {
-                quit = true;
-                break;
-              }
-            }
-          } catch (SotaUptaneClient::ProvisioningFailed &e) {
-            // This should never happen in the offline-updates call-chain.
-            LOG_INFO << "Offline-update loop: Not provisioned yet: " << e.what();
-          }
-          if (exit_cond_.cv.wait_for(l, std::chrono::seconds(1), [this] { return exit_cond_.flag; })) {
-            quit = true;
-            break;
-          }
-        }
-        if (quit) {
-          break;
-        }
-      } else
-#endif
-      {
-        // Wait for next polling cycle.
-        if (exit_cond_.cv.wait_for(l, std::chrono::seconds(config_.uptane.polling_sec),
-                                   [this] { return exit_cond_.flag; })) {
-          break;
-        }
-      }
+  {
+    std::lock_guard<std::mutex> const lock{exit_cond_.m};
+    if (exit_cond_.run_mode != RunMode::kStop) {
+      LOG_WARNING
+          << "RunForever() was called parallel with either UptaneCycle() or RunForever(). This is not supported";
     }
-    // FIXME: Is it correct to call a method of the uptane_client w/o going through the CommandQueue?
-    uptane_client_->completeInstall();
-  });
+    exit_cond_.run_mode = RunMode::kUntilRebootNeeded;
+  }
+  std::future<void> future = std::async(std::launch::async, [this]() { RunUpdateLoop(); });
   return future;
 }
 
-void Aktualizr::Shutdown() {
-  {
-    std::lock_guard<std::mutex> g(exit_cond_.m);
-    exit_cond_.flag = true;
+std::ostream &operator<<(std::ostream &os, Aktualizr::UpdateCycleState state) {
+  switch (state) {
+    case Aktualizr::UpdateCycleState::kUnprovisioned:
+      os << "Unprovisioned";
+      break;
+    case Aktualizr::UpdateCycleState::kSendingDeviceData:
+      os << "SendingDeviceData";
+      break;
+    case Aktualizr::UpdateCycleState::kIdle:
+      os << "Idle";
+      break;
+    case Aktualizr::UpdateCycleState::kSendingManifest:
+      os << "SendingManifest";
+      break;
+    case Aktualizr::UpdateCycleState::kCheckingForUpdates:
+      os << "CheckingForUpdates";
+      break;
+    case Aktualizr::UpdateCycleState::kDownloading:
+      os << "Downloading";
+      break;
+    case Aktualizr::UpdateCycleState::kInstalling:
+      os << "Installing";
+      break;
+#ifdef BUILD_OFFLINE_UPDATES
+    case Aktualizr::UpdateCycleState::kCheckingForUpdatesOffline:
+      os << "CheckingForUpdatesOffline";
+      break;
+    case Aktualizr::UpdateCycleState::kFetchingImagesOffline:
+      os << "FetchingImagesOffline";
+      break;
+    case Aktualizr::UpdateCycleState::kInstallingOffline:
+      os << "InstallingOffline";
+      break;
+    case Aktualizr::UpdateCycleState::kAwaitReboot:
+      os << "AwaitReboot";
+      break;
+#endif  // BUILD_OFFLINE_UPDATES
+    default:
+      os << "Unknown(" << static_cast<int>(state) << ")";
+      break;
   }
+  return os;
+}
+
+Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
+  assert(config_.uptane.polling_sec > 0);  // enforced by Config::postUpdateValues()
+
+  next_online_poll_ = next_offline_poll_ = Clock::now();
+  if (!config_.uptane.enable_offline_updates) {
+    // We'd like to use Clock::time_point::max() here, but it triggers a bug.
+    next_offline_poll_ = Clock::now() + std::chrono::hours(24 * 365 * 10);
+  }
+
+  int64_t loops = 0;
+  Clock::time_point marker_time;
+
+  while (exit_cond_.get() != RunMode::kStop) {
+    auto now = Clock::now();
+
+    // This is to protect against programming errors in the logic below. There should never be a set of states that
+    // execute in a hard loop, but if we made a mistake this will limit the damage.
+    if (loops++ % 100 == 0) {
+      if (now < marker_time + std::chrono::seconds(10)) {
+        // We should only go around this loop once / second
+        LOG_WARNING << "Aktualizr::RunUpdateLoop is spinning in state " << state_ << " sleeping...";
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+      }
+      marker_time = now;
+    }
+
+    if (next_offline_poll_ <= now) {
+      next_offline_poll_ = now + std::chrono::seconds(1);
+#ifdef BUILD_OFFLINE_UPDATES
+      // Poll the magic filesystem directory for offline updates once per second.
+      switch (state_) {
+        case UpdateCycleState::kUnprovisioned:
+        case UpdateCycleState::kSendingDeviceData:
+        case UpdateCycleState::kIdle:
+        case UpdateCycleState::kSendingManifest:
+        case UpdateCycleState::kCheckingForUpdates:
+        case UpdateCycleState::kDownloading:
+        case UpdateCycleState::kInstalling:
+          // In these cases we need to poll for Offline updates
+          if (OfflineUpdateAvailable()) {
+            api_queue_->abort();
+            // TODO: How can we send an 'update failed' the next time we have idle network
+            op_update_check_ = CheckUpdatesOffline(config_.uptane.offline_updates_source);
+            state_ = UpdateCycleState::kCheckingForUpdatesOffline;
+          }
+          break;
+        case UpdateCycleState::kCheckingForUpdatesOffline:
+        case UpdateCycleState::kFetchingImagesOffline:
+        case UpdateCycleState::kInstallingOffline:
+        case UpdateCycleState::kAwaitReboot:
+          // We cannot start an offline update in these states
+          break;
+        default:
+          LOG_ERROR << "Unknown state:" << state_;
+          state_ = UpdateCycleState::kIdle;
+      }
+#endif  // BUILD_OFFLINE_UPDATES
+    }
+    // Drive the main event loop
+    LOG_TRACE << "State is:" << state_ << " run mode:" << static_cast<int>(exit_cond_.get());
+    switch (state_) {
+      case UpdateCycleState::kUnprovisioned:
+        if (next_online_poll_ <= now && !op_bool_.valid()) {
+          op_bool_ = AttemptProvision();
+        } else if (op_bool_.valid() && op_bool_.wait_until(next_offline_poll_) == std::future_status::ready) {
+          if (op_bool_.get()) {
+            // Provisioned OK, send device data
+            op_void_ = SendDeviceData();
+            state_ = UpdateCycleState::kSendingDeviceData;
+          } else {
+            // If we didn't provision, then stay in this state. We'll wait until next_online_poll_ before trying again
+            next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+          }
+          op_bool_ = {};  // Clear future
+        } else {
+          // Idle but unprovisioned
+          std::unique_lock<std::mutex> guard{exit_cond_.m};
+          if (exit_cond_.run_mode == RunMode::kOnce) {
+            // We tried to provision but it didn't succeed, exit
+            exit_cond_.run_mode = RunMode::kStop;
+            return ExitReason::kNoUpdates;
+          }
+          auto next_wake_up = std::min(next_offline_poll_, next_online_poll_);
+          exit_cond_.cv.wait_until(guard, next_wake_up);
+        }
+        break;
+      case UpdateCycleState::kSendingDeviceData:
+        if (op_void_.wait_until(next_offline_poll_) == std::future_status::ready) {
+          state_ = UpdateCycleState::kIdle;
+        }
+        break;
+      case UpdateCycleState::kIdle:
+        if (next_online_poll_ <= now) {
+          op_update_check_ = CheckUpdates();
+          state_ = UpdateCycleState::kCheckingForUpdates;
+          next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+        } else {
+          // Idle
+          std::unique_lock<std::mutex> guard{exit_cond_.m};
+          if (exit_cond_.run_mode == RunMode::kOnce) {
+            // We've performed one round of checks, exit from 'once' runmode.
+            exit_cond_.run_mode = RunMode::kStop;
+            return ExitReason::kNoUpdates;
+          }
+          auto next_wake_up = std::min(next_offline_poll_, next_online_poll_);
+          exit_cond_.cv.wait_until(guard, next_wake_up);
+        }
+        break;
+      case UpdateCycleState::kSendingManifest:
+        if (op_bool_.wait_until(next_offline_poll_) == std::future_status::ready) {
+          next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+          state_ = UpdateCycleState::kIdle;
+        }
+        break;
+      case UpdateCycleState::kCheckingForUpdates:
+        if (op_update_check_.wait_until(next_offline_poll_) == std::future_status::ready) {
+          result::UpdateCheck const update_result = op_update_check_.get();
+          if (updates_disabled_) {
+            next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+            state_ = UpdateCycleState::kIdle;
+            break;
+          }
+          if (update_result.updates.empty()) {
+            if (update_result.status == result::UpdateStatus::kError) {
+              op_bool_ = SendManifest();
+              state_ = UpdateCycleState::kSendingManifest;
+              break;
+            }
+            next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+            state_ = UpdateCycleState::kIdle;
+            break;
+          }
+          // Got an update
+          op_download_ = Download(update_result.updates);
+          state_ = UpdateCycleState::kDownloading;
+        }
+        break;
+      case UpdateCycleState::kDownloading:
+        if (op_download_.wait_until(next_offline_poll_) == std::future_status::ready) {
+          result::Download const download_result = op_download_.get();
+          if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
+            if (download_result.status != result::DownloadStatus::kNothingToDownload) {
+              // If the download failed, inform the backend immediately.
+              op_bool_ = SendManifest();
+              state_ = UpdateCycleState::kSendingManifest;
+            }
+            break;
+          }
+          op_install_ = Install(download_result.updates);
+          state_ = UpdateCycleState::kInstalling;
+        }
+        break;
+      case UpdateCycleState::kInstalling:
+        if (op_install_.wait_until(next_offline_poll_) == std::future_status::ready) {
+          if (uptane_client_->isInstallCompletionRequired()) {
+            state_ = UpdateCycleState::kAwaitReboot;
+            break;
+          }
+          if (!uptane_client_->hasPendingUpdates()) {
+            // If updates were applied and no any reboot/finalization is required then send/put manifest
+            // as soon as possible, don't wait for config_.uptane.polling_sec
+            op_bool_ = SendManifest();
+            state_ = UpdateCycleState::kSendingManifest;
+          } else {
+            next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+            state_ = UpdateCycleState::kIdle;
+          }
+        }
+        break;
+#ifdef BUILD_OFFLINE_UPDATES
+      case UpdateCycleState::kCheckingForUpdatesOffline: {
+        result::UpdateCheck const update_result = op_update_check_.get();  // No need to timeout
+        if (update_result.updates.empty() || updates_disabled_) {
+          next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+          state_ = UpdateCycleState::kIdle;
+          break;
+        }
+        op_download_ = FetchImagesOffline(update_result.updates);
+        state_ = UpdateCycleState::kFetchingImagesOffline;
+        break;
+      }
+      case UpdateCycleState::kFetchingImagesOffline: {
+        result::Download const download_result = op_download_.get();
+        if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
+          state_ = UpdateCycleState::kIdle;
+          break;
+        }
+        op_install_ = InstallOffline(download_result.updates);
+        state_ = UpdateCycleState::kInstallingOffline;
+        break;
+      }
+      case UpdateCycleState::kInstallingOffline: {
+        result::Install const install_result = op_install_.get();
+        if (uptane_client_->isInstallCompletionRequired()) {
+          state_ = UpdateCycleState::kAwaitReboot;
+          break;
+        }
+        // If we have already provisioned/send device data, then this will repeat those steps. However provisioning is
+        // cheap if it has already completed, and so all that happens is we send device data again. That does not seem
+        // like two big a cost to simplify the logic, give that we've installed an entire update to get here.
+        state_ = UpdateCycleState::kUnprovisioned;
+        break;
+      }
+#endif  // BUILD_OFFLINE_UPDATES
+      case UpdateCycleState::kAwaitReboot: {
+        uptane_client_->completeInstall();
+        std::lock_guard<std::mutex> const lock{exit_cond_.m};
+        exit_cond_.run_mode = RunMode::kStop;
+        exit_cond_.cv.notify_all();
+        return ExitReason::kRebootRequired;
+      }
+      default:
+        LOG_ERROR << "Unknown state:" << state_;
+        state_ = UpdateCycleState::kIdle;
+    }
+  };
+  LOG_INFO << "RunForever thread exiting";
+  return ExitReason::kStopRequested;
+}
+
+void Aktualizr::Shutdown() {
+  std::lock_guard<std::mutex> const guard{exit_cond_.m};
+  exit_cond_.run_mode = RunMode::kStop;
   exit_cond_.cv.notify_all();
 }
 
@@ -163,6 +353,11 @@ std::vector<SecondaryInfo> Aktualizr::GetSecondaries() const {
   storage_->loadSecondariesInfo(&info);
 
   return info;
+}
+
+std::future<bool> Aktualizr::AttemptProvision() {
+  std::function<bool()> task([this] { return uptane_client_->attemptProvision(); });
+  return api_queue_->enqueue(std::move(task));
 }
 
 std::future<result::CampaignCheck> Aktualizr::CampaignCheck() {
@@ -326,51 +521,5 @@ std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Up
 std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane::Target> &updates) {
   std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstallOffUpd(updates); });
   return api_queue_->enqueue(std::move(task));
-}
-
-bool Aktualizr::CheckAndInstallOffline(const boost::filesystem::path &source_path) {
-  // TODO: [OFFUPD] Handle interaction between offline and online modes.
-
-  LOG_TRACE << "CheckAndInstallOffline: call CheckUpdatesOffline";
-  result::UpdateCheck update_result = CheckUpdatesOffline(source_path).get();
-  if (update_result.updates.empty() || updates_disabled_) {
-    // TODO: [OFFUPD] Do we need this?
-    // if (update_result.status == result::UpdateStatus::kError) {
-    //   // If the metadata verification failed, inform the backend immediately.
-    //   SendManifest().get();
-    // }
-    return true;
-  }
-
-  LOG_TRACE << "CheckAndInstallOffline: call FetchImagesOffline";
-  result::Download download_result = FetchImagesOffline(update_result.updates).get();
-  if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
-    // TODO: [OFFUPD] Do we need this?
-    // if (download_result.status != result::DownloadStatus::kNothingToDownload) {
-    //   // If the download failed, inform the backend immediately.
-    //   SendManifest().get();
-    // }
-    return true;
-  }
-
-  LOG_TRACE << "CheckAndInstallOffline: call InstallOffline";
-  InstallOffline(download_result.updates).get();
-
-  // TODO: [OFFUPD] Do we need this?
-  if (uptane_client_->isInstallCompletionRequired()) {
-    // If there are some pending updates then effectively either reboot (OSTree) or restart
-    // aktualizr (fake pack mngr) to apply the update(s)
-    LOG_INFO << "Exiting aktualizr so that pending updates can be applied after reboot";
-    return false;
-  }
-
-  // TODO: [OFFUPD] Do we need this?
-  // if (!uptane_client_->hasPendingUpdates()) {
-  //   // If updates were applied and no any reboot/finalization is required then send/put
-  //   // manifestas soon as possible
-  //   SendManifest().get();
-  // }
-
-  return true;
 }
 #endif

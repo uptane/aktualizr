@@ -599,6 +599,7 @@ class SecondaryInterfaceMock : public SecondaryInterface {
                                            const api::FlowControlToken *) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
+#ifdef BUILD_OFFLINE_UPDATES
   data::InstallationResult putMetadataOffUpd(const Uptane::Target &target,
                                              const Uptane::OfflineUpdateFetcher &fetcher) override {
     (void)target;
@@ -606,7 +607,7 @@ class SecondaryInterfaceMock : public SecondaryInterface {
     return data::InstallationResult(data::ResultCode::Numeric::kInternalError,
                                     "SecondaryInterfaceMock::putMetadataOffUpd not implemented");
   }
-
+#endif  // BUILD_OFFLINE_UPDATES
   std::shared_ptr<SecondaryProvider> secondary_provider_;
   PublicKey public_key_;
   Json::Value manifest_;

@@ -210,6 +210,11 @@ void Config::postUpdateValues() {
     }
   }
 
+  if (uptane.polling_sec < 1) {
+    LOG_WARNING << "Minimum value for uptane.polling_sec is 1s. Fixing.";
+    uptane.polling_sec = 1;
+  }
+
   LOG_TRACE << "Final configuration that will be used: \n" << (*this);
 }
 

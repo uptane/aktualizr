@@ -107,6 +107,11 @@ class CommandQueue {
   CommandQueue& operator=(CommandQueue&&) = delete;
   void run();
   bool pause(bool do_pause);  // returns true iff pause→resume or resume→pause
+  /**
+   * Stop any current operation and flush the queue.
+   * Any in-progress operation will have finished before this call returns.
+   * @param restart_thread
+   */
   void abort(bool restart_thread = true);
 
   const api::FlowControlToken* FlowControlToken() const { return &token_; }
