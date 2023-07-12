@@ -1,6 +1,7 @@
 #ifndef ASN1_CER_H
 #define ASN1_CER_H
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 
