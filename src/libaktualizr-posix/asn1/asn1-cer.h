@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <cstdint>
 
 // Limitations:
 //   - Maximal supported integer width of 32 bits
