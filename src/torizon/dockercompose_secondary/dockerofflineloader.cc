@@ -266,17 +266,9 @@ const std::string DockerManifestWrapper::MEDIA_TYPE::SINGLE_PLAT =
 const std::string DockerManifestWrapper::MEDIA_TYPE::MULTI_PLAT =
     "application/vnd.docker.distribution.manifest.list.v2+json";
 
-DockerManifestWrapper::DockerManifestWrapper(Json::Value manifest) : manifest_(std::move(manifest)) {
-  // Ensure this is a media type we understand.
-  const std::string media_type = getMediaType();
-  ensure((media_type == MEDIA_TYPE::SINGLE_PLAT) || (media_type == MEDIA_TYPE::MULTI_PLAT), "Bad manifest type");
-}
-
-bool DockerManifestWrapper::isMultiPlatform() const { return getMediaType() == MEDIA_TYPE::MULTI_PLAT; }
-
 void DockerManifestWrapper::findBestPlatform(const std::string &req_platform, std::string *sel_platform,
                                              std::string *sel_digest) const {
-  ensureMediaType(MEDIA_TYPE::MULTI_PLAT);
+  ensure(isMultiPlatform(), "findBestPlatform: multi-platform manifest expected");
 
   struct ManInfo {
     unsigned grade_;
@@ -317,7 +309,7 @@ void DockerManifestWrapper::findBestPlatform(const std::string &req_platform, st
 }
 
 std::string DockerManifestWrapper::getConfigDigest(bool removePrefix) const {
-  ensureMediaType(MEDIA_TYPE::SINGLE_PLAT);
+  ensure(isSinglePlatform(), "getConfigDigest: single-platform manifest expected");
   std::string digest = manifest_["config"]["digest"].asString();
   if (removePrefix) {
     digest = removeDigestPrefix(digest);
@@ -350,15 +342,43 @@ std::string DockerManifestWrapper::getMediaType() const {
   return manifest_["mediaType"].asString();
 }
 
-void DockerManifestWrapper::ensureMediaType(const std::string &req_type) const {
-  ensure(getMediaType() == req_type, "Bad mediaType of manifest");
+// ---
+// OCIManifestWrapper class
+// ---
+
+const std::string OCIManifestWrapper::MEDIA_TYPE::SINGLE_PLAT = "application/vnd.oci.image.manifest.v1+json";
+const std::string OCIManifestWrapper::MEDIA_TYPE::MULTI_PLAT = "application/vnd.oci.image.index.v1+json";
+
+// ---
+// makeManifestWrapper: factory for objects of class DockerManifestWrapper and derived.
+// ---
+
+DockerManifestWrapper *makeManifestWrapper(Json::Value manifest) {
+  ensure(manifest.isMember("mediaType"), "Manifest does not have required 'mediaType' field");
+
+  const std::string mediaType = manifest["mediaType"].asString();
+  if ((mediaType == DockerManifestWrapper::MEDIA_TYPE::SINGLE_PLAT) ||
+      (mediaType == DockerManifestWrapper::MEDIA_TYPE::MULTI_PLAT)) {
+    // LOG_DEBUG << "Creating DockerManifestWrapper";
+    return new DockerManifestWrapper(manifest);
+  }
+  if ((mediaType == OCIManifestWrapper::MEDIA_TYPE::SINGLE_PLAT) ||
+      (mediaType == OCIManifestWrapper::MEDIA_TYPE::MULTI_PLAT)) {
+    // LOG_DEBUG << "Creating OCIManifestWrapper";
+    return new OCIManifestWrapper(manifest);
+  }
+
+  LOG_WARNING << "Manifest has unknown 'mediaType' of '" << mediaType << "'";
+  ensure(false, "Manifest has unknown 'mediaType'");
+
+  return nullptr;
 }
 
 // ---
 // DockerManifestsCache class
 // ---
 
-DockerManifestsCache::ManifestPtr DockerManifestsCache::loadByDigest(const std::string &digest) {
+DockerManifestsCache::ManifestSharedPtr DockerManifestsCache::loadByDigest(const std::string &digest) {
   // Get digest without the sha256 prefix.
   std::string digest_nopref = removeDigestPrefix(digest);
   ensure(digest_nopref.length() == 64, "Bad digest format");
@@ -379,7 +399,7 @@ DockerManifestsCache::ManifestPtr DockerManifestsCache::loadByDigest(const std::
          "Cannot load manifest with digest " + digest_nopref);
 
   // Store into cache.
-  ManifestPtr manifest_ptr = std::make_shared<DockerManifestWrapper>(manifest_json);
+  auto manifest_ptr = ManifestSharedPtr(makeManifestWrapper(manifest_json));
   ManifestCacheElem manifest_elem{++access_counter_, manifest_ptr};
   LOG_TRACE << "cache: load manifest with digest " << digest_nopref;
   manifests_cache_.insert({digest_nopref, manifest_elem});
@@ -800,7 +820,7 @@ void DockerComposeOfflineLoader::updateImageMapping() {
     std::string best_digest = req_digest;
     std::string best_platform;
 
-    if (main_manifest->isMultiPlatform()) {
+    if (main_manifest->hasChildren()) {
       // Multi-platform image: load the most appropriate manifest.
       main_manifest->findBestPlatform(req_platform.empty() ? default_platform_ : req_platform, &best_platform,
                                       &best_digest);

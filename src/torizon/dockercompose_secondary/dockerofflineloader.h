@@ -16,17 +16,15 @@
 class DockerManifestWrapper {
  public:
   /**
-   * Constructor taking a Docker manifest in a JsonCpp Value object.
-   *
-   * @param manifest the root Json::Value object to be wrapped.
+   * Destructor.
    */
-  explicit DockerManifestWrapper(Json::Value manifest);
+  virtual ~DockerManifestWrapper() {}
 
   /**
-   * Return whether or not the manifest is multi-platform (or more precisely,
-   * if it is a manifest list).
+   * Return whether or not the manifest has (per-platform) children; in practice
+   * that would mean is refers to a manifest list rather than an image manifest.
    */
-  bool isMultiPlatform() const;
+  bool hasChildren() const { return isMultiPlatform(); }
 
   /**
    * Get digest/platform pair most closely matching the requested platform
@@ -40,26 +38,71 @@ class DockerManifestWrapper {
   std::string getConfigDigest(bool removePrefix = false) const;
 
  protected:
+  /**
+   * Constructor taking a Docker manifest in a JsonCpp Value object. For instantiating objects of
+   * this class, refer to makeManifestWrapper().
+   *
+   * @param manifest the root Json::Value object to be wrapped.
+   */
+  explicit DockerManifestWrapper(Json::Value manifest) : manifest_(std::move(manifest)) {}
+
   Json::Value manifest_;
 
   static std::string platformString(const Json::Value &plat);
   std::string getMediaType() const;
-  void ensureMediaType(const std::string &req_type) const;
+
+  virtual bool isSinglePlatform() const { return getMediaType() == MEDIA_TYPE::SINGLE_PLAT; }
+  virtual bool isMultiPlatform() const { return getMediaType() == MEDIA_TYPE::MULTI_PLAT; }
 
   // Known media types.
   struct MEDIA_TYPE {
     static const std::string SINGLE_PLAT;
     static const std::string MULTI_PLAT;
   };
+
+  friend DockerManifestWrapper *makeManifestWrapper(Json::Value manifest);
 };
+
+/**
+ * Specialization of DockerManifestWrapper for OCI images.
+ */
+class OCIManifestWrapper : DockerManifestWrapper {
+ public:
+  /**
+   * Destructor.
+   */
+  virtual ~OCIManifestWrapper() {}
+
+ protected:
+  /**
+   * Constructor taking an OCI manifest in a JsonCpp Value object. For instantiating objects of this
+   * class, refer to makeManifestWrapper().
+   *
+   * @param manifest the root Json::Value object to be wrapped.
+   */
+  explicit OCIManifestWrapper(Json::Value manifest) : DockerManifestWrapper(std::move(manifest)) {}
+
+  bool isSinglePlatform() const override { return getMediaType() == MEDIA_TYPE::SINGLE_PLAT; }
+  bool isMultiPlatform() const override { return getMediaType() == MEDIA_TYPE::MULTI_PLAT; }
+
+  // Known media types.
+  struct MEDIA_TYPE {
+    static const std::string SINGLE_PLAT;
+    static const std::string MULTI_PLAT;
+  };
+
+  friend DockerManifestWrapper *makeManifestWrapper(Json::Value manifest);
+};
+
+DockerManifestWrapper *makeManifestWrapper(Json::Value manifest, bool validate);
 
 /**
  * Simple LRU cache for keeping Docker manifests.
  */
 class DockerManifestsCache {
  public:
-  using ManifestPtr = std::shared_ptr<DockerManifestWrapper>;
-  using ManifestCacheElem = std::pair<size_t, ManifestPtr>;
+  using ManifestSharedPtr = std::shared_ptr<DockerManifestWrapper>;
+  using ManifestCacheElem = std::pair<size_t, ManifestSharedPtr>;
   using DigestToManifestCacheElemMap = std::map<std::string, ManifestCacheElem>;
 
   explicit DockerManifestsCache(boost::filesystem::path manifests_dir, size_t max_manifests = 32)
@@ -71,7 +114,7 @@ class DockerManifestsCache {
    *
    * @return a smart pointer to an object wrapping the actual manifest.
    */
-  ManifestPtr loadByDigest(const std::string &digest);
+  ManifestSharedPtr loadByDigest(const std::string &digest);
 
  protected:
   boost::filesystem::path manifests_dir_;
