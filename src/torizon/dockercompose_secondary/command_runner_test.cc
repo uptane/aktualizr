@@ -7,6 +7,7 @@
 
 #include <thread>
 #include "logging/logging.h"
+#include "utilities/utils.h"
 
 TEST(CommandRunner, Simple) {
   bool res;
@@ -22,8 +23,7 @@ TEST(CommandRunner, Cancellation) {
   bool res;
   api::FlowControlToken token;
 
-  std::atomic<bool> did_abort;
-  did_abort = false;
+  std::atomic<bool> did_abort{false};
   auto end = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
   std::thread t1([&token, end, &did_abort] {
@@ -50,8 +50,7 @@ TEST(CommandRunner, CancellationTooLate) {
   bool res;
   api::FlowControlToken token;
 
-  std::atomic<bool> did_abort;
-  did_abort = false;
+  std::atomic<bool> did_abort{false};
   auto abort_time = std::chrono::steady_clock::now() + std::chrono::seconds(3);
   auto expected_finish_time = std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
@@ -73,6 +72,37 @@ TEST(CommandRunner, CancellationTooLate) {
   EXPECT_TRUE(res);
   t1.join();
 }
+
+TEST(CommandRunner, ChildProcess) {
+  TemporaryFile const child_script{"CommandRunnerTest"};
+  // Write the test script to a file to avoid leaning-toothpick syndrome
+  child_script.PutContents(
+      "#! /bin/bash\n bash -c \"for X in \\$(seq 30); do echo CommandRunnerChildProcess ; sleep 2; done\"");
+  chmod(child_script.Path().c_str(), 0755);
+  api::FlowControlToken token;
+
+  auto abort_time = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+
+  std::atomic<bool> did_abort{false};
+  std::thread abort_thread([&token, abort_time, &did_abort] {
+    std::this_thread::sleep_until(abort_time);
+    token.setAbort();
+    did_abort = true;
+  });
+
+  CommandRunner::run(child_script.PathString(), &token);
+
+  auto actual_end = std::chrono::steady_clock::now();
+  auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(actual_end - abort_time).count();
+
+  LOG_INFO << "Cancellation took place after: 3s + " << diff << "ms";
+  EXPECT_LE(-200, diff);
+  EXPECT_LE(diff, 200);
+
+  abort_thread.join();
+}
+
+TEST(CommandRunner, CantStartProcess) { EXPECT_FALSE(CommandRunner::run("/xxx/not/a/process")); }
 
 #ifndef __NO_MAIN__
 int main(int argc, char** argv) {

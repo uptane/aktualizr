@@ -7,23 +7,40 @@
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 bool CommandRunner::run(const std::string& cmd, const api::FlowControlToken* flow_control) {
   LOG_INFO << "Running command: " << cmd;
-  boost::process::child c(cmd);
+  std::error_code err;
+  boost::process::group process_group;
+  boost::process::child child_process(cmd, process_group, err);
 
-  while (!c.wait_for(std::chrono::milliseconds(100))) {
+  if (err) {
+    LOG_WARNING << "Failed to start " << cmd;
+    return false;
+  }
+
+  while (!child_process.wait_for(std::chrono::milliseconds(100))) {
     if (flow_control != nullptr && flow_control->hasAborted()) {
       LOG_INFO << "Killing child process due to flow_control abort";
-      auto pid = c.id();
-      kill(pid, SIGTERM);
-      // Give it 30s to exit cleanly
-      if (!c.wait_for(std::chrono::seconds(30))) {
-        LOG_WARNING << "Process didn't respond to SIGTERM, sending SIGKILL";
-        c.terminate();
+      auto pid = child_process.id();
+      if (kill(-pid, SIGINT) != 0) {
+        LOG_WARNING << "Attempt to send SIGINT to pid " << pid << " failed with " << strerror(errno);
       }
+      // Give it 5s to exit
+      if (!child_process.wait_for(std::chrono::seconds(5))) {
+        LOG_WARNING << "Process didn't respond to SIGINT, sending SIGTERM";
+        if (kill(-pid, SIGTERM) != 0) {
+          LOG_WARNING << "Attempt to send SIGINT to pid " << pid << " failed with " << strerror(errno);
+        }
+      }
+      // Give it another 25s to exit cleanly
+      if (!child_process.wait_for(std::chrono::seconds(25))) {
+        LOG_WARNING << "Process didn't respond to SIGTERM, sending SIGKILL";
+        child_process.terminate();
+      }
+      child_process.terminate();
       return false;
     }
   }
-
-  return c.exit_code() == 0;
+  child_process.wait();
+  return child_process.exit_code() == 0;
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
