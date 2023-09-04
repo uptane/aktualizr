@@ -499,7 +499,7 @@ Uptane::Target OstreeManager::getCurrent() const {
   boost::optional<Uptane::Target> current_version;
   // This may appear Primary-specific, but since Secondaries only know about
   // themselves, this actually works just fine for them, too.
-  storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
+  storage_->loadPrimaryInstalledVersions(&current_version, nullptr, nullptr);
 
   if (!!current_version && current_version->sha256Hash() == current_hash) {
     return *current_version;
@@ -532,7 +532,7 @@ Uptane::Target OstreeManager::getCurrent() const {
   // device.
   Uptane::EcuMap ecus;
   std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
-  return {"unknown", ecus, hashes, 0, "", "OSTREE"};
+  return {"unknown", ecus, hashes, 0, "OSTREE"};
 }
 
 // used for bootloader rollback

@@ -19,7 +19,7 @@ Json::Value PackageManagerFake::getInstalledPackages() const {
 
 Uptane::Target PackageManagerFake::getCurrent() const {
   boost::optional<Uptane::Target> current_version;
-  storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
+  storage_->loadPrimaryInstalledVersions(&current_version, nullptr, nullptr);
 
   if (!!current_version) {
     return *current_version;
@@ -69,7 +69,7 @@ data::InstallationResult PackageManagerFake::finalizeInstall(const Uptane::Targe
   }
 
   boost::optional<Uptane::Target> pending_version;
-  storage_->loadPrimaryInstalledVersions(nullptr, &pending_version);
+  storage_->loadPrimaryInstalledVersions(nullptr, &pending_version, nullptr);
 
   if (!pending_version) {
     throw std::runtime_error("No pending update, nothing to finalize");

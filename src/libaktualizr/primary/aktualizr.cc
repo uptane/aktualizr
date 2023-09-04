@@ -173,7 +173,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
 #endif  // BUILD_OFFLINE_UPDATES
     }
     // Drive the main event loop
-    LOG_TRACE << "State is:" << state_ << " run mode:" << static_cast<int>(exit_cond_.get());
+    // LOG_TRACE << "State is:" << state_ << " run mode:" << static_cast<int>(exit_cond_.get());
     switch (state_) {
       case UpdateCycleState::kUnprovisioned:
         if (next_online_poll_ <= now && !op_bool_.valid()) {

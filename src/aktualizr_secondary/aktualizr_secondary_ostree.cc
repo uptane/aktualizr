@@ -26,7 +26,7 @@ void AktualizrSecondaryOstree::initialize() {
     // an installation status of each ECU but store it just for a given secondary ECU
     std::vector<Uptane::Target> installed_versions;
     boost::optional<Uptane::Target> pending_target;
-    AktualizrSecondary::storage()->loadInstalledVersions(serial().ToString(), nullptr, &pending_target);
+    AktualizrSecondary::storage()->loadInstalledVersions(serial().ToString(), nullptr, &pending_target, nullptr);
 
     if (!!pending_target) {
       data::InstallationResult install_res =
@@ -41,12 +41,12 @@ void AktualizrSecondaryOstree::initialize() {
         if (install_res.isSuccess()) {
           LOG_INFO << "Pending update has been successfully applied: " << pending_target->sha256Hash();
           AktualizrSecondary::storage()->saveInstalledVersion(serial().ToString(), *pending_target,
-                                                              InstalledVersionUpdateMode::kCurrent);
+                                                              InstalledVersionUpdateMode::kCurrent, "");
         } else {
           LOG_ERROR << "Application of the pending update has failed (" << install_res.result_code.ToString()
                     << "): " << install_res.description;
           AktualizrSecondary::storage()->saveInstalledVersion(serial().ToString(), *pending_target,
-                                                              InstalledVersionUpdateMode::kNone);
+                                                              InstalledVersionUpdateMode::kNone, "");
         }
 
         directorRepo().dropTargets(*AktualizrSecondary::storage());

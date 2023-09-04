@@ -17,8 +17,6 @@ SecondaryEcuInstallationJob::SecondaryEcuInstallationJob(
       ecu_serial_{ecu_serial},
       correlation_id_{correlation_id},
       install_info_{update_type} {
-  target_.setCorrelationId(correlation_id);  // TODO: necessary?
-
   if (update_type == UpdateType::kOffline) {
     if (uptane_client_.uptane_fetcher_offupd) {
       install_info_.initOffline(uptane_client_.uptane_fetcher_offupd->getImagesPath(),

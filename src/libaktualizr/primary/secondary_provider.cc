@@ -82,7 +82,7 @@ bool SecondaryProvider::pendingPrimaryUpdate() {
     throw std::runtime_error("Unable to get ECU serials from primary");
   }
 
-  storage_->loadInstalledVersions((serials[0].first).ToString(), nullptr, &pending);
+  storage_->loadInstalledVersions((serials[0].first).ToString(), nullptr, &pending, nullptr);
   return !!pending;
 }
 

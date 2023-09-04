@@ -635,7 +635,7 @@ TEST(Aktualizr, FullWithUpdatesNeedReboot) {
     // check that a version is here, set to pending
 
     boost::optional<Uptane::Target> pending_target;
-    storage->loadPrimaryInstalledVersions(nullptr, &pending_target);
+    storage->loadPrimaryInstalledVersions(nullptr, &pending_target, nullptr);
     EXPECT_TRUE(!!pending_target);
   }
 
@@ -653,7 +653,7 @@ TEST(Aktualizr, FullWithUpdatesNeedReboot) {
 
     // check that everything is still pending
     boost::optional<Uptane::Target> pending_target;
-    storage->loadPrimaryInstalledVersions(nullptr, &pending_target);
+    storage->loadPrimaryInstalledVersions(nullptr, &pending_target, nullptr);
     EXPECT_TRUE(!!pending_target);
 
     result::UpdateCheck update_res = aktualizr.CheckUpdates().get();
@@ -679,14 +679,14 @@ TEST(Aktualizr, FullWithUpdatesNeedReboot) {
     // Primary is installed, nothing pending
     boost::optional<Uptane::Target> current_target;
     boost::optional<Uptane::Target> pending_target;
-    storage->loadPrimaryInstalledVersions(&current_target, &pending_target);
+    storage->loadPrimaryInstalledVersions(&current_target, &pending_target, nullptr);
     EXPECT_TRUE(!!current_target);
     EXPECT_FALSE(!!pending_target);
 
     // Secondary is installed, nothing pending
     boost::optional<Uptane::Target> sec_current_target;
     boost::optional<Uptane::Target> sec_pending_target;
-    storage->loadInstalledVersions("secondary_ecu_serial", &sec_current_target, &sec_pending_target);
+    storage->loadInstalledVersions("secondary_ecu_serial", &sec_current_target, &sec_pending_target, nullptr);
     EXPECT_TRUE(!!sec_current_target);
     EXPECT_FALSE(!!sec_pending_target);
   }
@@ -833,7 +833,7 @@ TEST(Aktualizr, FinalizationFailure) {
     // verify currently installed version
     boost::optional<Uptane::Target> current_version;
     boost::optional<Uptane::Target> pending_version;
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
 
     // for some reason there is no any installed version at initial Aktualizr boot/run
     // IMHO it should return currently installed version
@@ -884,7 +884,7 @@ TEST(Aktualizr, FinalizationFailure) {
     pending_version = boost::none;
     current_version = boost::none;
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
     EXPECT_FALSE(!!current_version);
     EXPECT_TRUE(!!pending_version);
     EXPECT_TRUE(pending_version->IsValid());
@@ -892,7 +892,7 @@ TEST(Aktualizr, FinalizationFailure) {
     pending_version = boost::none;
     current_version = boost::none;
 
-    ASSERT_TRUE(storage->loadInstalledVersions(secondary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(secondary_ecu_id, &current_version, &pending_version, nullptr));
     EXPECT_TRUE(!!current_version);
     EXPECT_TRUE(current_version->IsValid());
     EXPECT_FALSE(!!pending_version);
@@ -932,14 +932,14 @@ TEST(Aktualizr, FinalizationFailure) {
     boost::optional<Uptane::Target> current_version;
     boost::optional<Uptane::Target> pending_version;
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
     EXPECT_FALSE(!!current_version);
     EXPECT_FALSE(!!pending_version);
 
     current_version = boost::none;
     pending_version = boost::none;
 
-    ASSERT_TRUE(storage->loadInstalledVersions(secondary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(secondary_ecu_id, &current_version, &pending_version, nullptr));
     EXPECT_TRUE(!!current_version);
     EXPECT_FALSE(!!pending_version);
   }
@@ -985,7 +985,7 @@ TEST(Aktualizr, InstallationFailure) {
     boost::optional<Uptane::Target> current_version;
     boost::optional<Uptane::Target> pending_version;
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
 
     EXPECT_FALSE(!!pending_version);
     EXPECT_FALSE(!!current_version);
@@ -1011,7 +1011,7 @@ TEST(Aktualizr, InstallationFailure) {
     EXPECT_FALSE(storage->loadEcuInstallationResults(&ecu_installation_res));
     EXPECT_EQ(ecu_installation_res.size(), 0);
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
     // it says that no any installed version found,
     // which is, on one hand is correct since installation of the found update failed hence nothing was installed,
     // on the other hand some version should have been installed prior to the failed update
@@ -1041,7 +1041,7 @@ TEST(Aktualizr, InstallationFailure) {
     boost::optional<Uptane::Target> current_version;
     boost::optional<Uptane::Target> pending_version;
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
 
     EXPECT_FALSE(!!pending_version);
     EXPECT_FALSE(!!current_version);
@@ -1073,7 +1073,7 @@ TEST(Aktualizr, InstallationFailure) {
     EXPECT_FALSE(storage->loadEcuInstallationResults(&ecu_installation_res));
     EXPECT_EQ(ecu_installation_res.size(), 0);
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version));
+    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
     // it says that no any installed version found,
     // which is, on one hand is correct since installation of the found update failed hence nothing was installed,
     // on the other hand some version should have been installed prior to the failed update
@@ -1176,7 +1176,7 @@ TEST(Aktualizr, AutoRebootAfterUpdate) {
     // Primary is installed, nothing pending
     boost::optional<Uptane::Target> current_target;
     boost::optional<Uptane::Target> pending_target;
-    storage->loadPrimaryInstalledVersions(&current_target, &pending_target);
+    storage->loadPrimaryInstalledVersions(&current_target, &pending_target, nullptr);
     EXPECT_TRUE(!!current_target);
     EXPECT_FALSE(!!pending_target);
     EXPECT_EQ(http->manifest_sends, 3);

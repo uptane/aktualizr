@@ -417,10 +417,10 @@ TEST(Uptane, InstallFakeGood) {
   // Remove the hashes from the current Target version stored in the database
   // for the Primary.
   boost::optional<Uptane::Target> current_version;
-  EXPECT_TRUE(storage->loadInstalledVersions("CA:FE:A6:D2:84:9D", &current_version, nullptr));
+  EXPECT_TRUE(storage->loadInstalledVersions("CA:FE:A6:D2:84:9D", &current_version, nullptr, nullptr));
   const auto bad_target = Uptane::Target(current_version->filename(), current_version->ecus(), std::vector<Hash>{},
                                          current_version->length());
-  storage->saveInstalledVersion("CA:FE:A6:D2:84:9D", bad_target, InstalledVersionUpdateMode::kCurrent);
+  storage->saveInstalledVersion("CA:FE:A6:D2:84:9D", bad_target, InstalledVersionUpdateMode::kCurrent, "");
 
   // Third install to verify that we reject updates with the same filename but
   // different contents.
@@ -1073,7 +1073,7 @@ TEST(Uptane, FsToSqlFull) {
 
   std::vector<Uptane::Target> fs_installed_versions;
   std::vector<Uptane::Target> fixed_installed_versions;
-  fs_storage.loadInstalledVersions(&fs_installed_versions, nullptr);
+  fs_storage.loadInstalledVersions(&fs_installed_versions, nullptr, nullptr);
   // Add the serial/hwid mapping to match what the SQL storage will do when
   // reading it back after it has been copied from FS storage.
   for (auto &target : fs_installed_versions) {
@@ -1205,7 +1205,7 @@ TEST(Uptane, InstalledVersionImport) {
   storage->importData(config.import);
 
   boost::optional<Uptane::Target> current_version;
-  storage->loadPrimaryInstalledVersions(&current_version, nullptr);
+  storage->loadPrimaryInstalledVersions(&current_version, nullptr, nullptr);
   EXPECT_TRUE(!!current_version);
   EXPECT_EQ(current_version->filename(), "master-863de625f305413dc3be306afab7c3f39d8713045cfff812b3af83f9722851f0");
 
@@ -1215,15 +1215,17 @@ TEST(Uptane, InstalledVersionImport) {
   target_json["hashes"]["sha256"] = "a0fb2e119cf812f1aa9e993d01f5f07cb41679096cb4492f1265bff5ac901d0d";
   target_json["length"] = 123;
   Uptane::Target new_installed_version{"filename", target_json};
-  storage->savePrimaryInstalledVersion(new_installed_version, InstalledVersionUpdateMode::kCurrent);
+  storage->savePrimaryInstalledVersion(new_installed_version, InstalledVersionUpdateMode::kCurrent, "corrid1");
 
   auto new_storage = INvStorage::newStorage(config.storage);
   new_storage->importData(config.import);
 
   current_version = boost::none;
-  new_storage->loadPrimaryInstalledVersions(&current_version, nullptr);
+  Uptane::CorrelationId correlation_id;
+  new_storage->loadPrimaryInstalledVersions(&current_version, nullptr, &correlation_id);
   EXPECT_TRUE(!!current_version);
   EXPECT_EQ(current_version->filename(), "filename");
+  EXPECT_EQ(correlation_id, "corrid1");
 }
 
 /* Store a list of installed package versions. */
@@ -1240,15 +1242,17 @@ TEST(Uptane, SaveAndLoadVersion) {
   target_json["length"] = 123;
 
   Uptane::Target t("target_name", target_json);
-  storage->savePrimaryInstalledVersion(t, InstalledVersionUpdateMode::kCurrent);
+  storage->savePrimaryInstalledVersion(t, InstalledVersionUpdateMode::kCurrent, "corrid2");
 
   boost::optional<Uptane::Target> current_version;
-  storage->loadPrimaryInstalledVersions(&current_version, nullptr);
+  Uptane::CorrelationId correlation_id;
+  storage->loadPrimaryInstalledVersions(&current_version, nullptr, &correlation_id);
 
   EXPECT_TRUE(!!current_version);
   EXPECT_EQ(current_version->sha256Hash(), "a0fb2e119cf812f1aa9e993d01f5f07cb41679096cb4492f1265bff5ac901d0d");
   EXPECT_EQ(current_version->length(), 123);
   EXPECT_TRUE(current_version->MatchTarget(t));
+  EXPECT_EQ(correlation_id, "corrid2");
 }
 
 class HttpFakeUnstable : public HttpFake {

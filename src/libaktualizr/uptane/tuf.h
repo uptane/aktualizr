@@ -312,6 +312,13 @@ class Targets : public MetaWithKeys {
     return version_ == rhs.version() && expiry_ == rhs.expiry() && MatchTargetVector(targets, rhs.targets);
   }
 
+  /**
+   * Danger! Prefer DirectorRepository::getCorrelationId().
+   * Targets::correlation_id returns the Correlation ID from the custom
+   * metadata section director/targets.json. This is correct for online updates,
+   * but for offline updates the Correlation ID is formed differently, and
+   * DirectorRepository::getCorrelationId() takes care of this.
+   * */
   const std::string &correlation_id() const { return correlation_id_; }
 
   void clear() {

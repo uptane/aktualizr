@@ -129,14 +129,12 @@ void Target::updateCustom(const Json::Value &custom) {
 }
 
 // Internal use only.
-Target::Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint64_t length, std::string correlation_id,
-               std::string type)
+Target::Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint64_t length, std::string type)
     : filename_(std::move(filename)),
       type_(std::move(type)),
       ecus_(std::move(ecus)),
       hashes_(std::move(hashes)),
-      length_(length),
-      correlation_id_(std::move(correlation_id)) {
+      length_(length) {
   // sort hashes so that higher priority hash algorithm goes first
   std::sort(hashes_.begin(), hashes_.end(), [](const Hash &l, const Hash &r) { return l.type() < r.type(); });
 }

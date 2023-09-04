@@ -796,3 +796,16 @@ std::ostream &operator<<(std::ostream &os, const Hash &h) {
   os << "Hash: " << h.hash_;
   return os;
 }
+
+std::string Hash::shortTag(const std::vector<Hash> &hashes) {
+  Hash::Type best = Type::kUnknownAlgorithm;
+  std::string res = "(unknown)";
+  for (const auto &i : hashes) {
+    if (i.type_ < best) {
+      res.assign(i.hash_, 0, 12);
+      best = i.type_;
+    }
+  }
+  boost::algorithm::to_lower(res);
+  return res;
+}

@@ -293,12 +293,12 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
       Hash{Hash::Type::kSha512, "5121"},
   };
   Uptane::EcuMap primary_ecu{{Uptane::EcuSerial("primary"), Uptane::HardwareIdentifier("primary_hw")}};
-  Uptane::Target t1{"update.bin", primary_ecu, hashes, 1, "corrid"};
+  Uptane::Target t1{"update.bin", primary_ecu, hashes, 1};
   Json::Value custom;
   custom["version"] = 42;
   custom["foo"] = "bar";
   t1.updateCustom(custom);
-  storage->savePrimaryInstalledVersion(t1, InstalledVersionUpdateMode::kCurrent);
+  storage->savePrimaryInstalledVersion(t1, InstalledVersionUpdateMode::kCurrent, "corrid");
   {
     std::vector<Uptane::Target> log;
     storage->loadPrimaryInstallationLog(&log, true);
@@ -313,14 +313,15 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   {
     boost::optional<Uptane::Target> current;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, nullptr));
+    Uptane::CorrelationId correlation_id;
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, nullptr, &correlation_id));
     EXPECT_FALSE(storage->hasPendingInstall());
     EXPECT_TRUE(!!current);
     EXPECT_EQ(current->filename(), "update.bin");
     EXPECT_EQ(current->sha256Hash(), "2561");
     EXPECT_EQ(current->hashes(), hashes);
     EXPECT_EQ(current->ecus(), primary_ecu);
-    EXPECT_EQ(current->correlation_id(), "corrid");
+    EXPECT_EQ(correlation_id, "corrid");
     EXPECT_EQ(current->length(), 1);
     EXPECT_EQ(current->custom_data()["foo"], "bar");
     EXPECT_EQ(current->custom_data()["version"], 42);
@@ -328,11 +329,11 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   // Set t2 as a pending version
   Uptane::Target t2{"update2.bin", primary_ecu, {Hash{Hash::Type::kSha256, "2562"}}, 2};
-  storage->savePrimaryInstalledVersion(t2, InstalledVersionUpdateMode::kPending);
+  storage->savePrimaryInstalledVersion(t2, InstalledVersionUpdateMode::kPending, "");
 
   {
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending, nullptr));
     EXPECT_TRUE(!!pending);
     EXPECT_TRUE(storage->hasPendingInstall());
     EXPECT_EQ(pending->filename(), "update2.bin");
@@ -340,11 +341,11 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   // Set t3 as the new pending
   Uptane::Target t3{"update3.bin", primary_ecu, {Hash{Hash::Type::kSha256, "2563"}}, 3};
-  storage->savePrimaryInstalledVersion(t3, InstalledVersionUpdateMode::kPending);
+  storage->savePrimaryInstalledVersion(t3, InstalledVersionUpdateMode::kPending, "");
 
   {
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending, nullptr));
     EXPECT_TRUE(!!pending);
     EXPECT_TRUE(storage->hasPendingInstall());
     EXPECT_EQ(pending->filename(), "update3.bin");
@@ -352,11 +353,11 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   // Set t3 as current: should replace the pending flag but not create a new
   // version
-  storage->savePrimaryInstalledVersion(t3, InstalledVersionUpdateMode::kCurrent);
+  storage->savePrimaryInstalledVersion(t3, InstalledVersionUpdateMode::kCurrent, "");
   {
     boost::optional<Uptane::Target> current;
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending, nullptr));
     EXPECT_TRUE(!!current);
     EXPECT_EQ(current->filename(), "update3.bin");
     EXPECT_FALSE(!!pending);
@@ -370,7 +371,7 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   // Set t1 as current: the log should have grown even though we rolled back
   {
-    storage->savePrimaryInstalledVersion(t1, InstalledVersionUpdateMode::kCurrent);
+    storage->savePrimaryInstalledVersion(t1, InstalledVersionUpdateMode::kCurrent, "");
     std::vector<Uptane::Target> log;
     storage->loadInstallationLog("primary", &log, true);
     EXPECT_EQ(log.size(), 3);
@@ -380,13 +381,13 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   // Set t2 as the new pending and t3 as current afterwards: the pending flag
   // should disappear
-  storage->savePrimaryInstalledVersion(t2, InstalledVersionUpdateMode::kPending);
-  storage->savePrimaryInstalledVersion(t3, InstalledVersionUpdateMode::kCurrent);
+  storage->savePrimaryInstalledVersion(t2, InstalledVersionUpdateMode::kPending, "");
+  storage->savePrimaryInstalledVersion(t3, InstalledVersionUpdateMode::kCurrent, "");
 
   {
     boost::optional<Uptane::Target> current;
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending, nullptr));
     EXPECT_TRUE(!!current);
     EXPECT_EQ(current->filename(), "update3.bin");
     EXPECT_FALSE(!!pending);
@@ -402,11 +403,11 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
   // Add a Secondary installed version
   Uptane::EcuMap secondary_ecu{{Uptane::EcuSerial("secondary1"), Uptane::HardwareIdentifier("secondary_hw")}};
   Uptane::Target tsec{"secondary.bin", secondary_ecu, {Hash{Hash::Type::kSha256, "256s"}}, 4};
-  storage->saveInstalledVersion("secondary_1", tsec, InstalledVersionUpdateMode::kCurrent);
+  storage->saveInstalledVersion("secondary_1", tsec, InstalledVersionUpdateMode::kCurrent, "");
 
   {
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, nullptr));
-    EXPECT_TRUE(storage->loadInstalledVersions("secondary_1", nullptr, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, nullptr, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("secondary_1", nullptr, nullptr, nullptr));
 
     std::vector<Uptane::Target> log;
     storage->loadInstallationLog("secondary_1", &log, true);

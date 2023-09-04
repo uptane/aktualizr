@@ -20,7 +20,7 @@ AktualizrSecondaryFile::AktualizrSecondaryFile(const AktualizrSecondaryConfig& c
     boost::optional<Uptane::Target> current_version;
     boost::optional<Uptane::Target> pending_version;
     auto installed_version_res =
-        AktualizrSecondary::storage()->loadInstalledVersions("", &current_version, &pending_version);
+        AktualizrSecondary::storage()->loadInstalledVersions("", &current_version, &pending_version, nullptr);
 
     if (installed_version_res && !!current_version) {
       current_target_name = current_version->filename();

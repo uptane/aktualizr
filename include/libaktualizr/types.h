@@ -194,6 +194,10 @@ class Hash {
 
   static std::string encodeVector(const std::vector<Hash> &hashes);
   static std::vector<Hash> decodeVector(std::string hashes_str);
+  /**
+   * Convert a list of hashes into a 12 character 'tag'
+   */
+  static std::string shortTag(const std::vector<Hash> &hashes);
 
  private:
   Type type_;
@@ -401,14 +405,15 @@ std::ostream &operator<<(std::ostream &os, const EcuSerial &ecu_serial);
 
 using EcuMap = std::map<EcuSerial, HardwareIdentifier>;
 
+using CorrelationId = std::string;
+
 class Target {
  public:
   // From Uptane metadata
   Target(std::string filename, const Json::Value &content);
   // Internal use only. Only used for reading installed_versions list and by
   // various tests.
-  Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint64_t length, std::string correlation_id = "",
-         std::string type = "UNKNOWN");
+  Target(std::string filename, EcuMap ecus, std::vector<Hash> hashes, uint64_t length, std::string type = "UNKNOWN");
 
   static Target Unknown();
 
@@ -421,8 +426,6 @@ class Target {
   std::string custom_version() const;
   Json::Value custom_data() const { return custom_; }
   void updateCustom(const Json::Value &custom);
-  std::string correlation_id() const { return correlation_id_; }
-  void setCorrelationId(std::string correlation_id) { correlation_id_ = std::move(correlation_id); }
   uint64_t length() const { return length_; }
   bool IsValid() const { return valid; }
   std::string uri() const { return uri_; }
@@ -463,7 +466,6 @@ class Target {
   std::vector<HardwareIdentifier> hwids_;  // Image repo only
   Json::Value custom_;
   uint64_t length_{0};
-  std::string correlation_id_;
   std::string uri_;
 
   std::string hashString(Hash::Type type) const;

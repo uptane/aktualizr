@@ -137,7 +137,7 @@ TEST_P(UptaneVector, Test) {
   EXPECT_EQ(hw_id.ToString(), config.provision.primary_ecu_hardware_id);
   Uptane::EcuMap ecu_map{{ecu_serial, hw_id}};
   Uptane::Target target("test_filename", ecu_map, {{Hash::Type::kSha256, "sha256"}}, 1, "");
-  storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kCurrent);
+  storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kCurrent, "");
 
   uptane_client->initialize();
   ASSERT_TRUE(uptane_client->attemptProvision()) << "Provisioning Failed. Can't continue test";

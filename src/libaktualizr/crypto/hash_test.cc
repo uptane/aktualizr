@@ -26,6 +26,24 @@ TEST(Hash, DecodeBad) {
   EXPECT_EQ(Hash::decodeVector(bad4), std::vector<Hash>{});
 }
 
+TEST(Hash, shortTag) {
+  std::vector<Hash> hashes = {{Hash::Type::kSha256, "B5bB9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"},
+                              {Hash::Type::kSha512,
+                               "0cf9180a764aba863a67b6d72f0918bc131c6772642cb2dce5a34f0a702f9470ddc2bf125c12198b1995c23"
+                               "3c34b4afd346c54a2334c350a948a51b6e8b4e6b6"}};
+
+  EXPECT_EQ(Hash::shortTag(hashes), "b5bb9d8014a0");
+  std::reverse(hashes.begin(), hashes.end());
+  EXPECT_EQ(Hash::shortTag(hashes), "b5bb9d8014a0");
+  std::vector<Hash> const one = {{Hash::Type::kSha512,
+                                  "0cf9180a764aba863a67b6d72f0918bc131c6772642cb2dce5a34f0a702f9470ddc2bf125c12198b1995"
+                                  "c233c34b4afd346c54a2334c350a948a51b6e8b4e6b6"}};
+
+  EXPECT_EQ(Hash::shortTag(one), "0cf9180a764a");
+  std::vector<Hash> const small = {{Hash::Type::kSha256, "small"}};
+  EXPECT_EQ(Hash::shortTag(small), "small");
+}
+
 #ifndef __NO_MAIN__
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

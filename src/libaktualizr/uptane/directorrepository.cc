@@ -15,7 +15,7 @@ void DirectorRepository::resetMeta() {
   targets = Targets();
   latest_targets = Targets();
 #ifdef BUILD_OFFLINE_UPDATES
-  offline_snapshot = Snapshot();
+  offline_snapshot_ = Snapshot();
 #endif
 }
 
@@ -72,6 +72,7 @@ void DirectorRepository::verifyTargets(const std::string& targets_raw) {
                              std::make_shared<MetaWithKeys>(root));
     if (!usePreviousTargets()) {
       targets = latest_targets;
+      correlation_id_ = latest_targets.correlation_id();
     }
   } catch (const Uptane::Exception& e) {
     LOG_ERROR << "Signature verification for Director Targets metadata failed";
@@ -275,21 +276,27 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   // Update Director Offline Updates(Targets) Metadata
   // PURE-2 step 4
   boost::filesystem::path offline_target_file;
+  Version offline_snapshot_version = Version(-1);
   std::string offline_target_name;
-  int offline_snapshot_version = -1;
-  bool found = false;
-  for (const auto& role_name : offline_snapshot.role_names()) {
+  for (const auto& role_name : offline_snapshot_.role_names()) {
     std::string filename = role_name + ".json";
     offline_target_file = fetcher.getMetadataPath() / "director" / filename;
     if (boost::filesystem::exists(offline_target_file)) {
-      offline_snapshot_version = offline_snapshot.role_version(Role(role_name, !Role::IsReserved(role_name)));
-      found = true;
+      Role role(role_name, !Role::IsReserved(role_name));
+      offline_snapshot_version = Version(offline_snapshot_.role_version(role));
       offline_target_name = role_name;
+      // Form a correlation id like urn:tdx-ota:lockbox:<name>:<version>:<tag>
+      // e.g. urn:tdx-ota:lockbox:test1:1:345234f3f34wf
+      std::stringstream correlation_id_builder;
+      correlation_id_builder << "urn:tdx-ota:lockbox:" << offline_target_name << ":"
+                             << offline_snapshot_version.version() << ":"
+                             << Hash::shortTag(offline_snapshot_.role_hashes(role));
+      correlation_id_ = correlation_id_builder.str();
       break;
     }
   }
 
-  if (!found) {
+  if (offline_target_name.empty()) {
     throw Uptane::SecurityException(RepositoryType::DIRECTOR, "Could not find any valid offline updates metadata file");
   }
 
@@ -302,7 +309,7 @@ void DirectorRepository::updateMetaOffUpd(INvStorage& storage, const OfflineUpda
   fetcher.fetchLatestRole(&director_offline_targets, kMaxDirectorTargetsSize, RepositoryType::Director(),
                           offline_target_role);
 
-  int offline_targets_version = Utils::parseJSON(director_offline_targets)["signed"]["version"].asInt();
+  Version offline_targets_version = Version(Utils::parseJSON(director_offline_targets)["signed"]["version"].asInt());
   if (offline_targets_version != offline_snapshot_version) {
     throw Uptane::VersionMismatch(RepositoryType::DIRECTOR, Uptane::Role::OFFLINEUPDATES);
   }
@@ -323,8 +330,8 @@ void DirectorRepository::verifyOfflineSnapshot(const std::string& snapshot_raw_n
                                                const std::string& snapshot_raw_old) {
   // PURE-2 step 3(ii)
   try {
-    offline_snapshot = Snapshot(RepositoryType::Image(), Uptane::Role::OfflineSnapshot(),
-                                Utils::parseJSON(snapshot_raw_new), std::make_shared<MetaWithKeys>(root));
+    offline_snapshot_ = Snapshot(RepositoryType::Image(), Uptane::Role::OfflineSnapshot(),
+                                 Utils::parseJSON(snapshot_raw_new), std::make_shared<MetaWithKeys>(root));
   } catch (const Exception& e) {
     LOG_ERROR << "Signature verification for Offline Snapshot metadata failed";
     throw;
@@ -348,7 +355,7 @@ void DirectorRepository::verifyOfflineSnapshot(const std::string& snapshot_raw_n
 }
 
 void DirectorRepository::checkOfflineSnapshotExpired() {
-  if (offline_snapshot.isExpired(TimeStamp::Now())) {
+  if (offline_snapshot_.isExpired(TimeStamp::Now())) {
     throw Uptane::ExpiredMetadata(type.ToString(), Role::OFFLINESNAPSHOT);
   }
 }

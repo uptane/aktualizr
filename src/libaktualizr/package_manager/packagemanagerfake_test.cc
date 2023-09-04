@@ -176,7 +176,7 @@ TEST(PackageManagerFake, FinalizeAfterReboot) {
   Uptane::Target target("pkg", primary_ecu, {Hash(Hash::Type::kSha256, "hash")}, 1, "");
   auto result = fakepm.install(target);
   EXPECT_EQ(result.result_code, data::ResultCode::Numeric::kNeedCompletion);
-  storage->savePrimaryInstalledVersion(target, InstalledVersionUpdateMode::kPending);
+  storage->savePrimaryInstalledVersion(target, InstalledVersionUpdateMode::kPending, "");
 
   fakepm.completeInstall();
 

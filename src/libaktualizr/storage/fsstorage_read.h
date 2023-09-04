@@ -31,7 +31,8 @@ class FSStorageRead {
   bool loadEcuSerials(EcuSerials* serials) const;
   bool loadMisconfiguredEcus(std::vector<MisconfiguredEcu>* ecus) const;
   bool loadEcuRegistered() const;
-  bool loadInstalledVersions(std::vector<Uptane::Target>* installed_versions, size_t* current_version) const;
+  bool loadInstalledVersions(std::vector<Uptane::Target>* installed_versions, size_t* current_version,
+                             Uptane::CorrelationId*) const;
 
   void cleanUpAll();
 

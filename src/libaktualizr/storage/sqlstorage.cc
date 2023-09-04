@@ -1068,7 +1068,8 @@ void SQLStorage::clearMisconfiguredEcus() {
 }
 
 void SQLStorage::saveInstalledVersion(const std::string& ecu_serial, const Uptane::Target& target,
-                                      InstalledVersionUpdateMode update_mode) {
+                                      InstalledVersionUpdateMode update_mode,
+                                      const Uptane::CorrelationId& correlation_id) {
   SQLite3Guard db = dbConnection();
 
   db.beginTransaction();
@@ -1086,7 +1087,7 @@ void SQLStorage::saveInstalledVersion(const std::string& ecu_serial, const Uptan
     }
   }
 
-  std::string hashes_encoded = Hash::encodeVector(target.hashes());
+  std::string const hashes_encoded = Hash::encodeVector(target.hashes());
 
   // get the last time this version was installed on this ecu
   boost::optional<int64_t> old_id;
@@ -1132,7 +1133,7 @@ void SQLStorage::saveInstalledVersion(const std::string& ecu_serial, const Uptan
     auto statement = db.prepareStatement<std::string, int, int, int64_t>(
         "UPDATE installed_versions SET correlation_id = ?, is_current = ?, is_pending = ?, was_installed = ? WHERE id "
         "= ?;",
-        target.correlation_id(), static_cast<int>(update_mode == InstalledVersionUpdateMode::kCurrent),
+        correlation_id, static_cast<int>(update_mode == InstalledVersionUpdateMode::kCurrent),
         static_cast<int>(update_mode == InstalledVersionUpdateMode::kPending),
         static_cast<int>(update_mode == InstalledVersionUpdateMode::kCurrent || old_was_installed), old_id.value());
 
@@ -1147,7 +1148,7 @@ void SQLStorage::saveInstalledVersion(const std::string& ecu_serial, const Uptan
         "INSERT INTO installed_versions(ecu_serial, sha256, name, hashes, length, custom_meta, correlation_id, "
         "is_current, is_pending, was_installed) VALUES (?,?,?,?,?,?,?,?,?,?);",
         ecu_serial_real, target.sha256Hash(), target.filename(), hashes_encoded, static_cast<int64_t>(target.length()),
-        custom, target.correlation_id(), static_cast<int>(update_mode == InstalledVersionUpdateMode::kCurrent),
+        custom, correlation_id, static_cast<int>(update_mode == InstalledVersionUpdateMode::kCurrent),
         static_cast<int>(update_mode == InstalledVersionUpdateMode::kPending),
         static_cast<int>(update_mode == InstalledVersionUpdateMode::kCurrent));
 
@@ -1267,7 +1268,8 @@ bool SQLStorage::loadInstallationLog(const std::string& ecu_serial, std::vector<
 }
 
 bool SQLStorage::loadInstalledVersions(const std::string& ecu_serial, boost::optional<Uptane::Target>* current_version,
-                                       boost::optional<Uptane::Target>* pending_version) const {
+                                       boost::optional<Uptane::Target>* pending_version,
+                                       Uptane::CorrelationId* correlation_id) const {
   SQLite3Guard db = dbConnection();
 
   std::string ecu_serial_real = ecu_serial;
@@ -1279,7 +1281,6 @@ bool SQLStorage::loadInstalledVersions(const std::string& ecu_serial, boost::opt
     auto filename = statement.get_result_col_str(1).value();
     auto hashes_str = statement.get_result_col_str(2).value();
     auto length = statement.get_result_col_int(3);
-    auto correlation_id = statement.get_result_col_str(4).value();
     auto custom_str = statement.get_result_col_str(5).value();
 
     // note: sha256 should always be present and is used to uniquely identify
@@ -1292,7 +1293,7 @@ bool SQLStorage::loadInstalledVersions(const std::string& ecu_serial, boost::opt
       LOG_WARNING << "No sha256 in hashes list";
       hashes.emplace_back(Hash::Type::kSha256, sha256);
     }
-    Uptane::Target t(filename, ecu_map, hashes, static_cast<uint64_t>(length), correlation_id);
+    Uptane::Target t(filename, ecu_map, hashes, static_cast<uint64_t>(length));
     if (!custom_str.empty()) {
       std::istringstream css(custom_str);
       Json::Value custom;
@@ -1316,6 +1317,9 @@ bool SQLStorage::loadInstalledVersions(const std::string& ecu_serial, boost::opt
     if (statement.step() == SQLITE_ROW) {
       try {
         *current_version = read_target(statement);
+        if (correlation_id != nullptr) {
+          *correlation_id = statement.get_result_col_str(4).value();
+        }
       } catch (const boost::bad_optional_access&) {
         LOG_ERROR << "Could not read current installed version";
         return false;
@@ -1335,6 +1339,9 @@ bool SQLStorage::loadInstalledVersions(const std::string& ecu_serial, boost::opt
     if (statement.step() == SQLITE_ROW) {
       try {
         *pending_version = read_target(statement);
+        if (correlation_id != nullptr) {
+          *correlation_id = statement.get_result_col_str(4).value();
+        }
       } catch (const boost::bad_optional_access&) {
         LOG_ERROR << "Could not read pending installed version";
         return false;
