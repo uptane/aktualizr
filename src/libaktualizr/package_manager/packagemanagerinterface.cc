@@ -193,78 +193,84 @@ bool PackageManagerInterface::fetchTargetOffUpd(const Uptane::Target& target,
                                                 const api::FlowControlToken* token) {
   // TODO: [OFFUPD] Test this function with large files.
   (void)keys;
-  bool result = false;
   try {
-    if (target.hashes().empty()) {
-      throw Uptane::Exception("image", "No hash defined for the target");
-    }
-    TargetStatus exists = PackageManagerInterface::verifyTarget(target);
-    if (exists == TargetStatus::kGood) {
+    if (verifyTarget(target) == TargetStatus::kGood) {
       LOG_INFO << "Image already fetched; skipping fetching";
       return true;
     }
-    std::unique_ptr<DownloadMetaStruct> ds = std_::make_unique<DownloadMetaStruct>(target, progress_cb, token);
 
     LOG_INFO << "Initiating fetching of file " << target.filename();
     if (!checkAvailableDiskSpace(target.length())) {
       throw std::runtime_error("Insufficient disk space available to fetch target");
     }
 
-    ds->fhandle = createTargetFile(target);
+    auto destination_file = createTargetFile(target);
 
-    boost::filesystem::path source_path = fetcher.getImagesPath() / target.filename();
+    boost::filesystem::path const source_path = fetcher.getImagesPath() / target.filename();
     std::ifstream source(source_path.string(), std::ios::binary);
     if (!source.good()) {
       throw std::runtime_error("Can't read file " + source_path.string());
     }
 
-    using BufferType = std::vector<uint8_t>;
-    auto buffer = std_::make_unique<BufferType>(std::min(uint64_t(64 * 1024), target.length() + 1));
-
-    for (;;) {
-      source.read(reinterpret_cast<char*>(buffer->data()), static_cast<std::streamsize>(buffer->size()));
-
-      // This is equivalent to the work done by DownloadHandler in the online case.
-      if ((ds->downloaded_length + static_cast<uint64_t>(source.gcount())) > target.length()) {
-        LOG_WARNING << "File " << target.filename() << " is bigger than expected";
+    // Find the first hash we know about
+    MultiPartHasher::Ptr hasher{};
+    for (const auto& hash : target.hashes()) {
+      hasher = MultiPartHasher::create(hash.type());
+      if (hasher) {
         break;
       }
-      ds->fhandle.write(reinterpret_cast<char*>(buffer->data()), source.gcount());
-      ds->hasher().update(reinterpret_cast<unsigned char*>(buffer->data()), static_cast<uint64_t>(source.gcount()));
-      ds->downloaded_length += static_cast<uint64_t>(source.gcount());
+    }
+    if (!hasher) {
+      throw Uptane::Exception("offline", "Target does not contain a known hash type");
+    }
+
+    std::array<char, 16L * 1024> buffer{};
+    int64_t downloaded_length = 0;
+    uint64_t last_progress = 0;
+
+    for (;;) {
+      source.read(buffer.data(), buffer.size());
+
+      // This is equivalent to the work done by DownloadHandler in the online case.
+      if (static_cast<uint64_t>(downloaded_length + source.gcount()) > target.length()) {
+        LOG_WARNING << "File " << target.filename() << " is bigger than expected";
+        return false;
+      }
+      destination_file.write(buffer.data(), source.gcount());
+      hasher->update(buffer.data(), source.gcount());
+      downloaded_length += source.gcount();
 
       // This is equivalent to the work done by ProgressHandler in the online case.
-      auto progress = static_cast<unsigned int>((ds->downloaded_length * 100) / target.length());
-      if (ds->progress_cb && (progress > ds->last_progress)) {
-        ds->last_progress = progress;
-        ds->progress_cb(ds->target, "Fetching", progress);
+      auto progress = (static_cast<uint64_t>(downloaded_length * 100)) / target.length();
+      if (progress_cb && (progress > last_progress)) {
+        last_progress = progress;
+        progress_cb(target, "Fetching", static_cast<unsigned int>(progress));
       }
 
       if (source.gcount() == 0) {
         break;
       }
-      if (!token->canContinue()) {
+      if (token != nullptr && token->hasAborted()) {
         throw Uptane::Exception("image", "Fetching of a target was aborted");
       }
     }
 
-    ds->fhandle.close();
-    if (!ds->fhandle) {
-      // An write error is assumed to be due to file size like in the online case.
+    destination_file.close();
+    if (!destination_file) {
+      // A write error is assumed to be due to file size like in the online case.
       throw Uptane::OversizedTarget(target.filename());
     }
 
-    if (!target.MatchHash(Hash(ds->hash_type, ds->hasher().getHexDigest()))) {
+    if (!target.MatchHash(hasher->getHash())) {
       removeTargetFile(target);
       throw Uptane::TargetHashMismatch(target.filename());
     }
-    result = true;
-
+    LOG_DEBUG << "Successfully fetched  " << target.filename();
+    return true;
   } catch (const std::exception& e) {
     LOG_WARNING << "Error while fetching a target: " << e.what();
+    return false;
   }
-  LOG_DEBUG << "Fetch status for file " << target.filename() << " is " << result;
-  return result;
 }
 #endif
 
@@ -363,7 +369,8 @@ std::ofstream PackageManagerInterface::appendTargetFile(const Uptane::Target& ta
 void PackageManagerInterface::removeTargetFile(const Uptane::Target& target) {
   auto file = checkTargetFile(target);
   if (!file) {
-    throw std::runtime_error("File doesn't exist for target " + target.filename());
+    LOG_WARNING << "PackageManagerInterface::removeTargetFile failed. Target doesn't exist: " + target.filename();
+    return;
   }
   boost::filesystem::remove(file->second);
   storage_->deleteTargetInfo(target.filename());

@@ -37,6 +37,9 @@ class MultiPartHasher {
   static Ptr create(Hash::Type hash_type);
 
   virtual void update(const unsigned char *part, uint64_t size) = 0;
+  void update(const char *part, int64_t size) {
+    update(reinterpret_cast<const unsigned char *>(part), static_cast<uint64_t>(size));
+  }
   virtual void reset() = 0;
   virtual std::string getHexDigest() = 0;
   virtual Hash getHash() = 0;
