@@ -18,7 +18,7 @@ class DockerManifestWrapper {
   /**
    * Destructor.
    */
-  virtual ~DockerManifestWrapper() {}
+  virtual ~DockerManifestWrapper() = default;
 
   /**
    * Return whether or not the manifest has (per-platform) children; in practice
@@ -46,6 +46,11 @@ class DockerManifestWrapper {
    */
   explicit DockerManifestWrapper(Json::Value manifest) : manifest_(std::move(manifest)) {}
 
+  DockerManifestWrapper(const DockerManifestWrapper&) = default;
+  DockerManifestWrapper(DockerManifestWrapper&&) = default;
+  DockerManifestWrapper& operator=(const DockerManifestWrapper&) = default;
+  DockerManifestWrapper& operator=(DockerManifestWrapper&&) = default;
+
   Json::Value manifest_;
 
   static std::string platformString(const Json::Value &plat);
@@ -67,12 +72,6 @@ class DockerManifestWrapper {
  * Specialization of DockerManifestWrapper for OCI images.
  */
 class OCIManifestWrapper : DockerManifestWrapper {
- public:
-  /**
-   * Destructor.
-   */
-  virtual ~OCIManifestWrapper() {}
-
  protected:
   /**
    * Constructor taking an OCI manifest in a JsonCpp Value object. For instantiating objects of this
