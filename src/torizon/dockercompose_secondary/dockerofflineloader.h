@@ -46,10 +46,10 @@ class DockerManifestWrapper {
    */
   explicit DockerManifestWrapper(Json::Value manifest) : manifest_(std::move(manifest)) {}
 
-  DockerManifestWrapper(const DockerManifestWrapper&) = default;
-  DockerManifestWrapper(DockerManifestWrapper&&) = default;
-  DockerManifestWrapper& operator=(const DockerManifestWrapper&) = default;
-  DockerManifestWrapper& operator=(DockerManifestWrapper&&) = default;
+  DockerManifestWrapper(const DockerManifestWrapper &) = default;
+  DockerManifestWrapper(DockerManifestWrapper &&) = default;
+  DockerManifestWrapper &operator=(const DockerManifestWrapper &) = default;
+  DockerManifestWrapper &operator=(DockerManifestWrapper &&) = default;
 
   Json::Value manifest_;
 
