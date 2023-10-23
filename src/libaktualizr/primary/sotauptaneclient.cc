@@ -1770,11 +1770,4 @@ result::UpdateCheck SotaUptaneClient::fetchMetaOffUpd(const boost::filesystem::p
   return result;
 }
 
-result::Download SotaUptaneClient::fetchImagesOffUpd(const std::vector<Uptane::Target> &targets) {
-  return downloadImages(targets, UpdateType::kOffline);
-}
-
-result::Install SotaUptaneClient::uptaneInstallOffUpd(const std::vector<Uptane::Target> &updates) {
-  return uptaneInstall(updates, UpdateType::kOffline);
-}
 #endif

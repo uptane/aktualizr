@@ -165,7 +165,7 @@ class Aktualizr {
    * @throw std::system_error (failure to lock a mutex)
    * @throw SotaUptaneClient::NotProvisionedYet (called before provisioning complete)
    */
-  std::future<result::Download> Download(const std::vector<Uptane::Target>& updates);
+  std::future<result::Download> Download(const std::vector<Uptane::Target>& updates, UpdateType = UpdateType::kOnline);
 
   struct InstallationLogEntry {
     Uptane::EcuSerial ecu;
@@ -232,7 +232,7 @@ class Aktualizr {
    * @throw std::system_error (failure to lock a mutex)
    * @throw SotaUptaneClient::NotProvisionedYet (called before provisioning complete)
    */
-  std::future<result::Install> Install(const std::vector<Uptane::Target>& updates);
+  std::future<result::Install> Install(const std::vector<Uptane::Target>& updates, UpdateType = UpdateType::kOnline);
 
 #ifdef BUILD_OFFLINE_UPDATES
   /**
@@ -246,18 +246,6 @@ class Aktualizr {
    * Counterpart of CheckUpdates() for the offline-update case.
    */
   std::future<result::UpdateCheck> CheckUpdatesOffline(const boost::filesystem::path& source_path);
-
-  /**
-   * TODO: [OFFUPD] Explain.
-   * Counterpart of Download() for the offline-update case.
-   */
-  std::future<result::Download> FetchImagesOffline(const std::vector<Uptane::Target>& updates);
-
-  /**
-   * TODO: [OFFUPD] Explain.
-   * Counterpart of Install() for the offline-update case.
-   */
-  std::future<result::Install> InstallOffline(const std::vector<Uptane::Target>& updates);
 
 #endif
 

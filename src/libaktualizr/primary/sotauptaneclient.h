@@ -95,8 +95,6 @@ class SotaUptaneClient {
 
 #ifdef BUILD_OFFLINE_UPDATES
   result::UpdateCheck fetchMetaOffUpd(const boost::filesystem::path &source_path);
-  result::Download fetchImagesOffUpd(const std::vector<Uptane::Target> &targets);
-  result::Install uptaneInstallOffUpd(const std::vector<Uptane::Target> &updates);
 #endif
 
  private:

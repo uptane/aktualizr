@@ -291,7 +291,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
           state_ = UpdateCycleState::kIdle;
           break;
         }
-        op_download_ = FetchImagesOffline(update_result.updates);
+        op_download_ = Download(update_result.updates, UpdateType::kOffline);
         state_ = UpdateCycleState::kFetchingImagesOffline;
         break;
       }
@@ -301,7 +301,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
           state_ = UpdateCycleState::kIdle;
           break;
         }
-        op_install_ = InstallOffline(download_result.updates);
+        op_install_ = Install(download_result.updates, UpdateType::kOffline);
         state_ = UpdateCycleState::kInstallingOffline;
         break;
       }
@@ -409,13 +409,15 @@ std::future<result::UpdateCheck> Aktualizr::CheckUpdates() {
   return api_queue_->enqueue(std::move(task));
 }
 
-std::future<result::Download> Aktualizr::Download(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Download()> task([this, updates]() { return uptane_client_->downloadImages(updates); });
+std::future<result::Download> Aktualizr::Download(const std::vector<Uptane::Target> &updates, UpdateType update_type) {
+  std::function<result::Download()> task(
+      [this, updates, update_type]() { return uptane_client_->downloadImages(updates, update_type); });
   return api_queue_->enqueue(std::move(task));
 }
 
-std::future<result::Install> Aktualizr::Install(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstall(updates); });
+std::future<result::Install> Aktualizr::Install(const std::vector<Uptane::Target> &updates, UpdateType update_type) {
+  std::function<result::Install()> task(
+      [this, updates, update_type] { return uptane_client_->uptaneInstall(updates, update_type); });
   return api_queue_->enqueue(std::move(task));
 }
 
@@ -513,13 +515,4 @@ std::future<result::UpdateCheck> Aktualizr::CheckUpdatesOffline(const boost::fil
   return api_queue_->enqueue(std::move(task));
 }
 
-std::future<result::Download> Aktualizr::FetchImagesOffline(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Download()> task([this, updates]() { return uptane_client_->fetchImagesOffUpd(updates); });
-  return api_queue_->enqueue(std::move(task));
-}
-
-std::future<result::Install> Aktualizr::InstallOffline(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Install()> task([this, updates] { return uptane_client_->uptaneInstallOffUpd(updates); });
-  return api_queue_->enqueue(std::move(task));
-}
 #endif
