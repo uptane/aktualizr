@@ -781,9 +781,12 @@ void SotaUptaneClient::reportResume() {
 
 std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Target &target, UpdateType utype) {
   auto correlation_id = director_repo.getCorrelationId();
-  // send an event for all ECUs that are touched by this target
-  for (const auto &ecu : target.ecus()) {
-    report_queue->enqueue(std_::make_unique<EcuDownloadStartedReport>(ecu.first, correlation_id));
+  // Send an event for all ECUs that are touched by this target. Don't report
+  // this to the server for offline updates, since that would create confusion
+  if (utype == UpdateType::kOnline) {
+    for (const auto &ecu : target.ecus()) {
+      report_queue->enqueue(std_::make_unique<EcuDownloadStartedReport>(ecu.first, correlation_id));
+    }
   }
 
   // Note: handle exceptions from here so that we can send reports and
@@ -842,8 +845,10 @@ std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Ta
 
   // send this asynchronously before `sendEvent`, so that the report timestamp
   // would not be delayed by callbacks on events
-  for (const auto &ecu : target.ecus()) {
-    report_queue->enqueue(std_::make_unique<EcuDownloadCompletedReport>(ecu.first, correlation_id, success));
+  if (utype == UpdateType::kOnline) {
+    for (const auto &ecu : target.ecus()) {
+      report_queue->enqueue(std_::make_unique<EcuDownloadCompletedReport>(ecu.first, correlation_id, success));
+    }
   }
 
   sendEvent<event::DownloadTargetComplete>(target, success);
