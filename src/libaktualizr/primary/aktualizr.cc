@@ -103,10 +103,10 @@ std::ostream &operator<<(std::ostream &os, Aktualizr::UpdateCycleState state) {
     case Aktualizr::UpdateCycleState::kInstallingOffline:
       os << "InstallingOffline";
       break;
+#endif  // BUILD_OFFLINE_UPDATES
     case Aktualizr::UpdateCycleState::kAwaitReboot:
       os << "AwaitReboot";
       break;
-#endif  // BUILD_OFFLINE_UPDATES
     default:
       os << "Unknown(" << static_cast<int>(state) << ")";
       break;
