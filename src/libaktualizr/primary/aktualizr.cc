@@ -225,7 +225,14 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
       case UpdateCycleState::kSendingManifest:
         if (op_bool_.wait_until(next_offline_poll_) == std::future_status::ready) {
           next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
-          state_ = UpdateCycleState::kIdle;
+          try {
+            op_bool_.get();
+            state_ = UpdateCycleState::kIdle;
+          } catch (SotaUptaneClient::ProvisioningFailed &) {
+            LOG_INFO << "Didn't put manifest to server because the device was not able to provision";
+            // We can get to this state when doing an offline update
+            state_ = UpdateCycleState::kUnprovisioned;
+          }
         }
         break;
       case UpdateCycleState::kCheckingForUpdates:
@@ -259,7 +266,10 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
               // If the download failed, inform the backend immediately.
               op_bool_ = SendManifest();
               state_ = UpdateCycleState::kSendingManifest;
+              break;
             }
+            next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+            state_ = UpdateCycleState::kIdle;
             break;
           }
           op_install_ = Install(download_result.updates);
@@ -277,10 +287,10 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
             // as soon as possible, don't wait for config_.uptane.polling_sec
             op_bool_ = SendManifest();
             state_ = UpdateCycleState::kSendingManifest;
-          } else {
-            next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
-            state_ = UpdateCycleState::kIdle;
+            break;
           }
+          next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+          state_ = UpdateCycleState::kIdle;
         }
         break;
 #ifdef BUILD_OFFLINE_UPDATES
@@ -291,6 +301,11 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
           state_ = UpdateCycleState::kIdle;
           break;
         }
+        if (update_result.status == result::UpdateStatus::kError) {
+          op_bool_ = SendManifest();
+          state_ = UpdateCycleState::kSendingManifest;
+          break;
+        }
         op_download_ = Download(update_result.updates, UpdateType::kOffline);
         state_ = UpdateCycleState::kFetchingImagesOffline;
         break;
@@ -298,6 +313,11 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
       case UpdateCycleState::kFetchingImagesOffline: {
         result::Download const download_result = op_download_.get();
         if (download_result.status != result::DownloadStatus::kSuccess || download_result.updates.empty()) {
+          if (download_result.status != result::DownloadStatus::kNothingToDownload) {
+            op_bool_ = SendManifest();
+            state_ = UpdateCycleState::kSendingManifest;
+            break;
+          }
           state_ = UpdateCycleState::kIdle;
           break;
         }
@@ -309,12 +329,24 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
         result::Install const install_result = op_install_.get();
         if (uptane_client_->isInstallCompletionRequired()) {
           state_ = UpdateCycleState::kAwaitReboot;
+          // In this case the manifest will be sent by SotaUptaneClient::finalizeAfterReboot()
+          // after the restart
           break;
         }
-        // If we have already provisioned/send device data, then this will repeat those steps. However provisioning is
-        // cheap if it has already completed, and so all that happens is we send device data again. That does not seem
-        // like two big a cost to simplify the logic, give that we've installed an entire update to get here.
-        state_ = UpdateCycleState::kUnprovisioned;
+        // Even though this is an offline update, tell the server about it. After
+        // an online update no manifest is sent if hasPendingUpdates() is set.
+        // However:
+        //  - There is no operation to update the pending status of secondaries
+        //    without a reboot
+        //  - Even though sending is skipped now, the manifest will be sent anyway
+        //    after the next polling interval.
+        //  - isInstallCompletionRequired implies hasPendingUpdates but not vice-versa
+        //    because the former requires the primary to be pending whereas hasPendingUpdates
+        //    is true if any ecu is pending. I'm not aware of any system that can get into this
+        //    state.
+        // Kick off a manifest send now anyway
+        op_bool_ = SendManifest();
+        state_ = UpdateCycleState::kSendingManifest;
         break;
       }
 #endif  // BUILD_OFFLINE_UPDATES
