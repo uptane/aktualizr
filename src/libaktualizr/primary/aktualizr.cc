@@ -207,9 +207,13 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
         break;
       case UpdateCycleState::kIdle:
         if (next_online_poll_ <= now) {
+          next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
+          if (!config_.uptane.enable_online_updates) {
+            state_ = UpdateCycleState::kIdle;
+            break;
+          }
           op_update_check_ = CheckUpdates();
           state_ = UpdateCycleState::kCheckingForUpdates;
-          next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
         } else {
           // Idle
           std::unique_lock<std::mutex> guard{exit_cond_.m};
@@ -238,6 +242,8 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
       case UpdateCycleState::kCheckingForUpdates:
         if (op_update_check_.wait_until(next_offline_poll_) == std::future_status::ready) {
           result::UpdateCheck const update_result = op_update_check_.get();
+          // Note this needs to be here because UpdateEvents::processUpdateCheckComplete()
+          // sets and clears this flag based on UpdateLock checking for /run/lock/aktualizr-lock
           if (updates_disabled_) {
             next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
             state_ = UpdateCycleState::kIdle;
