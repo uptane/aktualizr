@@ -65,33 +65,6 @@ static const std::map<std::string, std::function<std::string(const event::BaseEv
      }},
 };
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-UpdateEvents *UpdateEvents::instance = nullptr;
-
-UpdateEvents *UpdateEvents::getInstance(Aktualizr *a) {
-  if (instance == nullptr) {
-    instance = new UpdateEvents(a);
-  }
-  return instance;
-}
-
-void UpdateEvents::processAllInstallsComplete() {
-  LOG_INFO << "Update install completed. Releasing the update lock...";
-  lock.free();
-}
-
-void UpdateEvents::processUpdateCheckComplete(result::UpdateStatus status) {
-  lock.free();
-  if (status == result::UpdateStatus::kUpdatesAvailable) {
-    LOG_INFO << "Update available. Acquiring the update lock...";
-    if (!lock.try_get()) {
-      aktualizr->DisableUpdates(true);
-    } else {
-      aktualizr->DisableUpdates(false);
-    }
-  }
-}
-
 void UpdateEvents::processEvent(const std::shared_ptr<event::BaseEvent> &event) {
   auto extra = extra_logs_map.find(event->variant);
   if (extra == extra_logs_map.end()) {
@@ -99,14 +72,5 @@ void UpdateEvents::processEvent(const std::shared_ptr<event::BaseEvent> &event) 
   } else {
     // Display extra information for some events.
     LOG_INFO << "Event: " << event->variant << ", " << extra->second(event.get());
-  }
-
-  UpdateEvents *e = getInstance(nullptr);
-
-  if (event->variant == event::UpdateCheckComplete::TypeName) {
-    const auto *update_event = dynamic_cast<event::UpdateCheckComplete *>(event.get());
-    e->processUpdateCheckComplete(update_event->result.status);
-  } else if (event->variant == event::AllInstallsComplete::TypeName) {
-    e->processAllInstallsComplete();
   }
 }

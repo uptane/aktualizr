@@ -139,7 +139,6 @@ int main(int argc, char *argv[]) {
 
     Aktualizr aktualizr(config);
 #ifdef TORIZON
-    (void)UpdateEvents::getInstance(&aktualizr);
     std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = UpdateEvents::processEvent;
 #else
     std::function<void(std::shared_ptr<event::BaseEvent> event)> f_cb = processEvent;

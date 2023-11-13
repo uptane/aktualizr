@@ -4,7 +4,8 @@ set(SOURCES aktualizr.cc
             reportqueue.cc
             secondary_install_job.cc
             secondary_provider.cc
-            sotauptaneclient.cc)
+            sotauptaneclient.cc
+            update_lock_file.cc)
 
 set(HEADERS aktualizr_helpers.h
             provisioner.h
@@ -12,7 +13,8 @@ set(HEADERS aktualizr_helpers.h
             secondary_config.h
             secondary_install_job.h
             secondary_provider_builder.h
-            sotauptaneclient.h)
+            sotauptaneclient.h
+            update_lock_file.h)
 
 add_library(primary OBJECT ${SOURCES})
 
@@ -114,5 +116,14 @@ set_tests_properties(test_uptane_key PROPERTIES LABELS "crypto")
 add_aktualizr_test(NAME director_offline
                    SOURCES director_offline_test.cc
                    ARGS ${PROJECT_SOURCE_DIR}/tests/test_data/offline1)
+
+add_aktualizr_test(NAME update_lock_file
+                   SOURCES update_lock_file_test.cc)
+
+add_aktualizr_test(NAME aktualizr_update_lock
+                   SOURCES aktualizr_update_lock_test.cc
+                   PROJECT_WORKING_DIRECTORY
+                   ARGS "$<TARGET_FILE:uptane-generator>"
+                   LIBRARIES uptane_generator_lib virtual_secondary)
 
 aktualizr_source_file_checks(${SOURCES} ${HEADERS} ${TEST_SOURCES})

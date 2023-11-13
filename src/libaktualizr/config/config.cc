@@ -97,6 +97,7 @@ void UptaneConfig::updateFromPropertyTree(const boost::property_tree::ptree& pt)
   CopyFromConfig(enable_online_updates, "enable_online_updates", pt);
   CopyFromConfig(enable_offline_updates, "enable_offline_updates", pt);
   CopyFromConfig(offline_updates_source, "offline_updates_source", pt);
+  CopyFromConfig(update_lock_file, "update_lock_file", pt);
 }
 
 void UptaneConfig::writeToStream(std::ostream& out_stream) const {
@@ -111,6 +112,7 @@ void UptaneConfig::writeToStream(std::ostream& out_stream) const {
   writeOption(out_stream, enable_online_updates, "enable_online_updates");
   writeOption(out_stream, enable_offline_updates, "enable_offline_updates");
   writeOption(out_stream, offline_updates_source, "offline_updates_source");
+  writeOption(out_stream, update_lock_file, "update_lock_file");
 }
 
 /**

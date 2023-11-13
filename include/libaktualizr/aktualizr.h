@@ -9,6 +9,7 @@
 #include "libaktualizr/config.h"
 #include "libaktualizr/events.h"
 #include "libaktualizr/secondaryinterface.h"
+#include "primary/update_lock_file.h"
 
 class SotaUptaneClient;
 class INvStorage;
@@ -484,6 +485,7 @@ class Aktualizr {
   std::unique_ptr<api::CommandQueue> api_queue_;
 
   bool updates_disabled_;
+  UpdateLockFile update_lock_file_;
 };
 
 #endif  // AKTUALIZR_H_

@@ -7,6 +7,7 @@
 #include "libaktualizr/aktualizr.h"
 #include "libaktualizr/events.h"
 #include "primary/sotauptaneclient.h"
+#include "primary/update_lock_file.h"
 #include "utilities/apiqueue.h"
 #include "utilities/timer.h"
 
@@ -21,7 +22,10 @@ Aktualizr::Aktualizr(const Config &config)
 
 Aktualizr::Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in,
                      const std::shared_ptr<HttpInterface> &http_in)
-    : config_{std::move(config)}, sig_{new event::Channel()}, api_queue_{new api::CommandQueue()} {
+    : config_{std::move(config)},
+      sig_{new event::Channel()},
+      api_queue_{new api::CommandQueue()},
+      update_lock_file_{config_.uptane.update_lock_file} {
   if (sodium_init() == -1) {  // Note that sodium_init doesn't require a matching 'sodium_deinit'
     throw std::runtime_error("Unable to initialize libsodium");
   }
@@ -176,6 +180,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
     // LOG_TRACE << "State is:" << state_ << " run mode:" << static_cast<int>(exit_cond_.get());
     switch (state_) {
       case UpdateCycleState::kUnprovisioned:
+        update_lock_file_.UpdateComplete();
         if (next_online_poll_ <= now && !op_bool_.valid()) {
           op_bool_ = AttemptProvision();
         } else if (op_bool_.valid() && op_bool_.wait_until(next_offline_poll_) == std::future_status::ready) {
@@ -206,6 +211,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
         }
         break;
       case UpdateCycleState::kIdle:
+        update_lock_file_.UpdateComplete();
         if (next_online_poll_ <= now) {
           next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
           if (!config_.uptane.enable_online_updates) {
@@ -242,9 +248,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
       case UpdateCycleState::kCheckingForUpdates:
         if (op_update_check_.wait_until(next_offline_poll_) == std::future_status::ready) {
           result::UpdateCheck const update_result = op_update_check_.get();
-          // Note this needs to be here because UpdateEvents::processUpdateCheckComplete()
-          // sets and clears this flag based on UpdateLock checking for /run/lock/aktualizr-lock
-          if (updates_disabled_) {
+          if (updates_disabled_ || update_lock_file_.ShouldUpdate() == UpdateLockFile::kNoUpdate) {
             next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
             state_ = UpdateCycleState::kIdle;
             break;
@@ -302,7 +306,8 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
 #ifdef BUILD_OFFLINE_UPDATES
       case UpdateCycleState::kCheckingForUpdatesOffline: {
         result::UpdateCheck const update_result = op_update_check_.get();  // No need to timeout
-        if (update_result.updates.empty() || updates_disabled_) {
+        if (update_result.updates.empty() || updates_disabled_ ||
+            update_lock_file_.ShouldUpdate() == UpdateLockFile::kNoUpdate) {
           next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
           state_ = UpdateCycleState::kIdle;
           break;

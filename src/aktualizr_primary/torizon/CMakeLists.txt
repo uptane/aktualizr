@@ -1,6 +1,6 @@
-set(SOURCES device_data_proxy.cc update_events.cc update_lock.cc)
+set(SOURCES device_data_proxy.cc update_events.cc)
 
-set(HEADERS device_data_proxy.h update_events.h update_lock.h)
+set(HEADERS device_data_proxy.h update_events.h)
 
 set(TARGET torizon_primary_extra)
 

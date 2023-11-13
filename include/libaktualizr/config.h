@@ -63,6 +63,12 @@ struct ProvisionConfig {
   void writeToStream(std::ostream& out_stream) const;
 };
 
+#ifdef TORIZON
+#define UPDATE_LOCK_FILE_DEFAULT "/run/lock/aktualizr-lock"
+#else
+#define UPDATE_LOCK_FILE_DEFAULT ""
+#endif
+
 struct UptaneConfig {
   uint64_t polling_sec{10U};
   std::string director_server;
@@ -76,6 +82,7 @@ struct UptaneConfig {
   bool enable_offline_updates{false};
   // TODO: [OFFUPD] This might be removed after the MVP.
   boost::filesystem::path offline_updates_source{"/mnt/offline-updates/"};
+  boost::filesystem::path update_lock_file{UPDATE_LOCK_FILE_DEFAULT};
 
   void updateFromPropertyTree(const boost::property_tree::ptree& pt);
   void writeToStream(std::ostream& out_stream) const;
