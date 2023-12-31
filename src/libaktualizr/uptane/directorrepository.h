@@ -45,13 +45,8 @@ class DirectorRepository : public RepositoryCommon {
   void resetMeta();
   void checkTargetsExpired(UpdateType utype);
   void targetsSanityCheck(UpdateType utype);
-  bool usePreviousTargets() const;
 
-  // Since the Director can send us an empty targets list to mean "no new
-  // updates", we have to persist the previous targets list. Use the latest for
-  // checking expiration but the most recent non-empty list for everything else.
-  Uptane::Targets targets;         // Only empty if we've never received non-empty targets.
-  Uptane::Targets latest_targets;  // Can be an empty list.
+  Uptane::Targets targets;
   /**
    * The correlation id of the currently running update.
    * This is set when the targets are first downloaded from the server, and

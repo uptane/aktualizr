@@ -17,7 +17,7 @@ TEST(Director, EmptyTargets) {
   TemporaryDirectory meta_dir;
 
   Process uptane_gen(uptane_generator_path.string());
-  uptane_gen.run({"generate", "--path", meta_dir.PathString()});
+  uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "cid1"});
 
   DirectorRepository director;
   EXPECT_NO_THROW(director.initRoot(Uptane::RepositoryType(Uptane::RepositoryType::DIRECTOR),
@@ -25,7 +25,6 @@ TEST(Director, EmptyTargets) {
 
   EXPECT_NO_THROW(director.verifyTargets(Utils::readFile(meta_dir.Path() / "repo/director/targets.json")));
   EXPECT_TRUE(director.targets.targets.empty());
-  EXPECT_TRUE(director.latest_targets.targets.empty());
 
   uptane_gen.run({"image", "--path", meta_dir.PathString(), "--filename", "tests/test_data/firmware.txt",
                   "--targetname", "firmware.txt", "--hwid", "primary_hw"});
@@ -36,15 +35,14 @@ TEST(Director, EmptyTargets) {
   EXPECT_NO_THROW(director.verifyTargets(Utils::readFile(meta_dir.Path() / "repo/director/targets.json")));
   EXPECT_EQ(director.targets.targets.size(), 1);
   EXPECT_EQ(director.targets.targets[0].filename(), "firmware.txt");
-  EXPECT_EQ(director.targets.targets.size(), director.latest_targets.targets.size());
+  EXPECT_EQ(director.getCorrelationId(), "cid1");
 
-  uptane_gen.run({"emptytargets", "--path", meta_dir.PathString()});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+  uptane_gen.run({"emptytargets", "--path", meta_dir.PathString(), "--correlationid", "cid2"});
+  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
 
   EXPECT_NO_THROW(director.verifyTargets(Utils::readFile(meta_dir.Path() / "repo/director/targets.json")));
-  EXPECT_EQ(director.targets.targets.size(), 1);
-  EXPECT_EQ(director.targets.targets[0].filename(), "firmware.txt");
-  EXPECT_TRUE(director.latest_targets.targets.empty());
+  EXPECT_TRUE(director.targets.targets.empty());
+  EXPECT_EQ(director.getCorrelationId(), "cid2");
 }
 
 }  // namespace Uptane

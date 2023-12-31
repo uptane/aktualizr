@@ -49,21 +49,48 @@ TEST(VirtualSecondary, RootRotation) {
   UptaneRepo uptane_repo{meta_dir.PathString(), "", ""};
   uptane_repo.generateRepo(KeyType::kED25519);
   uptane_repo.addImage("tests/test_data/firmware.txt", "firmware.txt", "secondary_hw");
+
+  const std::string hwid = "primary_hw";
+
+  Utils::writeFile(meta_dir / "fake_meta/primary_firmware.txt", std::string("asdf"));
+  uptane_repo.addImage(meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid);
+  Utils::writeFile(meta_dir / "fake_meta/primary_firmware2.txt", std::string("asdf"));
+  uptane_repo.addImage(meta_dir / "fake_meta/primary_firmware2.txt", "primary_firmware2.txt", hwid);
+
+  result::UpdateCheck update_result;
+  result::Download download_result;
+  result::Install install_result;
+
+  uptane_repo.emptyTargets();
   uptane_repo.addTarget("firmware.txt", "secondary_hw", "secondary_ecu_serial");
   uptane_repo.signTargets();
 
-  result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
+  update_result = aktualizr.CheckUpdates().get();
   EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
-  result::Download download_result = aktualizr.Download(update_result.updates).get();
+  download_result = aktualizr.Download(update_result.updates).get();
   ASSERT_EQ(download_result.status, result::DownloadStatus::kSuccess);
-  result::Install install_result = aktualizr.Install(download_result.updates).get();
+  install_result = aktualizr.Install(download_result.updates).get();
   EXPECT_TRUE(install_result.dev_report.success);
 
   uptane_repo.rotate(Uptane::RepositoryType::Director(), Uptane::Role::Root(), KeyType::kED25519);
   uptane_repo.rotate(Uptane::RepositoryType::Director(), Uptane::Role::Root(), KeyType::kED25519);
-  uptane_repo.emptyTargets();
+
   uptane_repo.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "secondary_hw");
+  uptane_repo.addImage("tests/test_data/firmware.txt", "firmware2.txt", "secondary_hw");
+
+  uptane_repo.emptyTargets();
   uptane_repo.addTarget("firmware_name.txt", "secondary_hw", "secondary_ecu_serial");
+  uptane_repo.signTargets();
+
+  update_result = aktualizr.CheckUpdates().get();
+  EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
+  download_result = aktualizr.Download(update_result.updates).get();
+  ASSERT_EQ(download_result.status, result::DownloadStatus::kSuccess);
+  install_result = aktualizr.Install(download_result.updates).get();
+  EXPECT_TRUE(install_result.dev_report.success);
+
+  uptane_repo.emptyTargets();
+  uptane_repo.addTarget("primary_firmware.txt", hwid, "CA:FE:A6:D2:84:9D");
   uptane_repo.signTargets();
 
   update_result = aktualizr.CheckUpdates().get();
@@ -75,8 +102,8 @@ TEST(VirtualSecondary, RootRotation) {
 
   uptane_repo.rotate(Uptane::RepositoryType::Image(), Uptane::Role::Root(), KeyType::kED25519);
   uptane_repo.rotate(Uptane::RepositoryType::Image(), Uptane::Role::Root(), KeyType::kED25519);
+
   uptane_repo.emptyTargets();
-  uptane_repo.addImage("tests/test_data/firmware.txt", "firmware2.txt", "secondary_hw");
   uptane_repo.addTarget("firmware2.txt", "secondary_hw", "secondary_ecu_serial");
   uptane_repo.signTargets();
 

@@ -29,8 +29,10 @@ class HttpRejectEmptyCorrId : public HttpFake {
 };
 
 /*
- * Verify that we can successfully install an update after receiving
- * subsequent Targets metadata that is empty.
+ * If we have downloaded an update, and the server decides to empty the
+ * director targets, then don't try and carry on the update. This is a change
+ * from previous behaviour, where we tried to persist the old targets (at least
+ * up until a reboot).
  */
 TEST(Aktualizr, EmptyTargets) {
   TemporaryDirectory temp_dir;
@@ -41,55 +43,28 @@ TEST(Aktualizr, EmptyTargets) {
   logger_set_threshold(boost::log::trivial::trace);
 
   Process uptane_gen(uptane_generator_path.string());
-  uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+  uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "cid1"});
   uptane_gen.run({"image", "--path", meta_dir.PathString(), "--filename", "tests/test_data/firmware.txt",
                   "--targetname", "firmware.txt", "--hwid", "primary_hw"});
   uptane_gen.run({"addtarget", "--path", meta_dir.PathString(), "--targetname", "firmware.txt", "--hwid", "primary_hw",
                   "--serial", "CA:FE:A6:D2:84:9D"});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
 
   auto storage = INvStorage::newStorage(conf.storage);
-  {
-    UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
-    aktualizr.Initialize();
+  UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
+  aktualizr.Initialize();
 
-    result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
-    EXPECT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
+  result::UpdateCheck update_result = aktualizr.CheckUpdates().get();
+  ASSERT_EQ(update_result.status, result::UpdateStatus::kUpdatesAvailable);
 
-    result::Download download_result = aktualizr.Download(update_result.updates).get();
-    EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
+  result::Download download_result = aktualizr.Download(update_result.updates).get();
+  EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
 
-    uptane_gen.run({"emptytargets", "--path", meta_dir.PathString()});
-    uptane_gen.run({"signtargets", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+  uptane_gen.run({"emptytargets", "--path", meta_dir.PathString()});
+  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
 
-    result::UpdateCheck update_result2 = aktualizr.CheckUpdates().get();
-    EXPECT_EQ(update_result2.status, result::UpdateStatus::kUpdatesAvailable);
-
-    result::Install install_result = aktualizr.Install(update_result2.updates).get();
-    ASSERT_EQ(install_result.ecu_reports.size(), 1);
-    EXPECT_EQ(install_result.ecu_reports[0].install_res.result_code.num_code,
-              data::ResultCode::Numeric::kNeedCompletion);
-
-    aktualizr.uptane_client()->package_manager_->completeInstall();
-  }
-  {
-    UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
-    aktualizr.Initialize();
-
-    const Json::Value manifest = http->last_manifest["signed"];
-    const Json::Value manifest_versions = manifest["ecu_version_manifests"];
-
-    EXPECT_EQ(manifest["installation_report"]["report"]["items"].size(), 1);
-    EXPECT_EQ(manifest["installation_report"]["report"]["items"][0]["ecu"].asString(), "CA:FE:A6:D2:84:9D");
-    EXPECT_TRUE(manifest["installation_report"]["report"]["items"][0]["result"]["success"].asBool());
-
-    EXPECT_EQ(manifest_versions["CA:FE:A6:D2:84:9D"]["signed"]["installed_image"]["filepath"].asString(),
-              "firmware.txt");
-    EXPECT_EQ(manifest_versions["CA:FE:A6:D2:84:9D"]["signed"]["installed_image"]["fileinfo"]["length"].asUInt(), 17);
-
-    result::UpdateCheck update_result3 = aktualizr.CheckUpdates().get();
-    EXPECT_EQ(update_result3.status, result::UpdateStatus::kNoUpdatesAvailable);
-  }
+  result::UpdateCheck update_result2 = aktualizr.CheckUpdates().get();
+  EXPECT_EQ(update_result2.status, result::UpdateStatus::kNoUpdatesAvailable);
 }
 
 /* Check that Aktualizr switches back to empty targets after failing to verify

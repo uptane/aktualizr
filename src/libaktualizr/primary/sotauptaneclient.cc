@@ -924,8 +924,6 @@ void SotaUptaneClient::sendDeviceData() {
 result::UpdateCheck SotaUptaneClient::fetchMeta() {
   requiresProvision();
 
-  result::UpdateCheck result;
-
   reportNetworkInfo();
 
   if (hasPendingUpdates()) {
@@ -938,23 +936,19 @@ result::UpdateCheck SotaUptaneClient::fetchMeta() {
     // if there are still some pending updates just return, don't check for new updates
     // no need in update checking if there are some pending updates
     LOG_INFO << "An update is pending. Skipping check for update until installation is complete.";
-    return result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue,
-                               "There are pending updates, no new updates are checked");
+    return {{}, 0, result::UpdateStatus::kError, "There are pending updates, no new updates are checked"};
   }
 
   // Uptane step 1 (build the vehicle version manifest):
   if (!putManifestSimple()) {
     LOG_ERROR << "Error sending manifest!";
   }
-  result = checkUpdates();
+  auto result = checkUpdates();
   sendEvent<event::UpdateCheckComplete>(result);
-
   return result;
 }
 
 result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
-  result::UpdateCheck result;
-
   std::vector<Uptane::Target> updates;
   unsigned int ecus_count = 0;
   try {
@@ -967,32 +961,15 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
           data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Could not update metadata"));
     }
     last_exception = std::current_exception();
-    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
-    return result;
+    return {{}, 0, result::UpdateStatus::kError, "Could not update metadata."};
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
-    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
-    return result;
-  }
-
-  std::string director_targets;
-  if (utype == UpdateType::kOnline &&
-      !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets())) {
-    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update metadata.");
-    return result;
-  } else if (utype == UpdateType::kOffline &&
-             !storage->loadNonRoot(&director_targets, Uptane::RepositoryType::Director(),
-                                   Uptane::Role::OfflineUpdates())) {
-    result =
-        result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue, "Could not update offline metadata.");
-    return result;
+    return {{}, 0, result::UpdateStatus::kError, "Could not update metadata."};
   }
 
   if (updates.empty()) {
     LOG_DEBUG << "No new updates found in Uptane metadata.";
-    result =
-        result::UpdateCheck({}, 0, result::UpdateStatus::kNoUpdatesAvailable, Utils::parseJSON(director_targets), "");
-    return result;
+    return {{}, 0, result::UpdateStatus::kNoUpdatesAvailable, ""};
   }
 
   // 5.4.4.2.10.: Verify that Targets metadata from the Director and Image
@@ -1020,21 +997,17 @@ result::UpdateCheck SotaUptaneClient::checkUpdates(UpdateType utype) {
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
     LOG_ERROR << e.what();
-    result = result::UpdateCheck({}, 0, result::UpdateStatus::kError, Utils::parseJSON(director_targets),
-                                 "Target mismatch.");
     storeInstallationFailure(
         data::InstallationResult(data::ResultCode::Numeric::kVerificationFailed, "Metadata verification failed."));
-    return result;
+    return {{}, 0, result::UpdateStatus::kError, "Target mismatch."};
   }
 
-  result = result::UpdateCheck(updates, ecus_count, result::UpdateStatus::kUpdatesAvailable,
-                               Utils::parseJSON(director_targets), "");
   if (updates.size() == 1) {
     LOG_INFO << "1 new update found in both Director and Image repo metadata.";
   } else {
     LOG_INFO << updates.size() << " new updates found in both Director and Image repo metadata.";
   }
-  return result;
+  return {updates, ecus_count, result::UpdateStatus::kUpdatesAvailable, ""};
 }
 
 result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Uptane::Target> &targets,
@@ -1760,8 +1733,7 @@ result::UpdateCheck SotaUptaneClient::fetchMetaOffUpd(const boost::filesystem::p
     // if there are still some pending updates just return, don't check for new updates
     // no need in update checking if there are some pending updates
     LOG_INFO << "An update is pending. Skipping check for update until installation is complete.";
-    return result::UpdateCheck({}, 0, result::UpdateStatus::kError, Json::nullValue,
-                               "There are pending updates, no new updates are checked");
+    return {{}, 0, result::UpdateStatus::kError, "There are pending updates, no new updates are checked"};
   }
 
   // // Uptane step 1 (build the vehicle version manifest):
