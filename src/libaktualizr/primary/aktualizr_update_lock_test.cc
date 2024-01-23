@@ -31,7 +31,7 @@ TEST(AktualizrUpdateLock, DisableUsingLock) {
   auto storage = INvStorage::newStorage(conf.storage);
   UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http);
 
-  int const fd = open(lock_file.c_str(), O_CREAT | O_RDWR);
+  int const fd = open(lock_file.c_str(), O_CREAT | O_RDWR, 0666);
   ASSERT_GE(fd, 0) << "Open lock file failed:" << strerror(errno);
   int const lock_res = flock(fd, LOCK_EX);
   ASSERT_EQ(lock_res, 0) << "flock failed:" << strerror(errno);
