@@ -18,14 +18,15 @@ Provisioner::Provisioner(const ProvisionConfig& config, shared_ptr<INvStorage> s
                          shared_ptr<HttpInterface> http_client, shared_ptr<KeyManager> key_manager,
                          const map<Uptane::EcuSerial, shared_ptr<SecondaryInterface>>& secondaries)
     : config_(config),
-      storage_(move(storage)),
-      http_client_(move(http_client)),
-      key_manager_(move(key_manager)),
+      storage_(std::move(storage)),
+      http_client_(std::move(http_client)),
+      key_manager_(std::move(key_manager)),
       secondaries_(secondaries) {}
 
 void Provisioner::SecondariesWereChanged() { current_state_ = State::kUnknown; }
 
 void Provisioner::Prepare() {
+  key_manager_->copyCertsToCurl(*http_client_);
   initEcuSerials();
   initSecondaryInfo();
 }
@@ -155,16 +156,11 @@ std::string Provisioner::DeviceId() {
   return device_id_;
 }
 
-bool Provisioner::loadSetTlsCreds() {
-  key_manager_->copyCertsToCurl(*http_client_);
-  return key_manager_->isOk();
-}
-
 // Postcondition:
 //  - TLS credentials are in the storage
 //  - This device_id is provisioned on the device gateway
 void Provisioner::initTlsCreds() {
-  if (loadSetTlsCreds()) {
+  if (key_manager_->copyCertsToCurl(*http_client_)) {
     return;
   }
 
@@ -212,7 +208,7 @@ void Provisioner::initTlsCreds() {
   storage_->storeTlsCreds(ca, cert, pkey);
 
   // Set provisioned (device) credentials.
-  if (!loadSetTlsCreds()) {
+  if (!key_manager_->copyCertsToCurl(*http_client_)) {
     throw Error("Failed to configure HTTP client with device credentials.");
   }
 

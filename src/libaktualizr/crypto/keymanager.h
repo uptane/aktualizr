@@ -16,11 +16,16 @@ class P11EngineGuard;
 
 class KeyManager {
  public:
-  // std::string RSAPSSSign(const std::string &message);
-  // Contains the logic from HttpClient::setCerts()
-  void copyCertsToCurl(HttpInterface &http) const;
   KeyManager(std::shared_ptr<INvStorage> backend, KeyManagerConfig config,
              const std::shared_ptr<P11EngineGuard> &p11 = nullptr);
+  /**
+   * Copy the TLS client certificate, private key and CA from the underlying
+   * storage (which will be either the sqlite database or a PKCS#11 engine)
+   * into HttpInterface
+   * @param http
+   * @return whether the keys and certs were present and copied successfully
+   */
+  bool copyCertsToCurl(HttpInterface &http) const;
   void loadKeys(const std::string *pkey_content = nullptr, const std::string *cert_content = nullptr,
                 const std::string *ca_content = nullptr);
   std::string getPkeyFile() const;
@@ -31,7 +36,6 @@ class KeyManager {
   std::string getCa() const;
   std::string getCN() const;
   void getCertInfo(std::string *subject, std::string *issuer, std::string *not_before, std::string *not_after) const;
-  bool isOk() const { return (!getPkey().empty() && !getCert().empty() && !getCa().empty()); }
   std::string generateUptaneKeyPair();
   KeyType getUptaneKeyType() const { return config_.uptane_key_type; }
   Json::Value signTuf(const Json::Value &in_data) const;

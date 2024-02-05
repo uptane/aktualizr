@@ -156,12 +156,6 @@ class Provisioner {
   void initTlsCreds();
 
   /**
-   * Update http_client_ with the TLS certs from key_manager_
-   * @return Whether the keys were available and loaded
-   */
-  bool loadSetTlsCreds();
-
-  /**
    * Registers the ECUs with the server.
    * Stores ECU information locally
    *

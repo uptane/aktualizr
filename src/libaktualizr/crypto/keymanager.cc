@@ -253,14 +253,16 @@ void KeyManager::getCertInfo(std::string *subject, std::string *issuer, std::str
   *not_after = std::string(na_buf, static_cast<size_t>(na_len));
 }
 
-void KeyManager::copyCertsToCurl(HttpInterface &http) const {
+bool KeyManager::copyCertsToCurl(HttpInterface &http) const {
   std::string pkey = getPkey();
   std::string cert = getCert();
   std::string ca = getCa();
 
-  if (!pkey.empty() && !cert.empty() && !ca.empty()) {
-    http.setCerts(ca, config_.tls_ca_source, cert, config_.tls_cert_source, pkey, config_.tls_pkey_source);
+  if (pkey.empty() || cert.empty() || ca.empty()) {
+    return false;
   }
+  http.setCerts(ca, config_.tls_ca_source, cert, config_.tls_cert_source, pkey, config_.tls_pkey_source);
+  return true;
 }
 
 Json::Value KeyManager::signTuf(const Json::Value &in_data) const {
