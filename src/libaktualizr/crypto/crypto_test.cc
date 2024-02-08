@@ -7,7 +7,8 @@
 
 #include <json/json.h>
 #include <boost/algorithm/hex.hpp>
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/path_traits.hpp>
 
 #include "crypto/crypto.h"
 #include "crypto/p11engine.h"
@@ -45,8 +46,21 @@ TEST(crypto, sign_verify_rsa_file) {
   PublicKey pkey(fs::path("tests/test_data/public.key"));
   std::string private_key = Utils::readFile("tests/test_data/priv.key");
   std::string signature = Utils::toBase64(Crypto::RSAPSSSign(NULL, private_key, text));
+  ASSERT_FALSE(signature.empty()) << "Signature is empty";
   bool signe_is_ok = pkey.VerifySignature(signature, text);
-  EXPECT_TRUE(signe_is_ok);
+  EXPECT_TRUE(signe_is_ok) << "Sig " << signature << " not ok";
+}
+
+TEST(crypto, VerifyNewSig) {
+  std::string text = "my message";
+  PublicKey pkey(fs::path("tests/test_data/public.key"));
+  std::string private_key = Utils::readFile("tests/test_data/priv.key");
+  // This code generated rsa_sig.sig originally
+  // auto s = Utils::toBase64(Crypto::RSAPSSSign(nullptr, private_key, text));
+  // ASSERT_FALSE(s.empty()) << "Signature is empty";
+  // Utils::writeFile("tests/test_data/rsa_sig.sig", s);
+  auto signature = Utils::readFile("tests/test_data/rsa_sig.sig");
+  EXPECT_TRUE(pkey.VerifySignature(signature, text)) << "Sig " << signature << " not ok";
 }
 
 #ifdef BUILD_P11
@@ -166,7 +180,7 @@ TEST(crypto, parsep12) {
   }
   StructGuard<BIO> p12src(BIO_new(BIO_s_file()), BIO_vfree);
   BIO_set_fp(p12src.get(), p12file, BIO_CLOSE);
-  Crypto::parseP12(p12src.get(), "", &pkey, &cert, &ca);
+  ASSERT_TRUE(Crypto::parseP12(p12src.get(), "", &pkey, &cert, &ca));
   EXPECT_EQ(pkey,
             "-----BEGIN PRIVATE KEY-----\n"
             "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgRoQ43D8dREwDpt69\n"
