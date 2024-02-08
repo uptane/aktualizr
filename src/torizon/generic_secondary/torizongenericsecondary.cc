@@ -394,7 +394,7 @@ const TorizonGenericSecondary::VarMap& TorizonGenericSecondary::getSharedVars(bo
   if (!update) {
     return shared_vars_;
   }
-  shared_vars_.empty();
+  shared_vars_.clear();
   shared_vars_["SECONDARY_INTERFACE_MAJOR"] = std::to_string(CURRENT_INTERFACE_MAJOR);
   shared_vars_["SECONDARY_INTERFACE_MINOR"] = std::to_string(CURRENT_INTERFACE_MINOR);
   shared_vars_["SECONDARY_FIRMWARE_PATH"] = config_.firmware_path.string();
