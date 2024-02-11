@@ -302,8 +302,8 @@ else()
     message(WARNING "shellcheck not found, skipping")
 endif()
 
-# Use C++11, but without GNU or other extensions
-set(CMAKE_CXX_STANDARD 11)
+# Use C++17, but without GNU or other extensions
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Export compile_commands.json for clang-tidy
