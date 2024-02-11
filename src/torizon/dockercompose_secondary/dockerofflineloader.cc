@@ -77,9 +77,9 @@ bool loadManifest(const std::string &req_digest, const boost::filesystem::path &
   ensure(len == orglen, "Manifest file changed size");
 
   // Determine the file's digest and make sure it's correct.
-  MultiPartSHA256Hasher hasher;
-  hasher.update(buffer->data(), static_cast<uint64_t>(len));
-  std::string real_digest = boost::algorithm::to_lower_copy(hasher.getHexDigest());
+  auto hasher = MultiPartHasher::create(Hash::Type::kSha256);
+  hasher->update(buffer->data(), static_cast<uint64_t>(len));
+  std::string real_digest = boost::algorithm::to_lower_copy(hasher->getHexDigest());
 
   if (req_digest != real_digest) {
     LOG_WARNING << "Wrong digest of manifest " << fname;
@@ -758,12 +758,12 @@ std::string DockerComposeFile::toString() {
 }
 
 std::string DockerComposeFile::getSHA256() {
-  MultiPartSHA256Hasher hasher;
+  auto hasher = MultiPartHasher::create(Hash::Type::kSha256);
   for (auto &line : compose_lines_) {
-    hasher.update(reinterpret_cast<const unsigned char *>(line.data()), static_cast<uint64_t>(line.size()));
+    hasher->update(reinterpret_cast<const unsigned char *>(line.data()), static_cast<uint64_t>(line.size()));
   }
 
-  std::string sha256 = boost::algorithm::to_lower_copy(hasher.getHexDigest());
+  std::string sha256 = boost::algorithm::to_lower_copy(hasher->getHexDigest());
   // LOG_INFO << "docker-compose sha256: " << sha256;
 
   return sha256;

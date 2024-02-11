@@ -123,7 +123,7 @@ struct ArchiveCtrl {
   std::ifstream infile_;
   uint64_t nread_{0};
   BufferType buffer_{};
-  MultiPartSHA256Hasher hasher_;
+  MultiPartHasher::Ptr hasher_ = MultiPartHasher::create(Hash::Type::kSha256);
 
  public:
   explicit ArchiveCtrl(const boost::filesystem::path &tarball) : infile_(tarball.string(), std::ios::binary) {
@@ -140,7 +140,7 @@ struct ArchiveCtrl {
 
   ssize_t read() {
     infile_.read(reinterpret_cast<char *>(buffer_.data()), static_cast<std::streamsize>(buffer_.size()));
-    hasher_.update(buffer_.data(), static_cast<uint64_t>(infile_.gcount()));
+    hasher_->update(buffer_.data(), static_cast<uint64_t>(infile_.gcount()));
     nread_ += static_cast<uint64_t>(infile_.gcount());
     return infile_.gcount();
   }
@@ -149,7 +149,7 @@ struct ArchiveCtrl {
 
   void *data() { return static_cast<void *>(buffer_.data()); }
 
-  std::string getHexDigest() { return boost::algorithm::to_lower_copy(hasher_.getHexDigest()); }
+  std::string getHexDigest() { return boost::algorithm::to_lower_copy(hasher_->getHexDigest()); }
 };
 
 /**
@@ -210,9 +210,9 @@ bool DockerTarballLoader::loadMetadataEntryJson(archive *arch, archive_entry *en
   }
 
   // Determine the file's digest.
-  MultiPartSHA256Hasher hasher;
-  hasher.update(buffer->data(), static_cast<uint64_t>(count));
-  std::string digest = boost::algorithm::to_lower_copy(hasher.getHexDigest());
+  auto hasher = MultiPartHasher::create(Hash::Type::kSha256);
+  hasher->update(buffer->data(), static_cast<uint64_t>(count));
+  std::string digest = boost::algorithm::to_lower_copy(hasher->getHexDigest());
 
   // Parse contents.
   std::string _source(reinterpret_cast<char *>(buffer->data()), static_cast<std::string::size_type>(count));
@@ -252,17 +252,17 @@ bool DockerTarballLoader::loadMetadataEntryOther(archive *arch, archive_entry *e
   auto buffer = std_::make_unique<BufferType>();
 
   ssize_t count;
-  MultiPartSHA256Hasher hasher;
+  auto hasher = MultiPartHasher::create(Hash::Type::kSha256);
 
   // Determine the file's digest.
   do {
     count = archive_read_data(arch, reinterpret_cast<void *>(buffer->data()), buffer->size());
-    hasher.update(buffer->data(), static_cast<uint64_t>(count));
+    hasher->update(buffer->data(), static_cast<uint64_t>(count));
     // Update statistics.
     metastats_.nbytes_other += static_cast<uint64_t>(count);
   } while (count > 0);
 
-  std::string digest = boost::algorithm::to_lower_copy(hasher.getHexDigest());
+  std::string digest = boost::algorithm::to_lower_copy(hasher->getHexDigest());
 
   // Store metadata information (keyed by file name).
   MetaInfo info(digest);
@@ -567,7 +567,7 @@ bool DockerTarballLoader::loadImages() {
   auto blocks = std_::make_unique<Blocks>();
   unsigned block_index = 0;
 
-  MultiPartSHA256Hasher hasher;
+  auto hasher = MultiPartHasher::create(Hash::Type::kSha256);
 
   // Prevent SIGPIPE in case the child program exits unexpectedly.
   SignalBlocker blocker(SIGPIPE);
@@ -604,7 +604,7 @@ bool DockerTarballLoader::loadImages() {
     }
 
     // Update digest.
-    hasher.update(cur_block.buf.data(), static_cast<uint64_t>(cur_block.len));
+    hasher->update(cur_block.buf.data(), static_cast<uint64_t>(cur_block.len));
 
     // Advance.
     block_index = (block_index + 1) & num_blocks_mask;
@@ -615,7 +615,7 @@ bool DockerTarballLoader::loadImages() {
 
   // At this point, not all data has been sent to the child program. So here
   // we decide whether or not to abort the process by truncating the stream.
-  std::string new_digest = boost::algorithm::to_lower_copy(hasher.getHexDigest());
+  std::string new_digest = boost::algorithm::to_lower_copy(hasher->getHexDigest());
   LOG_TRACE << "2nd pass: tarball sha256=" << new_digest << ", len=" << nread;
 
   bool success = false;
