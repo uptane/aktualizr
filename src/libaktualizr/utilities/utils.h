@@ -173,39 +173,10 @@ static void curlEasySetoptWrapper(CURL *curl_handle, CURLoption option, T &&...a
   }
 }
 
-// this is reference implementation of make_unique which is not yet included to C++11
+// Aktualizr used to compile on C++11, where std::make_unique wasn't present.
+// std_ used to contain an implementation of make_unique, and there are various
+// references throughout the codebase. This provides backwards compatbility.
 namespace std_ {
-template <class T>
-struct _Unique_if {                           // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
-  using _Single_object = std::unique_ptr<T>;  // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
-};
-
-template <class T>
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays,bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
-struct _Unique_if<T[]> {
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays,bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
-  using _Unknown_bound = std::unique_ptr<T[]>;
-};
-
-template <class T, size_t N>
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays,bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
-struct _Unique_if<T[N]> {
-  using _Known_bound = void;  // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
-};
-
-template <class T, class... Args>
-typename _Unique_if<T>::_Single_object make_unique(Args &&...args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+using std::make_unique;
 }
-
-template <class T>
-typename _Unique_if<T>::_Unknown_bound make_unique(size_t n) {
-  using U = typename std::remove_extent<T>::type;
-  return std::unique_ptr<T>(new U[n]());
-}
-
-template <class T, class... Args>
-typename _Unique_if<T>::_Known_bound make_unique(Args &&...) = delete;
-}  // namespace std_
-
 #endif  // UTILS_H_
