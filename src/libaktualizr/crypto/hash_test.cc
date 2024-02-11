@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
 
 #include "crypto.h"
+
+#include <fstream>
+
 #include "logging/logging.h"
+#include "utilities/utils.h"
 
 TEST(Hash, EncodeDecode) {
   std::vector<Hash> hashes = {{Hash::Type::kSha256, "abcd"}, {Hash::Type::kSha512, "defg"}};
@@ -42,6 +46,20 @@ TEST(Hash, shortTag) {
   EXPECT_EQ(Hash::shortTag(one), "0cf9180a764a");
   std::vector<Hash> const small = {{Hash::Type::kSha256, "small"}};
   EXPECT_EQ(Hash::shortTag(small), "small");
+}
+
+TEST(Hash, Generate) {
+  TemporaryFile file;
+  std::string contents = "foobar";
+  file.PutContents(contents);
+
+  auto direct = Hash::generate(Hash::Type::kSha256, contents);
+  std::ifstream input_stream(file.PathString());
+  ssize_t len;
+  auto via_file = Hash::generate(Hash::Type::kSha256, input_stream, &len);
+
+  EXPECT_EQ(len, contents.size());
+  EXPECT_EQ(direct, via_file);
 }
 
 #ifndef __NO_MAIN__
