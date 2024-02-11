@@ -128,6 +128,14 @@ P11Engine::P11Engine(boost::filesystem::path module_path, std::string pass)
   ssl_engine_ = engine;
 }
 
+P11Engine::~P11Engine() {
+  if (ssl_engine_ != nullptr) {
+    ENGINE_finish(ssl_engine_);
+    ENGINE_free(ssl_engine_);
+    ENGINE_cleanup();  // for openssl < 1.1
+  }
+}
+
 // Hack for clang-tidy
 #ifndef PKCS11_ENGINE_PATH
 #define PKCS11_ENGINE_PATH "dummy"
