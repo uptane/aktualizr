@@ -65,6 +65,9 @@ run-tests:
     - runcmd ../log/check-format.txt make -j4 check-format
     # Requires "|| true" for pipeline to not fail and end due to current errors
     - runcmd ../log/clang-tidy.txt make -j4 -k clang-tidy || true
-    # CTEST_OUTPUT_ON_FAILURE=1 enables debug output
-    # Not allowing parallel jobs, can cause some tests to not run and ruins order of output
-    - runcmd ../log/test.txt make test CTEST_OUTPUT_ON_FAILURE=1
+    # * CTEST_OUTPUT_ON_FAILURE=1 enables debug output
+    # * OSTREE_SYSROOT_DEBUG="mutable-deployments" prevents the generation of
+    #   immutable OSTree deployments; w/o this Docker would have trouble with
+    #   pruning container layers.
+    # * Not allowing parallel jobs, can cause some tests to not run and ruins order of output
+    - runcmd ../log/test.txt make test CTEST_OUTPUT_ON_FAILURE=1 OSTREE_SYSROOT_DEBUG="mutable-deployments"
