@@ -31,7 +31,7 @@
 #include "uptane/iterator.h"
 #include "uptane/manifest.h"
 #include "uptane/tuf.h"
-#include "utilities/apiqueue.h"
+#include "utilities/flow_control.h"
 
 class SotaUptaneClient {
  public:
@@ -54,10 +54,10 @@ class SotaUptaneClient {
   };
 
   SotaUptaneClient(Config &config_in, std::shared_ptr<INvStorage> storage_in, std::shared_ptr<HttpInterface> http_in,
-                   std::shared_ptr<event::Channel> events_channel_in);
+                   std::shared_ptr<event::Channel> events_channel_in, const api::FlowControlToken *flow_control);
 
   SotaUptaneClient(Config &config_in, const std::shared_ptr<INvStorage> &storage_in)
-      : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr) {}
+      : SotaUptaneClient(config_in, storage_in, std::make_shared<HttpClient>(), nullptr, nullptr) {}
 
   void initialize();
   void addSecondary(const std::shared_ptr<SecondaryInterface> &sec);
@@ -69,8 +69,7 @@ class SotaUptaneClient {
    */
   bool attemptProvision();
 
-  result::Download downloadImages(const std::vector<Uptane::Target> &targets,
-                                  const api::FlowControlToken *token = nullptr);
+  result::Download downloadImages(const std::vector<Uptane::Target> &targets);
 
   /** See Aktualizr::SetCustomHardwareInfo(Json::Value) */
   void setCustomHardwareInfo(Json::Value hwinfo) { custom_hardware_info_ = std::move(hwinfo); }
@@ -140,8 +139,7 @@ class SotaUptaneClient {
   void requiresAlreadyProvisioned();
 
   data::InstallationResult PackageInstall(const Uptane::Target &target);
-  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target,
-                                                const api::FlowControlToken *token = nullptr);
+  std::pair<bool, Uptane::Target> downloadImage(const Uptane::Target &target);
   void uptaneIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
   void uptaneOfflineIteration(std::vector<Uptane::Target> *targets, unsigned int *ecus_count);
   result::UpdateCheck checkUpdates();
@@ -215,6 +213,7 @@ class SotaUptaneClient {
   std::mutex download_mutex;
   Provisioner provisioner_;
   Json::Value custom_hardware_info_{Json::nullValue};
+  const api::FlowControlToken *flow_control_;
 };
 
 #endif  // SOTA_UPTANE_CLIENT_H_

@@ -26,6 +26,7 @@
 #include "uptane/tuf.h"
 #include "uptane/uptanerepository.h"
 #include "uptane_test_common.h"
+#include "utilities/flow_control.h"
 #include "utilities/utils.h"
 
 #ifdef BUILD_P11
@@ -592,10 +593,10 @@ class SecondaryInterfaceMock : public SecondaryInterface {
   data::InstallationResult putRoot(const std::string &, bool) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
-  virtual data::InstallationResult sendFirmware(const Uptane::Target &) override {
+  virtual data::InstallationResult sendFirmware(const Uptane::Target &, const api::FlowControlToken *) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
-  virtual data::InstallationResult install(const Uptane::Target &) override {
+  virtual data::InstallationResult install(const Uptane::Target &, const api::FlowControlToken *) override {
     return data::InstallationResult(data::ResultCode::Numeric::kOk, "");
   }
 
@@ -1244,13 +1245,13 @@ TEST(Uptane, SaveAndLoadVersion) {
 
 class HttpFakeUnstable : public HttpFake {
  public:
-  HttpFakeUnstable(const boost::filesystem::path &test_dir_in) : HttpFake(test_dir_in, "hasupdates") {}
-  HttpResponse get(const std::string &url, int64_t maxsize) override {
+  explicit HttpFakeUnstable(const boost::filesystem::path &test_dir_in) : HttpFake(test_dir_in, "hasupdates") {}
+  HttpResponse get(const std::string &url, int64_t maxsize, const api::FlowControlToken *flow_control) override {
     if (unstable_valid_count >= unstable_valid_num) {
       return HttpResponse({}, 503, CURLE_OK, "");
     } else {
       ++unstable_valid_count;
-      return HttpFake::get(url, maxsize);
+      return HttpFake::get(url, maxsize, flow_control);
     }
   }
 

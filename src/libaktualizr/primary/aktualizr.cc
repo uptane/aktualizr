@@ -26,7 +26,7 @@ Aktualizr::Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in,
   storage_ = move(storage_in);
   storage_->importData(config_.import);
 
-  uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_);
+  uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_, api_queue_->FlowControlToken());
 }
 
 Aktualizr::~Aktualizr() { api_queue_.reset(nullptr); }
@@ -161,8 +161,7 @@ std::future<result::UpdateCheck> Aktualizr::CheckUpdates() {
 }
 
 std::future<result::Download> Aktualizr::Download(const std::vector<Uptane::Target> &updates) {
-  std::function<result::Download(const api::FlowControlToken *)> task(
-      [this, updates](const api::FlowControlToken *token) { return uptane_client_->downloadImages(updates, token); });
+  std::function<result::Download()> task([this, updates]() { return uptane_client_->downloadImages(updates); });
   return api_queue_->enqueue(move(task));
 }
 

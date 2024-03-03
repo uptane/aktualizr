@@ -27,8 +27,20 @@ class SecondaryInterface {
   virtual int32_t getRootVersion(bool director) const = 0;
   virtual data::InstallationResult putRoot(const std::string& root, bool director) = 0;
 
-  virtual data::InstallationResult sendFirmware(const Uptane::Target& target) = 0;
-  virtual data::InstallationResult install(const Uptane::Target& target) = 0;
+  /**
+   * Send firmware to a device. This operation should be both idempotent and
+   * not commit to installing the new version. Where practical, the
+   * implementation should pre-flight the installation and report errors now,
+   * while the entire installation can be cleanly aborted.
+   * Failures reported later (during SecondaryInterface::install()) can leave
+   * a multi-ecu update partially applied.
+   */
+  virtual data::InstallationResult sendFirmware(const Uptane::Target& target,
+                                                const api::FlowControlToken* flow_control) = 0;
+  /**
+   * Commit to installing an update.
+   */
+  virtual data::InstallationResult install(const Uptane::Target& target, const api::FlowControlToken* flow_control) = 0;
 
  protected:
   SecondaryInterface(const SecondaryInterface&) = default;

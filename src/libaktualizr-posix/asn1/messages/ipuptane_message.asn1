@@ -27,6 +27,7 @@ IpUptane DEFINITIONS ::= BEGIN
     generalError(19),
     needCompletion(21),
     customError(22),
+    operationCancelled(23),
     unknown(-1),
     ...
   }

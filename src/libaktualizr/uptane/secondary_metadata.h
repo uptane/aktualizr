@@ -10,9 +10,8 @@ class SecondaryMetadata : public IMetadataFetcher {
  public:
   explicit SecondaryMetadata(MetaBundle meta_bundle_in);
 
-  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Role& role,
-                 Version version) const override;
-  void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo, const Role& role) const override;
+  void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Role& role, Version version,
+                 const api::FlowControlToken* flow_control) const override;
 
  protected:
   virtual void getRoleMetadata(std::string* result, const RepositoryType& repo, const Role& role,

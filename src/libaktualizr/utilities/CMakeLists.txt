@@ -1,6 +1,7 @@
 set(SOURCES aktualizr_version.cc
             apiqueue.cc
             dequeue_buffer.cc
+            flow_control.cc
             results.cc
             sig_handler.cc
             timer.cc
@@ -13,6 +14,7 @@ set(HEADERS apiqueue.h
             dequeue_buffer.h
             exceptions.h
             fault_injection.h
+            flow_control.h
             sig_handler.h
             timer.h
             utils.h
