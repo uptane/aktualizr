@@ -2,6 +2,7 @@
 
 #include "httpfake.h"
 #include "libaktualizr/secondaryinterface.h"
+#include "uptane_repo.h"
 #include "uptane_test_common.h"
 #include "utilities/utils.h"
 #include "virtualsecondary.h"

@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <boost/algorithm/hex.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 #include <string>
 
+#include "crypto/crypto.h"
 #include "httpfake.h"
 #include "libaktualizr/aktualizr.h"
 #include "test_utils.h"

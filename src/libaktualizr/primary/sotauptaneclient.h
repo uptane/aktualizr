@@ -130,8 +130,6 @@ class SotaUptaneClient {
   FRIEND_TEST(MetadataExpirationTest, MetadataExpirationAfterInstallationAndBeforeReboot);
   FRIEND_TEST(MetadataExpirationTest, MetadataExpirationBeforeInstallation);
   FRIEND_TEST(Delegation, IterateAll);
-  friend class CheckForUpdate;       // for load tests
-  friend class ProvisionDeviceTask;  // for load tests
   friend class SecondaryEcuInstallationJob;
 
   /**

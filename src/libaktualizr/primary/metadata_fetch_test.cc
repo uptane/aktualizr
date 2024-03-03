@@ -14,7 +14,6 @@ class HttpFakeMetaCounter : public HttpFake {
       : HttpFake(test_dir_in, "", meta_dir_in) {}
 
   HttpResponse get(const std::string &url, int64_t maxsize, const api::FlowControlToken *flow_control) override {
-    (void)flow_control;
     if (url.find("director/1.root.json") != std::string::npos) {
       ++director_1root_count;
     }
@@ -40,7 +39,7 @@ class HttpFakeMetaCounter : public HttpFake {
       ++image_targets_count;
     }
 
-    return HttpFake::get(url, maxsize);
+    return HttpFake::get(url, maxsize, flow_control);
   }
 
   int director_1root_count{0};
@@ -86,9 +85,9 @@ TEST(Aktualizr, MetadataFetch) {
 
   // Two images added, but only one update scheduled: all metadata objects
   // should be fetched once.
-  uptane_repo_.addImage("tests/test_data/firmware.txt", "firmware.txt", "primary_hw");
+  uptane_repo_.addImage("tests/test_data/firmware.txt", "firmware-małecki.txt", "primary_hw");
   uptane_repo_.addImage("tests/test_data/firmware_name.txt", "firmware_name.txt", "primary_hw");
-  uptane_repo_.addTarget("firmware.txt", "primary_hw", "CA:FE:A6:D2:84:9D");
+  uptane_repo_.addTarget("firmware-małecki.txt", "primary_hw", "CA:FE:A6:D2:84:9D");
   uptane_repo_.addDelegation(Uptane::Role("role-abc", true), Uptane::Role("targets", false), "abc/*", false,
                              KeyType::kED25519);
   uptane_repo_.signTargets();
@@ -124,7 +123,7 @@ TEST(Aktualizr, MetadataFetch) {
   // Delegation added to an existing delegation; update scheduled with
   // pre-existing image: Snapshot must be refetched, but Targets are unchanged.
   uptane_repo_.emptyTargets();
-  uptane_repo_.addTarget("firmware.txt", "primary_hw", "CA:FE:A6:D2:84:9D");
+  uptane_repo_.addTarget("firmware-małecki.txt", "primary_hw", "CA:FE:A6:D2:84:9D");
   uptane_repo_.addDelegation(Uptane::Role("role-def", true), Uptane::Role("role-abc", true), "def/*", false,
                              KeyType::kED25519);
   uptane_repo_.signTargets();

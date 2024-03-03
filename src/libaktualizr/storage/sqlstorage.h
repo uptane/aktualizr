@@ -100,7 +100,7 @@ class SQLStorage : public SQLStorageBase, public INvStorage {
   void saveEcuReportCounter(const Uptane::EcuSerial& ecu_serial, int64_t counter) override;
   bool loadEcuReportCounter(std::vector<std::pair<Uptane::EcuSerial, int64_t>>* results) const override;
   void saveReportEvent(const Json::Value& json_value) override;
-  bool loadReportEvents(Json::Value* report_array, int64_t* id_max) const override;
+  bool loadReportEvents(Json::Value* report_array, int64_t* id_max, int limit) const override;
   void deleteReportEvents(int64_t id_max) override;
   void clearInstallationResults() override;
 

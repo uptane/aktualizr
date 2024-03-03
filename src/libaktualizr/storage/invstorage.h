@@ -139,7 +139,7 @@ class INvStorage {
   virtual bool loadEcuReportCounter(std::vector<std::pair<Uptane::EcuSerial, int64_t>>* results) const = 0;
 
   virtual void saveReportEvent(const Json::Value& json_value) = 0;
-  virtual bool loadReportEvents(Json::Value* report_array, int64_t* id_max) const = 0;
+  virtual bool loadReportEvents(Json::Value* report_array, int64_t* id_max, int limit) const = 0;
   virtual void deleteReportEvents(int64_t id_max) = 0;
 
   virtual void storeDeviceDataHash(const std::string& data_type, const std::string& hash) = 0;

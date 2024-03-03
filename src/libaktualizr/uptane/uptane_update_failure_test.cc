@@ -8,6 +8,7 @@
 
 #include "libaktualizr/packagemanagerfactory.h"
 
+#include "crypto/crypto.h"
 #include "http/httpclient.h"
 #include "httpfake.h"
 #include "logging/logging.h"

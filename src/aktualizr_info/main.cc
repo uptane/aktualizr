@@ -65,13 +65,14 @@ int main(int argc, char **argv) {
     ("ecu-pub-key", "Outputs Primary's Uptane public key")
     ("ecu-prv-key", "Outputs Primary's Uptane private key")
     ("secondary-keys",  "Outputs Secondaries' Uptane public keys")
-    ("image-root",  "Outputs root.json from Image repo")
+    ("image-root",  "Outputs root.json from Image repo, by default the latest")
     ("image-timestamp", "Outputs timestamp.json from Image repo")
     ("image-snapshot", "Outputs snapshot.json from Image repo")
     ("image-targets",  "Outputs targets.json from Image repo")
     ("delegation",  "Outputs metadata of Image repo Targets' delegations")
-    ("director-root",  "Outputs root.json from Director repo")
+    ("director-root",  "Outputs root.json from Director repo, by default the latest")
     ("director-targets",  "Outputs targets.json from Director repo")
+    ("root-version",  bpo::value<int>(), "Use with --image-root or --director-root to specify the version to output")
     ("allow-migrate", "Opens database in read/write mode to make possible to migrate database if needed")
     ("wait-until-provisioned", "Outputs metadata when device already provisioned");
   // Support old names and variations due to common typos.
@@ -255,7 +256,12 @@ int main(int argc, char **argv) {
         std::cout << msg_metadata_fail << std::endl;
       } else {
         std::string images_root;
-        storage->loadLatestRoot(&images_root, Uptane::RepositoryType::Image());
+        if (vm.count("root-version") != 0U) {
+          storage->loadRoot(&images_root, Uptane::RepositoryType::Image(),
+                            Uptane::Version(vm["root-version"].as<int>()));
+        } else {
+          storage->loadLatestRoot(&images_root, Uptane::RepositoryType::Image());
+        }
         std::cout << images_root << std::endl;
       }
       cmd_trigger = true;
@@ -286,6 +292,10 @@ int main(int argc, char **argv) {
       if (!has_metadata) {
         std::cout << msg_metadata_fail << std::endl;
       } else {
+        if (vm.count("root-version") != 0U) {
+          storage->loadRoot(&director_root, Uptane::RepositoryType::Director(),
+                            Uptane::Version(vm["root-version"].as<int>()));
+        }  // else: already loaded above.
         std::cout << director_root << std::endl;
       }
       cmd_trigger = true;

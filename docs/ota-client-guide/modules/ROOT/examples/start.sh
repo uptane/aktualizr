@@ -71,7 +71,7 @@ skip_ingress() {
       config/images.yaml \
       config/resources.yaml \
       config/secrets.yaml \
-      $local_yaml | grep ^create_ingress | tail -n1)
+      "$local_yaml" | grep ^create_ingress | tail -n1)
   echo "$value" | grep "false"
 }
 

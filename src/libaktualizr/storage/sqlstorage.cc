@@ -1591,9 +1591,9 @@ void SQLStorage::saveReportEvent(const Json::Value& json_value) {
   }
 }
 
-bool SQLStorage::loadReportEvents(Json::Value* report_array, int64_t* id_max) const {
+bool SQLStorage::loadReportEvents(Json::Value* report_array, int64_t* id_max, int limit) const {
   SQLite3Guard db = dbConnection();
-  auto statement = db.prepareStatement("SELECT id, json_string FROM report_events;");
+  auto statement = db.prepareStatement<int>("SELECT id, json_string FROM report_events LIMIT ?;", limit);
   int statement_result = statement.step();
   if (statement_result != SQLITE_DONE && statement_result != SQLITE_ROW) {
     LOG_ERROR << "Failed to get report events: " << db.errmsg();

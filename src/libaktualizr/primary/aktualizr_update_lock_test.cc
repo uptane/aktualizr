@@ -13,6 +13,7 @@
 
 #include <sys/file.h>
 #include "httpfake.h"
+#include "metafake.h"
 #include "primary/aktualizr_helpers.h"
 #include "uptane_test_common.h"
 #include "utilities/utils.h"
@@ -74,7 +75,8 @@ int main(int argc, char** argv) {
 
   TemporaryDirectory tmp_dir;
   fake_meta_dir = tmp_dir.Path();
-  MetaFake meta_fake(fake_meta_dir);
+
+  CreateFakeRepoMetaData(fake_meta_dir);
 
   return RUN_ALL_TESTS();
 }
