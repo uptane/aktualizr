@@ -36,8 +36,9 @@ class IpUptaneSecondary : public SecondaryInterface {
   data::InstallationResult putRoot(const std::string& root, bool director) override;
   Manifest getManifest() const override;
   bool ping() const override;
-  data::InstallationResult sendFirmware(const Uptane::Target& target) override;
-  data::InstallationResult install(const Uptane::Target& target) override;
+  data::InstallationResult sendFirmware(const Uptane::Target& target,
+                                        const api::FlowControlToken* flow_control) override;
+  data::InstallationResult install(const Uptane::Target& target, const api::FlowControlToken* flow_control) override;
 
  private:
   const std::pair<std::string, uint16_t>& getAddr() const { return addr_; }

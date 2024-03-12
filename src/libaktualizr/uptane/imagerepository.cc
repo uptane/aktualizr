@@ -32,10 +32,11 @@ void ImageRepository::checkTimestampExpired() {
   }
 }
 
-void ImageRepository::fetchSnapshot(INvStorage& storage, const IMetadataFetcher& fetcher, const int local_version) {
+void ImageRepository::fetchSnapshot(INvStorage& storage, const IMetadataFetcher& fetcher, const int local_version,
+                                    const api::FlowControlToken* flow_control) {
   std::string image_snapshot;
   const int64_t snapshot_size = (snapshotSize() > 0) ? snapshotSize() : kMaxSnapshotSize;
-  fetcher.fetchLatestRole(&image_snapshot, snapshot_size, RepositoryType::Image(), Role::Snapshot());
+  fetcher.fetchLatestRole(&image_snapshot, snapshot_size, RepositoryType::Image(), Role::Snapshot(), flow_control);
   const int remote_version = extractVersionUntrusted(image_snapshot);
 
   // 6. Check that each Targets metadata filename listed in the previous Snapshot metadata file is also listed in this
@@ -105,7 +106,8 @@ void ImageRepository::checkSnapshotExpired() {
   }
 }
 
-void ImageRepository::fetchTargets(INvStorage& storage, const IMetadataFetcher& fetcher, const int local_version) {
+void ImageRepository::fetchTargets(INvStorage& storage, const IMetadataFetcher& fetcher, const int local_version,
+                                   const api::FlowControlToken* flow_control) {
   std::string image_targets;
   const Role targets_role = Role::Targets();
 
@@ -114,7 +116,7 @@ void ImageRepository::fetchTargets(INvStorage& storage, const IMetadataFetcher& 
     targets_size = kMaxImageTargetsSize;
   }
 
-  fetcher.fetchLatestRole(&image_targets, targets_size, RepositoryType::Image(), targets_role);
+  fetcher.fetchLatestRole(&image_targets, targets_size, RepositoryType::Image(), targets_role, flow_control);
 
   const int remote_version = extractVersionUntrusted(image_targets);
 
@@ -212,7 +214,8 @@ void ImageRepository::checkTargetsExpired() {
   }
 }
 
-void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) {
+void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher,
+                                 const api::FlowControlToken* flow_control) {
   resetMeta();
 
   updateRoot(storage, fetcher, RepositoryType::Image());
@@ -270,7 +273,7 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
 
     // If we don't, attempt to fetch the latest.
     if (fetch_snapshot) {
-      fetchSnapshot(storage, fetcher, local_version);
+      fetchSnapshot(storage, fetcher, local_version, flow_control);
     }
 
     checkSnapshotExpired();
@@ -299,7 +302,7 @@ void ImageRepository::updateMeta(INvStorage& storage, const IMetadataFetcher& fe
 
     // If we don't, attempt to fetch the latest.
     if (fetch_targets) {
-      fetchTargets(storage, fetcher, local_version);
+      fetchTargets(storage, fetcher, local_version, flow_control);
     }
 
     checkTargetsExpired();

@@ -62,6 +62,11 @@ add_aktualizr_test(NAME uptane_serial SOURCES uptane_serial_test.cc
                    PROJECT_WORKING_DIRECTORY
                    LIBRARIES uptane_generator_lib virtual_secondary)
 
+add_aktualizr_test(NAME uptane_cancellation SOURCES uptane_cancellation_test.cc
+                   PROJECT_WORKING_DIRECTORY
+                   LIBRARIES uptane_generator_lib virtual_secondary)
+
+
 if(BUILD_OSTREE)
     # Test that SotaUptaneClient::AssembleManifest() works correctly under OSTree.
     # This requires the OSTree sysroot created by make_ostree_sysroot in

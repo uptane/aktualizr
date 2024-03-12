@@ -31,14 +31,17 @@ class ImageRepository : public RepositoryCommon {
   int64_t getRoleSize(const Uptane::Role& role) const;
 
   void checkMetaOffline(INvStorage& storage);
-  void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher) override;
+  void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher,
+                  const api::FlowControlToken* flow_control) override;
 
  private:
   void checkTimestampExpired();
   void checkSnapshotExpired();
   int64_t snapshotSize() const { return timestamp.snapshot_size(); }
-  void fetchSnapshot(INvStorage& storage, const IMetadataFetcher& fetcher, int local_version);
-  void fetchTargets(INvStorage& storage, const IMetadataFetcher& fetcher, int local_version);
+  void fetchSnapshot(INvStorage& storage, const IMetadataFetcher& fetcher, int local_version,
+                     const api::FlowControlToken* flow_control);
+  void fetchTargets(INvStorage& storage, const IMetadataFetcher& fetcher, int local_version,
+                    const api::FlowControlToken* flow_control);
   void checkTargetsExpired();
 
   std::shared_ptr<Uptane::Targets> targets;

@@ -34,6 +34,30 @@ static size_t writeString(void* contents, size_t size, size_t nmemb, void* userp
   return size * nmemb;
 }
 
+static int ProgressHandler(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+  (void)dltotal;
+  (void)dlnow;
+  (void)ultotal;
+  (void)ulnow;
+  if (clientp == nullptr) {
+    LOG_ERROR << "ProgressHandler given null user pointer";
+    return 0;  // Let the download continue
+  }
+
+  auto* token = static_cast<api::FlowControlToken*>(clientp);
+
+  if (!token->IsValid()) {
+    LOG_ERROR << "ProgressHandler given a thing that isn't a FlowControlToken";
+    return 0;
+  }
+
+  if (token->hasAborted()) {
+    // Abort download
+    return 1;
+  }
+  return 0;
+}
+
 HttpClient::HttpClient(const std::vector<std::string>* extra_headers) {
   curl = curl_easy_init();
   if (curl == nullptr) {
@@ -124,7 +148,7 @@ void HttpClient::setCerts(const std::string& ca, CryptoSource ca_source, const s
   pkcs11_key = (pkey_source == CryptoSource::kPkcs11);
 }
 
-HttpResponse HttpClient::get(const std::string& url, int64_t maxsize) {
+HttpResponse HttpClient::get(const std::string& url, int64_t maxsize, const api::FlowControlToken* flow_control) {
   CURL* curl_get = Utils::curlDupHandleWrapper(curl, pkcs11_key);
 
   curlEasySetoptWrapper(curl_get, CURLOPT_HTTPHEADER, headers);
@@ -138,6 +162,13 @@ HttpResponse HttpClient::get(const std::string& url, int64_t maxsize) {
   curlEasySetoptWrapper(curl_get, CURLOPT_POSTFIELDS, "");
   curlEasySetoptWrapper(curl_get, CURLOPT_URL, url.c_str());
   curlEasySetoptWrapper(curl_get, CURLOPT_HTTPGET, 1L);
+  if (flow_control != nullptr) {
+    // Handle cancellation
+    curlEasySetoptWrapper(curl_get, CURLOPT_NOPROGRESS, 0);
+    curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFOFUNCTION, ProgressHandler);
+    curlEasySetoptWrapper(curl_get, CURLOPT_XFERINFODATA, flow_control);
+  }
+
   LOG_DEBUG << "GET " << url;
   HttpResponse response = perform(curl_get, RETRY_TIMES, maxsize);
   curl_easy_cleanup(curl_get);

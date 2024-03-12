@@ -32,7 +32,7 @@ class HttpClient : public HttpInterface {
   HttpClient(HttpClient &&) = default;
   HttpClient &operator=(const HttpClient &) = delete;
   HttpClient &operator=(HttpClient &&) = default;
-  HttpResponse get(const std::string &url, int64_t maxsize) override;
+  HttpResponse get(const std::string &url, int64_t maxsize, const api::FlowControlToken *flow_control) override;
   HttpResponse post(const std::string &url, const std::string &content_type, const std::string &data) override;
   HttpResponse post(const std::string &url, const Json::Value &data) override;
   HttpResponse put(const std::string &url, const std::string &content_type, const std::string &data) override;

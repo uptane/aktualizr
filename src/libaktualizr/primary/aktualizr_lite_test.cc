@@ -146,7 +146,7 @@ class AkliteMock {
 
  public:
   data::InstallationResult update() {
-    image_repo_.updateMeta(*storage_, *fetcher_);
+    image_repo_.updateMeta(*storage_, *fetcher_, nullptr);
     image_repo_.checkMetaOffline(*storage_);
 
     std::shared_ptr<const Uptane::Targets> targets = image_repo_.getTargets();

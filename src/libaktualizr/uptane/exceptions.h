@@ -134,6 +134,11 @@ class InvalidTarget : public Exception {
       : Exception(reponame, "The target had a non-OSTree package that can not be installed on an OSTree system.") {}
 };
 
+class LocallyAborted : public Exception {
+ public:
+  explicit LocallyAborted(const std::string& reponame) : Exception(reponame, "Update was aborted on the client") {}
+};
+
 }  // namespace Uptane
 
 #endif
