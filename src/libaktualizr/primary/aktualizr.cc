@@ -34,8 +34,6 @@ Aktualizr::Aktualizr(Config config, std::shared_ptr<INvStorage> storage_in,
   storage_->importData(config_.import);
 
   uptane_client_ = std::make_shared<SotaUptaneClient>(config_, storage_, http_in, sig_, api_queue_->FlowControlToken());
-
-  updates_disabled_ = false;
 }
 
 Aktualizr::~Aktualizr() { api_queue_.reset(nullptr); }
@@ -44,8 +42,6 @@ void Aktualizr::Initialize() {
   uptane_client_->initialize();
   api_queue_->run();
 }
-
-void Aktualizr::DisableUpdates(bool status) { updates_disabled_ = status; }
 
 bool Aktualizr::UptaneCycle() {
   {
@@ -248,7 +244,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
       case UpdateCycleState::kCheckingForUpdates:
         if (op_update_check_.wait_until(next_offline_poll_) == std::future_status::ready) {
           result::UpdateCheck const update_result = op_update_check_.get();
-          if (updates_disabled_ || update_lock_file_.ShouldUpdate() == UpdateLockFile::kNoUpdate) {
+          if (update_lock_file_.ShouldUpdate() == UpdateLockFile::kNoUpdate) {
             next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
             state_ = UpdateCycleState::kIdle;
             break;
@@ -306,8 +302,7 @@ Aktualizr::ExitReason Aktualizr::RunUpdateLoop() {
 #ifdef BUILD_OFFLINE_UPDATES
       case UpdateCycleState::kCheckingForUpdatesOffline: {
         result::UpdateCheck const update_result = op_update_check_.get();  // No need to timeout
-        if (update_result.updates.empty() || updates_disabled_ ||
-            update_lock_file_.ShouldUpdate() == UpdateLockFile::kNoUpdate) {
+        if (update_result.updates.empty() || update_lock_file_.ShouldUpdate() == UpdateLockFile::kNoUpdate) {
           next_online_poll_ = now + std::chrono::seconds(config_.uptane.polling_sec);
           state_ = UpdateCycleState::kIdle;
           break;
