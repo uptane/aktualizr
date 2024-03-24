@@ -500,7 +500,7 @@ TEST(sqlstorage, migrate_from_fs) {
     EXPECT_TRUE(storage->loadEcuRegistered());
 
     boost::optional<Uptane::Target> installed;
-    storage->loadPrimaryInstalledVersions(&installed, nullptr);
+    storage->loadPrimaryInstalledVersions(&installed, nullptr, nullptr);
     EXPECT_TRUE(!!installed);
   }
 

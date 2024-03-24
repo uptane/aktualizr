@@ -125,7 +125,8 @@ void SotaUptaneClient::finalizeAfterReboot() {
 
   const Uptane::EcuSerial primary_ecu_serial = primaryEcuSerial();
   boost::optional<Uptane::Target> pending_target;
-  storage->loadInstalledVersions(primary_ecu_serial.ToString(), nullptr, &pending_target);
+  Uptane::CorrelationId correlation_id;
+  storage->loadInstalledVersions(primary_ecu_serial.ToString(), nullptr, &pending_target, &correlation_id);
 
   if (!pending_target) {
     LOG_ERROR << "No pending update for Primary ECU found, continuing with initialization";
@@ -144,14 +145,15 @@ void SotaUptaneClient::finalizeAfterReboot() {
 
   storage->saveEcuInstallationResult(primary_ecu_serial, install_res);
 
-  const std::string correlation_id = pending_target->correlation_id();
   if (install_res.success) {
-    storage->saveInstalledVersion(primary_ecu_serial.ToString(), *pending_target, InstalledVersionUpdateMode::kCurrent);
+    storage->saveInstalledVersion(primary_ecu_serial.ToString(), *pending_target, InstalledVersionUpdateMode::kCurrent,
+                                  correlation_id);
 
     report_queue->enqueue(std_::make_unique<EcuInstallationCompletedReport>(primary_ecu_serial, correlation_id, true));
   } else {
     // finalize failed, unset pending flag so that the rest of the Uptane process can go forward again
-    storage->saveInstalledVersion(primary_ecu_serial.ToString(), *pending_target, InstalledVersionUpdateMode::kNone);
+    storage->saveInstalledVersion(primary_ecu_serial.ToString(), *pending_target, InstalledVersionUpdateMode::kNone,
+                                  correlation_id);
     report_queue->enqueue(std_::make_unique<EcuInstallationCompletedReport>(primary_ecu_serial, correlation_id, false));
   }
 
@@ -164,7 +166,8 @@ void SotaUptaneClient::finalizeAfterReboot() {
   putManifestSimple();
 }
 
-data::InstallationResult SotaUptaneClient::PackageInstallSetResult(const Uptane::Target &target) {
+data::InstallationResult SotaUptaneClient::PackageInstallSetResult(const Uptane::Target &target,
+                                                                   const Uptane::CorrelationId &correlation_id) {
   data::InstallationResult result;
   Uptane::EcuSerial ecu_serial = primaryEcuSerial();
 
@@ -176,15 +179,17 @@ data::InstallationResult SotaUptaneClient::PackageInstallSetResult(const Uptane:
   // up some metadata
   // TODO: we do not detect the incomplete install at aktualizr start in that
   // case, it should ideally report a meaningful error.
-  storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kNone);
+  storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kNone, correlation_id);
 
   result = PackageInstall(target);
   if (result.result_code.num_code == data::ResultCode::Numeric::kOk) {
     // simple case: update already completed
-    storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kCurrent);
+    // Shouldn't require correlation_id
+    storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kCurrent, correlation_id);
   } else if (result.result_code.num_code == data::ResultCode::Numeric::kNeedCompletion) {
     // OSTree case: need reboot
-    storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kPending);
+    // Shouldn't require correlation_id
+    storage->saveInstalledVersion(ecu_serial.ToString(), target, InstalledVersionUpdateMode::kPending, correlation_id);
   }
   storage->saveEcuInstallationResult(ecu_serial, result);
   return result;
@@ -564,7 +569,7 @@ void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, u
       }
 
       boost::optional<Uptane::Target> current_version;
-      if (!storage->loadInstalledVersions(ecu_serial.ToString(), &current_version, nullptr)) {
+      if (!storage->loadInstalledVersions(ecu_serial.ToString(), &current_version, nullptr, nullptr)) {
         LOG_WARNING << "Could not load currently installed version for ECU ID: " << ecu_serial;
         break;
       }
@@ -723,17 +728,17 @@ result::Download SotaUptaneClient::downloadImages(const std::vector<Uptane::Targ
 }
 
 void SotaUptaneClient::reportPause() {
-  const std::string &correlation_id = director_repo.getCorrelationId();
+  auto correlation_id = director_repo.getCorrelationId();
   report_queue->enqueue(std_::make_unique<DevicePausedReport>(correlation_id));
 }
 
 void SotaUptaneClient::reportResume() {
-  const std::string &correlation_id = director_repo.getCorrelationId();
+  auto correlation_id = director_repo.getCorrelationId();
   report_queue->enqueue(std_::make_unique<DeviceResumedReport>(correlation_id));
 }
 
 std::pair<bool, Uptane::Target> SotaUptaneClient::downloadImage(const Uptane::Target &target) {
-  const std::string &correlation_id = director_repo.getCorrelationId();
+  auto correlation_id = director_repo.getCorrelationId();
   // send an event for all ECUs that are touched by this target
   for (const auto &ecu : target.ecus()) {
     report_queue->enqueue(std_::make_unique<EcuDownloadStartedReport>(ecu.first, correlation_id));
@@ -1003,7 +1008,7 @@ result::UpdateStatus SotaUptaneClient::checkUpdatesOffline(const std::vector<Upt
 
 result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target> &updates) {
   requiresAlreadyProvisioned();
-  const std::string &correlation_id = director_repo.getCorrelationId();
+  auto correlation_id = director_repo.getCorrelationId();
 
   // put most of the logic in a lambda so that we can take care of common
   // post-operations
@@ -1073,7 +1078,6 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
     if (!primary_updates.empty()) {
       // assuming one OSTree OS per Primary => there can be only one OSTree update
       Uptane::Target primary_update = primary_updates[0];
-      primary_update.setCorrelationId(correlation_id);
 
       report_queue->enqueue(std_::make_unique<EcuInstallationStartedReport>(primary_ecu_serial, correlation_id));
       sendEvent<event::InstallStarted>(primary_ecu_serial);
@@ -1082,7 +1086,7 @@ result::Install SotaUptaneClient::uptaneInstall(const std::vector<Uptane::Target
       // notify the bootloader before installation happens, because installation is not atomic and
       //   a false notification doesn't hurt when rollbacks are implemented
       package_manager_->updateNotify();
-      install_res = PackageInstallSetResult(primary_update);
+      install_res = PackageInstallSetResult(primary_update, correlation_id);
       if (install_res.result_code.num_code == data::ResultCode::Numeric::kNeedCompletion) {
         // update needs a reboot, send distinct EcuInstallationApplied event
         report_queue->enqueue(std_::make_unique<EcuInstallationAppliedReport>(primary_ecu_serial, correlation_id));
@@ -1269,7 +1273,11 @@ bool SotaUptaneClient::waitSecondariesReachable(const std::vector<Uptane::Target
 void SotaUptaneClient::storeInstallationFailure(const data::InstallationResult &result) {
   // Store installation report to inform Director of the update failure before
   // we actually got to the install step.
-  const std::string &correlation_id = director_repo.getCorrelationId();
+  auto correlation_id = director_repo.getCorrelationId();
+  if (correlation_id.empty()) {
+    LOG_WARNING << "Correlation ID is blank, installation failure will not be logged";
+    return;
+  }
   storage->storeDeviceInstallationResult(result, "", correlation_id);
   // Fix for OTA-2587, listen to backend again after end of install.
   director_repo.dropTargets(*storage);
@@ -1392,7 +1400,7 @@ void SotaUptaneClient::sendMetadataToEcus(const std::vector<Uptane::Target> &tar
 std::future<data::InstallationResult> SotaUptaneClient::sendFirmwareAsync(SecondaryInterface &secondary,
                                                                           const Uptane::Target &target) {
   auto f = [this, &secondary, target]() {
-    const std::string &correlation_id = director_repo.getCorrelationId();
+    auto correlation_id = director_repo.getCorrelationId();
 
     sendEvent<event::InstallStarted>(secondary.getSerial());
     report_queue->enqueue(std_::make_unique<EcuInstallationStartedReport>(secondary.getSerial(), correlation_id));
@@ -1451,10 +1459,10 @@ std::vector<result::Install::EcuReport> SotaUptaneClient::sendImagesToEcus(const
     data::InstallationResult fut_result = f.second.get();
 
     if (fut_result.isSuccess() || fut_result.result_code == data::ResultCode::Numeric::kNeedCompletion) {
-      f.first.update.setCorrelationId(director_repo.getCorrelationId());
       auto update_mode =
           fut_result.isSuccess() ? InstalledVersionUpdateMode::kCurrent : InstalledVersionUpdateMode::kPending;
-      storage->saveInstalledVersion(f.first.serial.ToString(), f.first.update, update_mode);
+      storage->saveInstalledVersion(f.first.serial.ToString(), f.first.update, update_mode,
+                                    director_repo.getCorrelationId());
     }
 
     f.first.install_res = fut_result;
@@ -1499,25 +1507,29 @@ void SotaUptaneClient::checkAndUpdatePendingSecondaries() {
                 << " serial: " << pending_ecu.first << " manifest: " << manifest;
       continue;
     }
+
     auto current_ecu_hash = manifest.installedImageHash();
     if (pending_ecu.second == current_ecu_hash) {
       LOG_INFO << "The pending update " << current_ecu_hash << " has been installed on " << pending_ecu.first;
       boost::optional<Uptane::Target> pending_version;
-      if (storage->loadInstalledVersions(pending_ecu.first.ToString(), nullptr, &pending_version)) {
+      Uptane::CorrelationId correlation_id;
+      if (storage->loadInstalledVersions(pending_ecu.first.ToString(), nullptr, &pending_version, &correlation_id)) {
         storage->saveEcuInstallationResult(pending_ecu.first,
                                            data::InstallationResult(data::ResultCode::Numeric::kOk, ""));
-
         storage->saveInstalledVersion(pending_ecu.first.ToString(), *pending_version,
-                                      InstalledVersionUpdateMode::kCurrent);
+                                      InstalledVersionUpdateMode::kCurrent, correlation_id);
 
-        report_queue->enqueue(std_::make_unique<EcuInstallationCompletedReport>(
-            pending_ecu.first, pending_version->correlation_id(), true));
+        report_queue->enqueue(
+            std_::make_unique<EcuInstallationCompletedReport>(pending_ecu.first, correlation_id, true));
 
         data::InstallationResult ir;
         std::string raw_report;
         computeDeviceInstallationResult(&ir, &raw_report);
-        storage->storeDeviceInstallationResult(ir, raw_report, pending_version->correlation_id());
+        storage->storeDeviceInstallationResult(ir, raw_report, correlation_id);
       }
+    } else {
+      LOG_DEBUG << "The pending update for ECU " << pending_ecu.first << " has not been installed ("
+                << pending_ecu.second << " != " << current_ecu_hash << ")";
     }
   }
 }

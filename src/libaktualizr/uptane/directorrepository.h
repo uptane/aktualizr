@@ -20,7 +20,7 @@ class DirectorRepository : public RepositoryCommon {
                                          const Uptane::HardwareIdentifier& hw_id) const {
     return targets.getTargets(ecu_id, hw_id);
   }
-  const std::string& getCorrelationId() const { return targets.correlation_id(); }
+  Uptane::CorrelationId getCorrelationId() const { return correlation_id_; }
   void checkMetaOffline(INvStorage& storage);
   void dropTargets(INvStorage& storage);
 
@@ -41,6 +41,12 @@ class DirectorRepository : public RepositoryCommon {
   // checking expiration but the most recent non-empty list for everything else.
   Uptane::Targets targets;         // Only empty if we've never received non-empty targets.
   Uptane::Targets latest_targets;  // Can be an empty list.
+  /**
+   * The correlation id of the currently running update.
+   * This is set when the targets are first downloaded from the server, and
+   * kept until we've sent a manifest containing a terminating state.
+   */
+  Uptane::CorrelationId correlation_id_;
 };
 
 }  // namespace Uptane

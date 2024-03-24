@@ -120,7 +120,7 @@ class ComposeAppPackManMock : public OstreeManager {
     auto cur_deployed_hash = getCurrentHash();
 
     if (target.sha256Hash() == cur_deployed_hash) {
-      storage_->saveInstalledVersion("", target, InstalledVersionUpdateMode::kCurrent);
+      storage_->saveInstalledVersion("", target, InstalledVersionUpdateMode::kCurrent, "");
       return data::InstallationResult{data::ResultCode::Numeric::kOk, "Update has been successfully applied"};
     }
     return data::InstallationResult{data::ResultCode::Numeric::kInstallFailed, "Update has failed"};
@@ -178,9 +178,9 @@ class AkliteMock {
 
     const auto install_result = package_manager_->install(target);
     if (install_result.result_code.num_code == data::ResultCode::Numeric::kNeedCompletion) {
-      storage_->savePrimaryInstalledVersion(target, InstalledVersionUpdateMode::kPending);
+      storage_->savePrimaryInstalledVersion(target, InstalledVersionUpdateMode::kPending, "");
     } else if (install_result.result_code.num_code == data::ResultCode::Numeric::kOk) {
-      storage_->savePrimaryInstalledVersion(target, InstalledVersionUpdateMode::kCurrent);
+      storage_->savePrimaryInstalledVersion(target, InstalledVersionUpdateMode::kCurrent, "");
     }
 
     return install_result;
@@ -214,7 +214,7 @@ class AkliteMock {
 
   data::InstallationResult finalizeIfNeeded() {
     boost::optional<Uptane::Target> pending_version;
-    storage_->loadInstalledVersions("", nullptr, &pending_version);
+    storage_->loadInstalledVersions("", nullptr, &pending_version, nullptr);
     if (!!pending_version) {
       return package_manager_->finalizeInstall(*pending_version);
     }
