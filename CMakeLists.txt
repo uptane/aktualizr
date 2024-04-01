@@ -233,8 +233,8 @@ if(TESTSUITE_VALGRIND)
 endif()
 add_custom_target(build_tests)
 
-find_program(CLANG_FORMAT NAMES clang-format-11)
-find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-11)
+find_program(CLANG_FORMAT NAMES clang-format-11 clang-format-16)
+find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-11 clang-tidy-16)
 
 if(CLANG_FORMAT)
     function(aktualizr_clang_format)
