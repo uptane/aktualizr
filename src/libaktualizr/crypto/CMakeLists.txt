@@ -7,6 +7,12 @@ set(HEADERS crypto.h
 
 set_source_files_properties(p11engine.cc PROPERTIES COMPILE_FLAGS -Wno-deprecated-declarations)
 
+# OpenSSL 3 deprecated several APIs that we use. Unfortunately there
+# doesn't appear to be a solution to PKCS11 support that is available
+# in OpenSSL 1.1 and not deprecated. For more discussion, see:
+# https://github.com/uptane/aktualizr/issues/83
+set_source_files_properties(crypto.cc PROPERTIES COMPILE_FLAGS -Wno-deprecated-declarations)
+
 add_library(crypto OBJECT ${SOURCES})
 aktualizr_source_file_checks(${SOURCES} ${HEADERS})
 
