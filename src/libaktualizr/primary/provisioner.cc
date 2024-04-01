@@ -11,16 +11,15 @@
 #include "logging/logging.h"
 
 using std::map;
-using std::move;
 using std::shared_ptr;
 
 Provisioner::Provisioner(const ProvisionConfig& config, shared_ptr<INvStorage> storage,
                          shared_ptr<HttpInterface> http_client, shared_ptr<KeyManager> key_manager,
                          const map<Uptane::EcuSerial, shared_ptr<SecondaryInterface>>& secondaries)
     : config_(config),
-      storage_(move(storage)),
-      http_client_(move(http_client)),
-      key_manager_(move(key_manager)),
+      storage_(std::move(storage)),
+      http_client_(std::move(http_client)),
+      key_manager_(std::move(key_manager)),
       secondaries_(secondaries) {}
 
 void Provisioner::SecondariesWereChanged() { current_state_ = State::kUnknown; }
