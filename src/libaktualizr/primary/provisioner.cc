@@ -11,7 +11,6 @@
 #include "logging/logging.h"
 
 using std::map;
-using std::move;
 using std::shared_ptr;
 
 Provisioner::Provisioner(const ProvisionConfig& config, shared_ptr<INvStorage> storage,
