@@ -14,9 +14,11 @@
 #include "libaktualizr/events.h"
 
 #include "httpfake.h"
+#include "libaktualizr/types.h"
 #include "metafake.h"
 #include "primary/aktualizr_helpers.h"
 #include "primary/sotauptaneclient.h"
+#include "storage/invstorage.h"
 #include "uptane_test_common.h"
 #include "utilities/utils.h"
 #include "virtualsecondary.h"
@@ -192,7 +194,7 @@ TEST(Aktualizr, DeviceInstallationResultMetadata) {
   targets.emplace_back(Uptane::Target("test", target_json));
 
   data::InstallationResult result;
-  aktualizr.uptane_client()->sendMetadataToEcus(targets, &result, nullptr);
+  aktualizr.uptane_client()->sendMetadataToEcus(targets, &result, nullptr, UpdateType::kOnline);
   auto res_json = result.toJson();
   EXPECT_EQ(res_json["code"].asString(), "sec_hw1:VERIFICATION_FAILED|sec_hw3:VERIFICATION_FAILED");
   EXPECT_EQ(res_json["success"], false);
@@ -200,7 +202,7 @@ TEST(Aktualizr, DeviceInstallationResultMetadata) {
   fiu_disable("secondary_putmetadata");
 
   // Retry after disabling fault injection to verify the test.
-  aktualizr.uptane_client()->sendMetadataToEcus(targets, &result, nullptr);
+  aktualizr.uptane_client()->sendMetadataToEcus(targets, &result, nullptr, UpdateType::kOnline);
   res_json = result.toJson();
   EXPECT_EQ(res_json["code"].asString(), "OK");
   EXPECT_EQ(res_json["success"], true);
@@ -714,7 +716,7 @@ class HttpInstallationFailed : public HttpFake {
   HttpResponse handle_event(const std::string& url, const Json::Value& data) override {
     (void)url;
 
-    for (auto& event_data : data) {
+    for (const auto& event_data : data) {
       auto event_id = event_data["eventType"]["id"].asString();
       auto ecu = event_data["event"]["ecu"].asString();
       auto correlationID = event_data["event"]["correlationId"].asString();
@@ -727,19 +729,26 @@ class HttpInstallationFailed : public HttpFake {
     return HttpResponse("", 200, CURLE_OK, "");
   }
 
-  bool checkReceivedReports(const std::vector<std::string>& expected_event_order) {
-    bool result = true;
+  bool checkReceivedReports(const std::vector<std::string>& expected_event_order) const {
     auto received_event_it = report_events_.begin();
 
-    for (auto& expected_event : expected_event_order) {
+    int expected_index = 0;
+    for (const auto& expected_event : expected_event_order) {
+      if (received_event_it == report_events_.end()) {
+        std::cout << "checkReceivedReports expected " << expected_event << " but no more reports remain at index "
+                  << expected_index << "\n";
+        return false;
+      }
       auto received_event = *received_event_it;
       if (expected_event != received_event) {
-        result = false;
-        break;
+        std::cout << "checkReceivedReports expected " << expected_event << " got " << received_event << " at index "
+                  << expected_index << "\n";
+        return false;
       }
       ++received_event_it;
+      expected_index++;
     }
-    return result;
+    return true;
   }
 
   bool wasInstallSuccessful(const std::string& ecu_serial) const {
@@ -759,7 +768,7 @@ class HttpInstallationFailed : public HttpFake {
 
 class EventHandler {
  public:
-  EventHandler(Aktualizr& aktualizr) {
+  explicit EventHandler(Aktualizr& aktualizr) {
     functor_ = std::bind(&EventHandler::operator(), this, std::placeholders::_1);
     aktualizr.SetSignalHandler(functor_);
   }
@@ -769,15 +778,21 @@ class EventHandler {
     received_events_.push_back(event->variant);
   }
 
-  bool checkReceivedEvents(const std::vector<std::string>& expected_event_order) {
-    bool result = true;
+  bool checkReceivedEvents(const std::vector<std::string>& expected_event_order) const {
     auto received_event_it = received_events_.begin();
 
-    for (auto& expected_event : expected_event_order) {
+    int expected_index = 0;
+    for (const auto& expected_event : expected_event_order) {
+      if (received_event_it == received_events_.end()) {
+        std::cout << "checkReceivedEvents expected " << expected_event << " but no more events remain at index "
+                  << expected_index << "\n";
+        return false;
+      }
       auto received_event = *received_event_it;
       if (expected_event != received_event) {
-        result = false;
-        break;
+        std::cout << "checkReceivedEvents expected " << expected_event << " got " << received_event << " at index "
+                  << expected_index << "\n";
+        return false;
       }
 
       if (received_event == "DownloadProgressReport") {
@@ -786,13 +801,35 @@ class EventHandler {
       } else {
         ++received_event_it;
       }
+      expected_index++;
     }
-    return result;
+    return true;
   }
+
+  void clear() { received_events_.clear(); }
 
  private:
   std::function<void(std::shared_ptr<event::BaseEvent>)> functor_;
   std::vector<std::string> received_events_{};
+};
+
+class AktualizrFailureTest : public testing::Test {
+ public:
+  AktualizrFailureTest() {
+    fault_injection_init();
+    aktualizr_.Initialize();
+  }
+
+ protected:
+  const std::string primary_ecu_id = "CA:FE:A6:D2:84:9D";
+  const std::string secondary_ecu_id = "secondary_ecu_serial";
+  TemporaryDirectory temp_dir_;
+  std::shared_ptr<HttpInstallationFailed> http_server_mock_{
+      std::make_shared<HttpInstallationFailed>(temp_dir_.Path(), fake_meta_dir)};
+  Config conf_{UptaneTestCommon::makeTestConfig(temp_dir_, http_server_mock_->tls_server)};
+  std::shared_ptr<INvStorage> storage_{INvStorage::newStorage(conf_.storage)};
+  UptaneTestCommon::TestAktualizr aktualizr_{conf_, storage_, http_server_mock_};
+  EventHandler event_hdlr{aktualizr_};
 };
 
 /*
@@ -811,17 +848,17 @@ TEST(Aktualizr, FinalizationFailure) {
   Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http_server_mock->tls_server);
   conf.pacman.fake_need_reboot = true;
   conf.uptane.force_install_completion = true;
-  conf.uptane.polling_sec = 0;
+  conf.uptane.polling_sec = 1;
   auto storage = INvStorage::newStorage(conf.storage);
 
   std::vector<std::string> expected_event_order = {
       "SendDeviceDataComplete", "UpdateCheckComplete",    "DownloadProgressReport", "DownloadTargetComplete",
       "DownloadProgressReport", "DownloadTargetComplete", "AllDownloadsComplete",   "InstallStarted",
-      "InstallTargetComplete",  "InstallStarted",         "InstallTargetComplete",  "AllInstallsComplete"};
+      "InstallStarted",         "InstallTargetComplete",  "InstallTargetComplete",  "AllInstallsComplete"};
 
   std::vector<std::string> expected_report_order = {
       "EcuDownloadStarted",     "EcuDownloadCompleted",   "EcuDownloadStarted",     "EcuDownloadCompleted",
-      "EcuInstallationStarted", "EcuInstallationApplied", "EcuInstallationStarted", "EcuInstallationCompleted"};
+      "EcuInstallationStarted", "EcuInstallationStarted", "EcuInstallationApplied", "EcuInstallationCompleted"};
 
   const std::string primary_ecu_id = "CA:FE:A6:D2:84:9D";
   const std::string secondary_ecu_id = "secondary_ecu_serial";
@@ -947,144 +984,206 @@ TEST(Aktualizr, FinalizationFailure) {
   }
 }
 
-/*
- * Initialize -> UptaneCycle -> download updates -> fail installation
- *
- * Verifies whether the Uptane client is not at pending state after installation failure
- *
- * Checks actions:
- *
- * - [x] Update is not in pending state anymore after failed installation
- * - [x] Store negative device installation result when an ECU installation failed
- */
-TEST(Aktualizr, InstallationFailure) {
-  std::vector<std::string> expected_event_order = {
-      "UpdateCheckComplete",    "DownloadProgressReport", "DownloadTargetComplete", "DownloadProgressReport",
-      "DownloadTargetComplete", "AllDownloadsComplete",   "InstallStarted",         "InstallTargetComplete",
-      "InstallStarted",         "InstallTargetComplete",  "AllInstallsComplete",    "PutManifestComplete"};
+TEST_F(AktualizrFailureTest, Primary) {
+  // Given the primary fails to install
+  fiu_enable("fake_package_install", 1, nullptr, 0);
 
-  std::vector<std::string> expected_report_order = {
-      "EcuDownloadStarted",     "EcuDownloadCompleted",     "EcuDownloadStarted",     "EcuDownloadCompleted",
-      "EcuInstallationStarted", "EcuInstallationCompleted", "EcuInstallationStarted", "EcuInstallationCompleted"};
+  aktualizr_.UptaneCycle();
+  aktualizr_.uptane_client()->completeInstall();
 
-  const std::string primary_ecu_id = "CA:FE:A6:D2:84:9D";
-  const std::string secondary_ecu_id = "secondary_ecu_serial";
+  // We get these events
+  EXPECT_TRUE(event_hdlr.checkReceivedEvents(std::vector<std::string>{
+      "SendDeviceDataComplete", "UpdateCheckComplete", "DownloadProgressReport", "DownloadTargetComplete",
+      "DownloadProgressReport", "DownloadTargetComplete", "AllDownloadsComplete", "InstallStarted", "InstallStarted",
+      "InstallTargetComplete", "AllInstallsComplete", "PutManifestComplete"}));
 
-  {
-    TemporaryDirectory temp_dir;
-    auto http_server_mock = std::make_shared<HttpInstallationFailed>(temp_dir.Path(), fake_meta_dir);
-    Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http_server_mock->tls_server);
-    auto storage = INvStorage::newStorage(conf.storage);
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->checkReceivedReports(
+      std::vector<std::string>{"EcuDownloadStarted", "EcuDownloadCompleted", "EcuDownloadStarted",
+                               "EcuDownloadCompleted", "EcuInstallationStarted"}));
 
-    fault_injection_init();
-    fiu_enable("fake_package_install", 1, nullptr, 0);
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(primary_ecu_id));
+  // If we failed to install on the primary, we won't try the secondary
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(secondary_ecu_id));
 
-    UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http_server_mock);
-    EventHandler event_hdlr(aktualizr);
-    aktualizr.Initialize();
+  data::InstallationResult dev_installation_res;
+  std::string report;
+  std::string correlation_id;
 
-    // verify currently installed version
-    boost::optional<Uptane::Target> current_version;
-    boost::optional<Uptane::Target> pending_version;
+  // `device_installation_result` and `ecu_installation_results` are cleared
+  // at UptaneCycle()->putManifest() once a device manifest is successfully sent to a server
+  EXPECT_FALSE(storage_->loadDeviceInstallationResult(&dev_installation_res, &report, &correlation_id));
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  std::vector<std::pair<Uptane::EcuSerial, data::InstallationResult>> ecu_installation_res;
+  EXPECT_FALSE(storage_->loadEcuInstallationResults(&ecu_installation_res));
+  EXPECT_EQ(ecu_installation_res.size(), 0);
 
-    EXPECT_FALSE(!!pending_version);
-    EXPECT_FALSE(!!current_version);
+  boost::optional<Uptane::Target> current_version;
+  boost::optional<Uptane::Target> pending_version;
+  ASSERT_TRUE(storage_->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  // Nothing was installed
+  EXPECT_TRUE(!current_version);
+  EXPECT_TRUE(!pending_version);
+  LOG_INFO << http_server_mock_->last_manifest;
+  Json::Value installation_report = http_server_mock_->last_manifest["signed"]["installation_report"]["report"];
+  // And a failure manifest is returned to the server
+  EXPECT_EQ(installation_report["result"]["code"].asString(), "primary_hw:INSTALL_FAILED");
+  EXPECT_FALSE(installation_report["result"]["success"].asBool());
 
-    aktualizr.UptaneCycle();
-    aktualizr.uptane_client()->completeInstall();
+  fiu_disable("fake_package_install");
+}
 
-    EXPECT_TRUE(event_hdlr.checkReceivedEvents(expected_event_order));
-    EXPECT_FALSE(aktualizr.uptane_client()->hasPendingUpdates());
-    EXPECT_TRUE(http_server_mock->checkReceivedReports(expected_report_order));
-    EXPECT_FALSE(http_server_mock->wasInstallSuccessful(primary_ecu_id));
-    EXPECT_TRUE(http_server_mock->wasInstallSuccessful(secondary_ecu_id));
+// Secondary fails during package download
+TEST_F(AktualizrFailureTest, SecondaryDownloadFails) {
+  fault_injection_enable("fake_package_install", 1, "PRIMFAIL", 0);
+  const std::string sec_fault_name = "secondary_sendfirmware_" + secondary_ecu_id;
+  fault_injection_enable(sec_fault_name.c_str(), 1, "SECFAIL", 0);
 
-    data::InstallationResult dev_installation_res;
-    std::string report;
-    std::string correlation_id;
+  aktualizr_.UptaneCycle();
+  aktualizr_.uptane_client()->completeInstall();
 
-    // `device_installation_result` and `ecu_installation_results` are cleared
-    // at UptaneCycle()->putManifest() once a device manifest is successfully sent to a server
-    EXPECT_FALSE(storage->loadDeviceInstallationResult(&dev_installation_res, &report, &correlation_id));
+  EXPECT_TRUE(event_hdlr.checkReceivedEvents(std::vector<std::string>{
+      "SendDeviceDataComplete", "UpdateCheckComplete", "DownloadProgressReport", "DownloadTargetComplete",
+      "DownloadProgressReport", "DownloadTargetComplete", "AllDownloadsComplete", "InstallStarted",
+      "AllInstallsComplete", "PutManifestComplete"}));
 
-    std::vector<std::pair<Uptane::EcuSerial, data::InstallationResult>> ecu_installation_res;
-    EXPECT_FALSE(storage->loadEcuInstallationResults(&ecu_installation_res));
-    EXPECT_EQ(ecu_installation_res.size(), 0);
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->checkReceivedReports(
+      std::vector<std::string>{"EcuDownloadStarted", "EcuDownloadCompleted", "EcuDownloadStarted",
+                               "EcuDownloadCompleted", "EcuInstallationStarted"}));
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
-    // it says that no any installed version found,
-    // which is, on one hand is correct since installation of the found update failed hence nothing was installed,
-    // on the other hand some version should have been installed prior to the failed update
-    EXPECT_FALSE(!!current_version);
-    EXPECT_FALSE(!!pending_version);
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(primary_ecu_id));
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(secondary_ecu_id));
 
-    fiu_disable("fake_package_install");
-  }
+  LOG_INFO << http_server_mock_->last_manifest;
+  Json::Value installation_report = http_server_mock_->last_manifest["signed"]["installation_report"]["report"];
+  EXPECT_EQ(installation_report["result"]["code"].asString(), "SECFAIL");
+  EXPECT_FALSE(installation_report["result"]["success"].asBool());
 
-  // Primary and Secondary failure
-  for (std::string prefix : {"secondary_install_", "secondary_sendfirmware_"}) {
-    TemporaryDirectory temp_dir;
-    auto http_server_mock = std::make_shared<HttpInstallationFailed>(temp_dir.Path(), fake_meta_dir);
-    Config conf = UptaneTestCommon::makeTestConfig(temp_dir, http_server_mock->tls_server);
-    auto storage = INvStorage::newStorage(conf.storage);
-    const std::string sec_fault_name = prefix + secondary_ecu_id;
+  boost::optional<Uptane::Target> current_version;
+  boost::optional<Uptane::Target> pending_version;
+  ASSERT_TRUE(storage_->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  // it says that no any installed version found,
+  // which is, on one hand is correct since installation of the found update failed hence nothing was installed,
+  // on the other hand some version should have been installed prior to the failed update
+  EXPECT_TRUE(!current_version);
+  EXPECT_TRUE(!pending_version);
 
-    fault_injection_init();
-    fault_injection_enable("fake_package_install", 1, "PRIMFAIL", 0);
-    fault_injection_enable(sec_fault_name.c_str(), 1, "SECFAIL", 0);
+  fault_injection_disable("fake_package_install");
+  fault_injection_disable(sec_fault_name.c_str());
+}
 
-    UptaneTestCommon::TestAktualizr aktualizr(conf, storage, http_server_mock);
-    EventHandler event_hdlr(aktualizr);
-    aktualizr.Initialize();
+// NOLINTNEXTLINE
+TEST_F(AktualizrFailureTest, SecondaryInstallFails) {
+  const std::string sec_fault_name = "secondary_install_" + secondary_ecu_id;
+  fault_injection_enable(sec_fault_name.c_str(), 1, "SECFAIL", 0);
 
-    // verify currently installed version
-    boost::optional<Uptane::Target> current_version;
-    boost::optional<Uptane::Target> pending_version;
+  aktualizr_.UptaneCycle();
+  aktualizr_.uptane_client()->completeInstall();
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  EXPECT_TRUE(event_hdlr.checkReceivedEvents(std::vector<std::string>{
+      "SendDeviceDataComplete", "UpdateCheckComplete", "DownloadProgressReport", "DownloadTargetComplete",
+      "DownloadProgressReport", "DownloadTargetComplete", "AllDownloadsComplete", "InstallStarted", "InstallStarted",
+      "InstallTargetComplete", "InstallTargetComplete", "AllInstallsComplete", "PutManifestComplete"}));
 
-    EXPECT_FALSE(!!pending_version);
-    EXPECT_FALSE(!!current_version);
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->checkReceivedReports(
+      std::vector<std::string>{"EcuDownloadStarted", "EcuDownloadCompleted", "EcuDownloadStarted",
+                               "EcuDownloadCompleted", "EcuInstallationStarted"}));
 
-    aktualizr.UptaneCycle();
-    aktualizr.uptane_client()->completeInstall();
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->wasInstallSuccessful(primary_ecu_id));
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(secondary_ecu_id));
 
-    EXPECT_TRUE(event_hdlr.checkReceivedEvents(expected_event_order));
-    EXPECT_FALSE(aktualizr.uptane_client()->hasPendingUpdates());
-    EXPECT_TRUE(http_server_mock->checkReceivedReports(expected_report_order));
-    EXPECT_FALSE(http_server_mock->wasInstallSuccessful(primary_ecu_id));
-    EXPECT_FALSE(http_server_mock->wasInstallSuccessful(secondary_ecu_id));
+  LOG_INFO << http_server_mock_->last_manifest;
+  Json::Value installation_report = http_server_mock_->last_manifest["signed"]["installation_report"]["report"];
+  EXPECT_EQ(installation_report["result"]["code"].asString(), "secondary_hw:SECFAIL");
+  EXPECT_FALSE(installation_report["result"]["success"].asBool());
 
-    LOG_INFO << http_server_mock->last_manifest;
-    Json::Value installation_report = http_server_mock->last_manifest["signed"]["installation_report"]["report"];
-    EXPECT_EQ(installation_report["items"][0]["result"]["code"].asString(), "PRIMFAIL");
-    EXPECT_EQ(installation_report["items"][1]["result"]["code"].asString(), "SECFAIL");
-    EXPECT_EQ(installation_report["result"]["code"].asString(), "primary_hw:PRIMFAIL|secondary_hw:SECFAIL");
+  boost::optional<Uptane::Target> current_version;
+  boost::optional<Uptane::Target> pending_version;
+  ASSERT_TRUE(storage_->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  // Primary will have installed, because we commit to the install of the primary first, then the
+  // secondary. Ideally the secondary will detect and report failures during the 'download' phase
+  // instead of leaving it this late.
+  ASSERT_TRUE(!!current_version);
+  EXPECT_EQ(current_version->filename(), "primary_firmware.txt");
+  EXPECT_TRUE(!pending_version);
 
-    data::InstallationResult dev_installation_res;
-    std::string report;
-    std::string correlation_id;
+  fault_injection_disable(sec_fault_name.c_str());
+}
 
-    // `device_installation_result` and `ecu_installation_results` are cleared
-    // at UptaneCycle()->putManifest() once a device manifest is successfully sent to a server
-    EXPECT_FALSE(storage->loadDeviceInstallationResult(&dev_installation_res, &report, &correlation_id));
+// NOLINTNEXTLINE
+TEST_F(AktualizrFailureTest, PrimaryAndSecondaryInstallFails) {
+  fault_injection_enable("fake_package_install", 1, "PRIMFAIL", 0);
+  const std::string sec_fault_name = "secondary_install_" + secondary_ecu_id;
+  fault_injection_enable(sec_fault_name.c_str(), 1, "SECFAIL", 0);
 
-    std::vector<std::pair<Uptane::EcuSerial, data::InstallationResult>> ecu_installation_res;
-    EXPECT_FALSE(storage->loadEcuInstallationResults(&ecu_installation_res));
-    EXPECT_EQ(ecu_installation_res.size(), 0);
+  aktualizr_.UptaneCycle();
+  aktualizr_.uptane_client()->completeInstall();
 
-    ASSERT_TRUE(storage->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
-    // it says that no any installed version found,
-    // which is, on one hand is correct since installation of the found update failed hence nothing was installed,
-    // on the other hand some version should have been installed prior to the failed update
-    EXPECT_FALSE(!!current_version);
-    EXPECT_FALSE(!!pending_version);
+  EXPECT_TRUE(event_hdlr.checkReceivedEvents(std::vector<std::string>{
+      "SendDeviceDataComplete", "UpdateCheckComplete", "DownloadProgressReport", "DownloadTargetComplete",
+      "DownloadProgressReport", "DownloadTargetComplete", "AllDownloadsComplete", "InstallStarted", "InstallStarted",
+      "InstallTargetComplete", "AllInstallsComplete", "PutManifestComplete"}));
 
-    fault_injection_disable("fake_package_install");
-    fault_injection_disable(sec_fault_name.c_str());
-  }
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->checkReceivedReports(
+      std::vector<std::string>{"EcuDownloadStarted", "EcuDownloadCompleted", "EcuDownloadStarted",
+                               "EcuDownloadCompleted", "EcuInstallationStarted"}));
+
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(primary_ecu_id));
+  EXPECT_FALSE(http_server_mock_->wasInstallSuccessful(secondary_ecu_id));
+
+  LOG_INFO << http_server_mock_->last_manifest;
+  Json::Value installation_report = http_server_mock_->last_manifest["signed"]["installation_report"]["report"];
+  EXPECT_EQ(installation_report["result"]["code"].asString(), "primary_hw:PRIMFAIL");
+  EXPECT_FALSE(installation_report["result"]["success"].asBool());
+
+  boost::optional<Uptane::Target> current_version;
+  boost::optional<Uptane::Target> pending_version;
+  ASSERT_TRUE(storage_->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  // it says that no any installed version found,
+  // which is, on one hand is correct since installation of the found update failed hence nothing was installed,
+  // on the other hand some version should have been installed prior to the failed update
+  EXPECT_TRUE(!current_version);
+  EXPECT_TRUE(!pending_version);
+
+  fault_injection_disable("fake_package_install");
+  fault_injection_disable(sec_fault_name.c_str());
+}
+
+// NOLINTNEXTLINE
+TEST_F(AktualizrFailureTest, HappyPath) {
+  aktualizr_.UptaneCycle();
+  aktualizr_.uptane_client()->completeInstall();
+
+  EXPECT_TRUE(event_hdlr.checkReceivedEvents(std::vector<std::string>{
+      "SendDeviceDataComplete", "UpdateCheckComplete", "DownloadProgressReport", "DownloadTargetComplete",
+      "DownloadProgressReport", "DownloadTargetComplete", "AllDownloadsComplete", "InstallStarted", "InstallStarted",
+      "InstallTargetComplete", "InstallTargetComplete", "AllInstallsComplete", "PutManifestComplete"}));
+
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->checkReceivedReports(
+      std::vector<std::string>{"EcuDownloadStarted", "EcuDownloadCompleted", "EcuDownloadStarted",
+                               "EcuDownloadCompleted", "EcuInstallationStarted"}));
+
+  EXPECT_FALSE(aktualizr_.uptane_client()->hasPendingUpdates());
+  EXPECT_TRUE(http_server_mock_->wasInstallSuccessful(primary_ecu_id));
+  EXPECT_TRUE(http_server_mock_->wasInstallSuccessful(secondary_ecu_id));
+
+  LOG_INFO << http_server_mock_->last_manifest;
+  Json::Value installation_report = http_server_mock_->last_manifest["signed"]["installation_report"]["report"];
+  EXPECT_EQ(installation_report["result"]["code"].asString(), "OK");
+  EXPECT_TRUE(installation_report["result"]["success"].asBool());
+
+  boost::optional<Uptane::Target> current_version;
+  boost::optional<Uptane::Target> pending_version;
+  ASSERT_TRUE(storage_->loadInstalledVersions(primary_ecu_id, &current_version, &pending_version, nullptr));
+  ASSERT_TRUE(!!current_version);
+  EXPECT_EQ(current_version->filename(), "primary_firmware.txt");
 }
 
 /*
