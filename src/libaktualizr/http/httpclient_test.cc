@@ -9,6 +9,7 @@
 #include "json/json.h"
 
 #include <chrono>
+#include <thread>
 #include "http/httpclient.h"
 #include "libaktualizr/types.h"
 #include "test_utils.h"
