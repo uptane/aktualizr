@@ -28,10 +28,12 @@ add_library(uptane OBJECT ${SOURCES})
 add_aktualizr_test(NAME tuf SOURCES tuf_test.cc PROJECT_WORKING_DIRECTORY)
 
 if(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
-    add_aktualizr_test(NAME uptane_ci SOURCES uptane_ci_test.cc PROJECT_WORKING_DIRECTORY
-                        ARGS ${SOTA_PACKED_CREDENTIALS} ${PROJECT_BINARY_DIR}/ostree_repo)
+    add_aktualizr_test(NAME uptane_ci SOURCES uptane_ci_test.cc
+                       PROJECT_WORKING_DIRECTORY
+                       LIBRARIES virtual_secondary
+                       ARGS ${SOTA_PACKED_CREDENTIALS} ${PROJECT_BINARY_DIR}/ostree_repo)
     set_tests_properties(test_uptane_ci PROPERTIES LABELS "credentials")
-    target_link_libraries(t_uptane_ci virtual_secondary)
+
 else(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
     list(APPEND TEST_SOURCES uptane_ci_test.cc)
 endif(BUILD_OSTREE AND SOTA_PACKED_CREDENTIALS)
