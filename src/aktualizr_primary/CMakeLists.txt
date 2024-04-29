@@ -4,6 +4,15 @@ set(HEADERS secondary_config.h secondary.h)
 add_executable(aktualizr ${SOURCES})
 if(TORIZON)
     set_target_properties(aktualizr PROPERTIES OUTPUT_NAME "aktualizr-torizon")
+    if(UNIX)
+        # Some tests expect the Aktualizr executable to be named "aktualizr"; so
+        # here we create a symlink from "aktualizr" to "aktualizr-torizon" to
+        # get around this constraint.
+        add_custom_command(TARGET aktualizr
+                           POST_BUILD
+                           COMMAND /bin/bash -c 'ln -srf aktualizr-torizon aktualizr'
+                           COMMENT "Generating symlink to aktualizr-torizon")
+    endif()
 endif()
 
 target_include_directories(aktualizr PUBLIC ${PROJECT_SOURCE_DIR}/third_party)
