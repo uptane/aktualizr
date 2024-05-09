@@ -333,7 +333,7 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   {
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending));
     EXPECT_TRUE(!!pending);
     EXPECT_TRUE(storage->hasPendingInstall());
     EXPECT_EQ(pending->filename(), "update2.bin");
@@ -345,7 +345,7 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
 
   {
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, &pending));
     EXPECT_TRUE(!!pending);
     EXPECT_TRUE(storage->hasPendingInstall());
     EXPECT_EQ(pending->filename(), "update3.bin");
@@ -357,7 +357,7 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
   {
     boost::optional<Uptane::Target> current;
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending));
     EXPECT_TRUE(!!current);
     EXPECT_EQ(current->filename(), "update3.bin");
     EXPECT_FALSE(!!pending);
@@ -387,7 +387,7 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
   {
     boost::optional<Uptane::Target> current;
     boost::optional<Uptane::Target> pending;
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", &current, &pending));
     EXPECT_TRUE(!!current);
     EXPECT_EQ(current->filename(), "update3.bin");
     EXPECT_FALSE(!!pending);
@@ -406,8 +406,8 @@ TEST(StorageCommon, LoadStoreInstalledVersions) {
   storage->saveInstalledVersion("secondary_1", tsec, InstalledVersionUpdateMode::kCurrent, "");
 
   {
-    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, nullptr, nullptr));
-    EXPECT_TRUE(storage->loadInstalledVersions("secondary_1", nullptr, nullptr, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("primary", nullptr, nullptr));
+    EXPECT_TRUE(storage->loadInstalledVersions("secondary_1", nullptr, nullptr));
 
     std::vector<Uptane::Target> log;
     storage->loadInstallationLog("secondary_1", &log, true);

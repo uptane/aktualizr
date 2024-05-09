@@ -569,7 +569,7 @@ void SotaUptaneClient::getNewTargets(std::vector<Uptane::Target> *new_targets, u
       }
 
       boost::optional<Uptane::Target> current_version;
-      if (!storage->loadInstalledVersions(ecu_serial.ToString(), &current_version, nullptr, nullptr)) {
+      if (!storage->loadInstalledVersions(ecu_serial.ToString(), &current_version, nullptr)) {
         LOG_WARNING << "Could not load currently installed version for ECU ID: " << ecu_serial;
         break;
       }

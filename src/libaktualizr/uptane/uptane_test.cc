@@ -419,7 +419,7 @@ TEST(Uptane, InstallFakeGood) {
   // Remove the hashes from the current Target version stored in the database
   // for the Primary.
   boost::optional<Uptane::Target> current_version;
-  EXPECT_TRUE(storage->loadInstalledVersions("CA:FE:A6:D2:84:9D", &current_version, nullptr, nullptr));
+  EXPECT_TRUE(storage->loadInstalledVersions("CA:FE:A6:D2:84:9D", &current_version, nullptr));
   const auto bad_target = Uptane::Target(current_version->filename(), current_version->ecus(), std::vector<Hash>{},
                                          current_version->length());
   storage->saveInstalledVersion("CA:FE:A6:D2:84:9D", bad_target, InstalledVersionUpdateMode::kCurrent, "");
@@ -1197,7 +1197,7 @@ TEST(Uptane, InstalledVersionImport) {
   storage->importData(config.import);
 
   boost::optional<Uptane::Target> current_version;
-  storage->loadPrimaryInstalledVersions(&current_version, nullptr, nullptr);
+  storage->loadPrimaryInstalledVersions(&current_version, nullptr);
   EXPECT_TRUE(!!current_version);
   EXPECT_EQ(current_version->filename(), "master-863de625f305413dc3be306afab7c3f39d8713045cfff812b3af83f9722851f0");
 

@@ -26,7 +26,7 @@ void AktualizrSecondaryOstree::initialize() {
     // an installation status of each ECU but store it just for a given secondary ECU
     std::vector<Uptane::Target> installed_versions;
     boost::optional<Uptane::Target> pending_target;
-    AktualizrSecondary::storage()->loadInstalledVersions(serial().ToString(), nullptr, &pending_target, nullptr);
+    AktualizrSecondary::storage()->loadInstalledVersions(serial().ToString(), nullptr, &pending_target);
 
     if (!!pending_target) {
       data::InstallationResult install_res =

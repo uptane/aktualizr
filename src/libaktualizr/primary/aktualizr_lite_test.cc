@@ -214,7 +214,7 @@ class AkliteMock {
 
   data::InstallationResult finalizeIfNeeded() {
     boost::optional<Uptane::Target> pending_version;
-    storage_->loadInstalledVersions("", nullptr, &pending_version, nullptr);
+    storage_->loadInstalledVersions("", nullptr, &pending_version);
     if (!!pending_version) {
       return package_manager_->finalizeInstall(*pending_version);
     }

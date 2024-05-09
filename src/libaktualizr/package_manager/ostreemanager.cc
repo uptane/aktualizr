@@ -386,7 +386,7 @@ Uptane::Target OstreeManager::getCurrent() const {
   boost::optional<Uptane::Target> current_version;
   // This may appear Primary-specific, but since Secondaries only know about
   // themselves, this actually works just fine for them, too.
-  storage_->loadPrimaryInstalledVersions(&current_version, nullptr, nullptr);
+  storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
 
   if (!!current_version && current_version->sha256Hash() == current_hash) {
     return *current_version;

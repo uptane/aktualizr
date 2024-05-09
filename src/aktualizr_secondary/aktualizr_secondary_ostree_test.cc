@@ -131,7 +131,7 @@ class AktualizrSecondaryWrapper {
     boost::optional<Uptane::Target> current_target;
     boost::optional<Uptane::Target> pending_target;
 
-    storage_->loadInstalledVersions(secondary_->serial().ToString(), &current_target, &pending_target, nullptr);
+    storage_->loadInstalledVersions(secondary_->serial().ToString(), &current_target, &pending_target);
 
     return std::make_pair(!pending_target ? Uptane::Target::Unknown() : *pending_target,
                           !current_target ? Uptane::Target::Unknown() : *current_target);

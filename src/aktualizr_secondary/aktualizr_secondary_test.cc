@@ -52,7 +52,7 @@ class AktualizrSecondaryWrapper {
   Uptane::Target getPendingVersion() const {
     boost::optional<Uptane::Target> pending_target;
 
-    storage_->loadInstalledVersions(secondary_->serial().ToString(), nullptr, &pending_target, nullptr);
+    storage_->loadInstalledVersions(secondary_->serial().ToString(), nullptr, &pending_target);
     return *pending_target;
   }
 

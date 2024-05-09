@@ -162,6 +162,14 @@ class INvStorage {
                                     Uptane::CorrelationId* correlation_id) const {
     return loadInstalledVersions("", current_version, pending_version, correlation_id);
   }
+  bool loadPrimaryInstalledVersions(boost::optional<Uptane::Target>* current_version,
+                                    boost::optional<Uptane::Target>* pending_version) const {
+    return loadInstalledVersions("", current_version, pending_version, nullptr);
+  }
+  bool loadInstalledVersions(const std::string& ecu_serial, boost::optional<Uptane::Target>* current_version,
+                             boost::optional<Uptane::Target>* pending_version) const {
+    return loadInstalledVersions(ecu_serial, current_version, pending_version, nullptr);
+  }
   void savePrimaryInstalledVersion(const Uptane::Target& target, InstalledVersionUpdateMode update_mode,
                                    const Uptane::CorrelationId& correlation_id) {
     return saveInstalledVersion("", target, update_mode, correlation_id);

@@ -446,8 +446,7 @@ int main(int argc, char **argv) {
 
     std::vector<Uptane::Target> installed_versions;
     boost::optional<Uptane::Target> pending;
-    Uptane::CorrelationId correlation_id;
-    storage->loadPrimaryInstalledVersions(nullptr, &pending, &correlation_id);
+    storage->loadPrimaryInstalledVersions(nullptr, &pending);
 
     if (!!pending) {
       std::cout << "Pending " << ecu_name << " ECU version: " << pending->sha256Hash() << std::endl;
