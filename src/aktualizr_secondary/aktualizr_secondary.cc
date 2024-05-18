@@ -52,13 +52,13 @@ data::InstallationResult AktualizrSecondary::install() {
 
   switch (result.result_code.num_code) {
     case data::ResultCode::Numeric::kOk: {
-      storage_->saveInstalledVersion(ecu_serial_.ToString(), pending_target_, InstalledVersionUpdateMode::kCurrent);
+      storage_->saveInstalledVersion(ecu_serial_.ToString(), pending_target_, InstalledVersionUpdateMode::kCurrent, "");
       pending_target_ = Uptane::Target::Unknown();
       LOG_INFO << "The target has been successfully installed: " << target_name;
       break;
     }
     case data::ResultCode::Numeric::kNeedCompletion: {
-      storage_->saveInstalledVersion(ecu_serial_.ToString(), pending_target_, InstalledVersionUpdateMode::kPending);
+      storage_->saveInstalledVersion(ecu_serial_.ToString(), pending_target_, InstalledVersionUpdateMode::kPending, "");
       LOG_INFO << "The target has been successfully installed, but a reboot is required to be applied: " << target_name;
       break;
     }

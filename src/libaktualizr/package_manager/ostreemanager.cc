@@ -419,7 +419,7 @@ Uptane::Target OstreeManager::getCurrent() const {
   // device.
   Uptane::EcuMap ecus;
   std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
-  return {"unknown", ecus, hashes, 0, "", "OSTREE"};
+  return {"unknown", ecus, hashes, 0, "OSTREE"};
 }
 
 // used for bootloader rollback

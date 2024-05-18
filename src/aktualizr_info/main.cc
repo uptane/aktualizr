@@ -381,9 +381,10 @@ int main(int argc, char **argv) {
 
         boost::optional<Uptane::Target> current_version;
         boost::optional<Uptane::Target> pending_version;
+        Uptane::CorrelationId correlation_id;
 
         auto load_installed_version_res =
-            storage->loadInstalledVersions(serial.ToString(), &current_version, &pending_version);
+            storage->loadInstalledVersions(serial.ToString(), &current_version, &pending_version, &correlation_id);
 
         if (!load_installed_version_res || (!current_version && !pending_version)) {
           std::cout << "   no details about installed nor pending images\n";
@@ -395,6 +396,10 @@ int main(int argc, char **argv) {
           if (!!pending_version) {
             std::cout << "   pending image hash: " << pending_version->sha256Hash() << "\n";
             std::cout << "   pending image filename: " << pending_version->filename() << "\n";
+          }
+
+          if (!correlation_id.empty()) {
+            std::cout << "   correlation id: " << correlation_id << "\n";
           }
         }
 

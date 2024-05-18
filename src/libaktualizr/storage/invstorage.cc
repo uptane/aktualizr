@@ -115,7 +115,7 @@ void INvStorage::importInstalledVersions(const boost::filesystem::path& base_pat
   fsReadInstalledVersions(file_path, &installed_versions, &current_index);
   if (current_index < installed_versions.size()) {
     // installed versions in legacy fs storage are all for primary
-    savePrimaryInstalledVersion(installed_versions[current_index], InstalledVersionUpdateMode::kCurrent);
+    savePrimaryInstalledVersion(installed_versions[current_index], InstalledVersionUpdateMode::kCurrent, "");
     boost::filesystem::remove(file_path);
     LOG_DEBUG << "Successfully imported installed versions from " << file_path;
   }
@@ -243,10 +243,10 @@ void INvStorage::FSSToSQLS(FSStorageRead& fs_storage, SQLStorage& sql_storage) {
   std::vector<Uptane::Target> installed_versions;
   size_t current_index = SIZE_MAX;
   size_t k = 0;
-  fs_storage.loadInstalledVersions(&installed_versions, &current_index);
+  fs_storage.loadInstalledVersions(&installed_versions, &current_index, nullptr);
   for (auto it = installed_versions.cbegin(); it != installed_versions.cend(); it++, k++) {
     auto mode = k == current_index ? InstalledVersionUpdateMode::kCurrent : InstalledVersionUpdateMode::kNone;
-    sql_storage.savePrimaryInstalledVersion(*it, mode);
+    sql_storage.savePrimaryInstalledVersion(*it, mode, "");
   }
 
   // migrate latest versions of all metadata

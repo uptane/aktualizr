@@ -54,6 +54,7 @@ void DirectorRepository::verifyTargets(const std::string& targets_raw) {
                              std::make_shared<MetaWithKeys>(root));
     if (!usePreviousTargets()) {
       targets = latest_targets;
+      correlation_id_ = latest_targets.correlation_id();
     }
   } catch (const Uptane::Exception& e) {
     LOG_ERROR << "Signature verification for Director Targets metadata failed";

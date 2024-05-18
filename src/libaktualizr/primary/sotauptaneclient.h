@@ -150,7 +150,8 @@ class SotaUptaneClient {
 
   static std::vector<Uptane::Target> findForEcu(const std::vector<Uptane::Target> &targets,
                                                 const Uptane::EcuSerial &ecu_id);
-  data::InstallationResult PackageInstallSetResult(const Uptane::Target &target);
+  data::InstallationResult PackageInstallSetResult(const Uptane::Target &target,
+                                                   const Uptane::CorrelationId &correlation_id);
   void finalizeAfterReboot();
   // Part of sendDeviceData()
   void reportHwInfo();

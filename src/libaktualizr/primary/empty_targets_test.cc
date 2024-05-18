@@ -41,12 +41,12 @@ TEST(Aktualizr, EmptyTargets) {
   logger_set_threshold(boost::log::trivial::trace);
 
   Process uptane_gen(uptane_generator_path.string());
-  uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+  uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "cid1"});
   uptane_gen.run({"image", "--path", meta_dir.PathString(), "--filename", "tests/test_data/firmware.txt",
                   "--targetname", "firmware.txt", "--hwid", "primary_hw"});
   uptane_gen.run({"addtarget", "--path", meta_dir.PathString(), "--targetname", "firmware.txt", "--hwid", "primary_hw",
                   "--serial", "CA:FE:A6:D2:84:9D"});
-  uptane_gen.run({"signtargets", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+  uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
 
   auto storage = INvStorage::newStorage(conf.storage);
   {
@@ -60,7 +60,7 @@ TEST(Aktualizr, EmptyTargets) {
     EXPECT_EQ(download_result.status, result::DownloadStatus::kSuccess);
 
     uptane_gen.run({"emptytargets", "--path", meta_dir.PathString()});
-    uptane_gen.run({"signtargets", "--path", meta_dir.PathString(), "--correlationid", "abc123"});
+    uptane_gen.run({"signtargets", "--path", meta_dir.PathString()});
 
     result::UpdateCheck update_result2 = aktualizr.CheckUpdates().get();
     EXPECT_EQ(update_result2.status, result::UpdateStatus::kUpdatesAvailable);
