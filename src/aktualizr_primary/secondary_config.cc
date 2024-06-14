@@ -18,7 +18,15 @@ SecondaryConfigParser::Configs SecondaryConfigParser::parse_config_file(const bo
     throw std::invalid_argument("Specified config file doesn't exist: " + config_file.string());
   }
 
-  auto cfg_file_ext = boost::filesystem::extension(config_file);
+  // On Boost 1.85.0 function extension is now a member function of boost::filesystem::path,
+  // and boost::filesystem::extension (that was already deprecated) was finally removed. To
+  // keep compatibility with older versions of Boost (such as the one used by Yocto Kirkstone),
+  // we do this BOOST_VERSION check.
+#if BOOST_VERSION >= 108500
+  std::string cfg_file_ext = config_file.extension().string();
+#else
+  std::string cfg_file_ext = boost::filesystem::extension(config_file);
+#endif
   std::unique_ptr<SecondaryConfigParser> cfg_parser;
 
   if (cfg_file_ext == ".json") {
