@@ -31,8 +31,16 @@ void ImageRepo::addBinaryImage(const boost::filesystem::path &image_path, const 
 
   auto targetname_dir = targetname.parent_path();
   boost::filesystem::create_directories(targets_path / targetname_dir);
-  boost::filesystem::copy_file(image_path, targets_path / targetname_dir / targetname.filename(),
-                               boost::filesystem::copy_option::overwrite_if_exists);
+  // On Boost 1.85.0 enum copy_option (which was already deprecated) was replaced by
+  // copy_options, and the enumarator overwrite_if_exists was renamed as overwrite_existing.
+  // To keep compatibility with older versions of Boost (such as the one used by Yocto Kirkstone),
+  // we do this BOOST_VERSION check.
+#if BOOST_VERSION >= 108500
+  boost::filesystem::copy_options overwrite_existing = boost::filesystem::copy_options::overwrite_existing;
+#else
+  boost::filesystem::copy_option overwrite_existing = boost::filesystem::copy_option::overwrite_if_exists;
+#endif
+  boost::filesystem::copy_file(image_path, targets_path / targetname_dir / targetname.filename(), overwrite_existing);
 
   std::string image = Utils::readFile(image_path);
 

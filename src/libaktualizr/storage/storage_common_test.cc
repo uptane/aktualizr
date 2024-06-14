@@ -675,9 +675,18 @@ TEST(StorageImport, ImportInitialRoot) {
   EXPECT_FALSE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Director()))
       << "Director root.json was invalid. It shouldn't have been imported";
 
+  // On Boost 1.85.0 enum copy_option (which was already deprecated) was replaced by
+  // copy_options, and the enumarator overwrite_if_exists was renamed as overwrite_existing.
+  // To keep compatibility with older versions of Boost (such as the one used by Yocto Kirkstone),
+  // we do this BOOST_VERSION check.
+#if BOOST_VERSION >= 108500
+  fs::copy_options overwrite_existing = fs::copy_options::overwrite_existing;
+#else
+  fs::copy_option overwrite_existing = fs::copy_option::overwrite_if_exists;
+#endif
   // Copy the real director root.json over
   fs::copy_file(repo_path / "repo/director/root.json", import_config.base_path / "director/root.json",
-                fs::copy_option::overwrite_if_exists);
+                overwrite_existing);
   storage->importData(import_config);
   EXPECT_TRUE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Director()));
 }
