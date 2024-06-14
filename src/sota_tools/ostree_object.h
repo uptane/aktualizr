@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <list>
 #include <sstream>
 
 #include <curl/curl.h>

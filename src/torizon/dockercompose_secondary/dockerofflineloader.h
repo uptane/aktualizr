@@ -3,6 +3,7 @@
 
 #include <json/value.h>
 #include <boost/filesystem/path.hpp>
+#include <list>
 #include <memory>
 #include <regex>
 #include <string>

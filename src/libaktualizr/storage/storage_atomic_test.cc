@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <csignal>
+#include <list>
 #include <memory>
 #include <random>
 #include <string>
