@@ -11,7 +11,7 @@ This is a fork of https://github.com/uptane/aktualizr[uptane/aktualizr] maintain
 
 The changes by Toradex include:
 
-* Implementation of **offline-updates**: this is an initial attempt to support offline-updates as described in https://github.com/uptane/pures/blob/main/pure2.md[pure-2]; currently aktualizr must be configured to operate either in online or in offline mode, but there are plans to support both modes simultaneously in the future.
+* Implementation of **offline-updates**: add support for offline-updates as described by https://github.com/uptane/pures/blob/main/pure2.md[pure-2]; with the latest implementation, Aktualizr can be configured to accept online, offline or both types of updates (in which case the different types can be interleaved).
 * Implementation of a **docker-compose secondary**: a virtual secondary responsible for application updates in TorizonCore where applications are implemented as Docker containers and managed via docker-compose.
 * Implementation of a **generic secondary**: another virtual secondary allowing all the package (target) installation logic to be implemented outside of aktualizr; this is currently used by Toradex to implement bootloader updates, for example.
 
