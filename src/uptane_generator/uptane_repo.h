@@ -23,7 +23,7 @@ class UptaneRepo {
   void emptyTargets();
   void oldTargets();
   void generateCampaigns();
-  void refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role);
+  void refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role, const TimeStamp &expiry = TimeStamp());
   void rotate(Uptane::RepositoryType repo_type, const Uptane::Role &role, KeyType key_type = KeyType::kRSA2048);
 
  private:
