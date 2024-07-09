@@ -8,6 +8,7 @@
 #include "crypto/crypto.h"
 #include "director_repo.h"
 #include "image_repo.h"
+#include "json/json.h"
 #include "libaktualizr/campaign.h"
 
 Repo::Repo(Uptane::RepositoryType repo_type, boost::filesystem::path path, const std::string &expires,
@@ -288,7 +289,7 @@ void Repo::readKeys() {
   }
 }
 
-void Repo::refresh(const Uptane::Role &role) {
+void Repo::refresh(const Uptane::Role &role, const TimeStamp &expiry) {
   if (repo_type_ == Uptane::RepositoryType::Director() &&
       (role == Uptane::Role::Timestamp() || role == Uptane::Role::Snapshot())) {
     throw std::runtime_error("The " + role.ToString() + " in the Director repo is not currently supported.");
@@ -307,14 +308,14 @@ void Repo::refresh(const Uptane::Role &role) {
     throw std::runtime_error("Refreshing custom role " + role.ToString() + " is not currently supported.");
   }
 
-  // The only interesting part here is to increment the version. It could be
-  // interesting to allow changing the expiry, too.
   Json::Value meta_raw = Utils::parseJSONFile(meta_path)["signed"];
   const unsigned version = meta_raw["version"].asUInt() + 1;
 
   auto current_expire_time = TimeStamp(meta_raw["expires"].asString());
 
-  if (current_expire_time.IsExpiredAt(TimeStamp::Now())) {
+  if (expiry.IsValid()) {
+    meta_raw["expires"] = expiry.ToString();
+  } else if (current_expire_time.IsExpiredAt(TimeStamp::Now())) {
     time_t new_expiration_time;
     std::time(&new_expiration_time);
     new_expiration_time += 60 * 60;  // make it valid for the next hour
@@ -370,8 +371,9 @@ void Repo::rotate(const Uptane::Role &role, KeyType key_type) {
 
   // Sign Root with old and new key
   auto intermediate_meta = signTuf(role, meta_raw);
-  const std::string signed_meta = Utils::jsonToCanonicalStr(signTuf(old_key, intermediate_meta));
-  Utils::writeFile(meta_path, signed_meta);
+  auto signed_meta = signTuf(old_key, intermediate_meta);
+
+  Utils::writeFile(meta_path, Utils::jsonToCanonicalStr(signed_meta));
 
   std::stringstream root_name;
   root_name << version << ".root.json";
