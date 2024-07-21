@@ -61,9 +61,16 @@ ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) :
 
   try {
     director_repo_->checkMetaOffline(*storage_);
+  } catch (const std::exception &e) {
+    // This is actually safe. We've done enough initialization to get
+    // director_repo_ into a valid configuration
+    LOG_INFO << "No valid Director metadata found in storage: " << e.what();
+  }
+  try {
     image_repo_->checkMetaOffline(*storage_);
   } catch (const std::exception &e) {
-    LOG_INFO << "No valid metadata found in storage.";
+    // See above ^ image_repo_ is OK
+    LOG_INFO << "No valid Image metadata found in storage: " << e.what();
   }
 }
 
