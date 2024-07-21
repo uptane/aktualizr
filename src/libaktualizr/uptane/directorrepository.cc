@@ -19,7 +19,7 @@ void DirectorRepository::resetMeta() {
 }
 
 void DirectorRepository::checkTargetsExpired(UpdateType utype) {
-  if (targets.isExpired(TimeStamp::Now())) {
+  if (targets.isExpired(Now())) {
     if (utype == UpdateType::kOffline) {
       throw Uptane::ExpiredMetadata(type.ToString(), Role::OFFLINEUPDATES);
     } else {
@@ -343,7 +343,7 @@ void DirectorRepository::verifyOfflineSnapshot(const std::string& snapshot_raw_n
 }
 
 void DirectorRepository::checkOfflineSnapshotExpired() {
-  if (offline_snapshot_.isExpired(TimeStamp::Now())) {
+  if (offline_snapshot_.isExpired(Now())) {
     throw Uptane::ExpiredMetadata(type.ToString(), Role::OFFLINESNAPSHOT);
   }
 }

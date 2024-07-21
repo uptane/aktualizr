@@ -27,7 +27,7 @@ void ImageRepository::verifyTimestamp(const std::string& timestamp_raw) {
 }
 
 void ImageRepository::checkTimestampExpired() {
-  if (timestamp.isExpired(TimeStamp::Now())) {
+  if (timestamp.isExpired(Now())) {
     throw Uptane::ExpiredMetadata(type.ToString(), Role::TIMESTAMP);
   }
 }
@@ -102,7 +102,7 @@ void ImageRepository::verifySnapshot(const std::string& snapshot_raw, bool prefe
 }
 
 void ImageRepository::checkSnapshotExpired() {
-  if (snapshot.isExpired(TimeStamp::Now())) {
+  if (snapshot.isExpired(Now())) {
     throw Uptane::ExpiredMetadata(type.ToString(), Role::SNAPSHOT);
   }
 }
@@ -214,7 +214,7 @@ std::shared_ptr<Uptane::Targets> ImageRepository::verifyDelegation(const std::st
 }
 
 void ImageRepository::checkTargetsExpired() {
-  if (targets->isExpired(TimeStamp::Now())) {
+  if (targets->isExpired(Now())) {
     throw Uptane::ExpiredMetadata(type.ToString(), Role::TARGETS);
   }
 }

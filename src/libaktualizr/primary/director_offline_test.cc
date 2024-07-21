@@ -2,6 +2,7 @@
 
 #include <logging/logging.h>
 #include <boost/filesystem.hpp>
+#include "libaktualizr/types.h"
 #include "storage/sqlstorage.h"
 #include "uptane/directorrepository.h"
 #include "uptane/fetcher.h"
@@ -28,6 +29,7 @@ TEST(DirectorOffline, Simple) {
   storage.stashEcuSerialsForHwId(ecu_serials);
 
   OfflineUpdateFetcher const fetcher(offline_update_path);
+  dut.ForceNowForTesting(TimeStamp("2024-01-01T20:01:00Z"));
   dut.updateMetaOffUpd(storage, fetcher);
 
   auto correlation_id = dut.getCorrelationId();
