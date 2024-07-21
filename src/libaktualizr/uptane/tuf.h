@@ -254,7 +254,7 @@ class Root : public MetaWithKeys {
   /**
    * An empty Root, that either accepts or rejects everything
    */
-  explicit Root(Policy policy = Policy::kRejectAll) : policy_(policy) { version_ = 0; }
+  explicit Root(Policy policy) : policy_(policy) { version_ = 0; }
   /**
    * A 'real' Root that implements TUF signature validation
    * @param repo - Repository type (only used to improve the error messages)
