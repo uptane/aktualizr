@@ -40,7 +40,7 @@ class RepositoryCommon {
 
   static const int64_t kMaxRotations = 1000;
 
-  Root root;
+  Root root{Root::Policy::kRejectAll};
   RepositoryType type;
 };
 }  // namespace Uptane
