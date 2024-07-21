@@ -1,9 +1,8 @@
 #ifndef UPTANE_REPOSITORY_H_
 #define UPTANE_REPOSITORY_H_
 
-#include <cstdint>  // for int64_t
-#include <string>   // for string
-#include "fetcher.h"
+#include <cstdint>               // for int64_t
+#include <string>                // for string
 #include "libaktualizr/types.h"  // for TimeStamp
 #include "uptane/tuf.h"          // for Root, RepositoryType
 #include "utilities/flow_control.h"
@@ -15,8 +14,7 @@ class IMetadataFetcher;
 
 class RepositoryCommon {
  public:
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  RepositoryCommon(RepositoryType type_in) : type{type_in} {}
+  explicit RepositoryCommon(RepositoryType type_in) : type{type_in} {}
   virtual ~RepositoryCommon() = default;
   RepositoryCommon(const RepositoryCommon &guard) = default;
   RepositoryCommon(RepositoryCommon &&) = default;
@@ -26,6 +24,13 @@ class RepositoryCommon {
   void verifyRoot(const std::string &root_raw);
   int rootVersion() const { return root.version(); }
   bool rootExpired() const { return root.isExpired(TimeStamp::Now()); }
+
+  /**
+   * Load the initial state of the repository from storage.
+   * Note that this _required_ for correct initialization.
+   * @throws UptaneException if the local metadata is stale (this is not a failure)
+   */
+  virtual void checkMetaOffline(INvStorage &storage) = 0;
   virtual void updateMeta(INvStorage &storage, const IMetadataFetcher &fetcher,
                           const api::FlowControlToken *flow_control) = 0;
 
