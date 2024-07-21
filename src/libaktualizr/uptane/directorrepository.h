@@ -21,7 +21,7 @@ class DirectorRepository : public RepositoryCommon {
     return targets.getTargets(ecu_id, hw_id);
   }
   Uptane::CorrelationId getCorrelationId() const { return correlation_id_; }
-  void checkMetaOffline(INvStorage& storage);
+  void checkMetaOffline(INvStorage& storage) override;
   void dropTargets(INvStorage& storage);
 
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher,
