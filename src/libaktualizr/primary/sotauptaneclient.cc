@@ -1442,59 +1442,68 @@ data::InstallationResult SotaUptaneClient::rotateSecondaryRoot(Uptane::Repositor
     LOG_ERROR << "Error reading Root metadata";
     return data::InstallationResult(data::ResultCode::Numeric::kInternalError, "Error reading Root metadata");
   }
-
-  data::InstallationResult result{data::ResultCode::Numeric::kOk, ""};
   const int last_root_version = Uptane::extractVersionUntrusted(latest_root);
   const int sec_root_version = secondary.getRootVersion((repo == Uptane::RepositoryType::Director()));
-  // If sec_root_version is 0, assume either the Secondary doesn't have Root
-  // metadata or doesn't support the Root version request. Continue on and hope
-  // for the best.
+  LOG_DEBUG << "Rotating " << repo << " from " << sec_root_version << " to " << (last_root_version - 1);
   if (sec_root_version < 0) {
     LOG_WARNING << "Secondary with serial " << secondary.getSerial() << " reported an invalid " << repo
                 << " repo Root version: " << sec_root_version;
-    result =
-        data::InstallationResult(data::ResultCode::Numeric::kInternalError,
-                                 "Secondary with serial " + secondary.getSerial().ToString() + " reported an invalid " +
-                                     repo.ToString() + " repo Root version: " + std::to_string(sec_root_version));
-  } else if (sec_root_version > 0 && last_root_version - sec_root_version > 1) {
-    // Only send intermediate Roots that would otherwise be skipped. The latest
-    // will be sent with the complete set of the latest metadata.
-    for (int v = sec_root_version + 1; v < last_root_version; v++) {
-      std::string root;
-      if (!storage->loadRoot(&root, repo, Uptane::Version(v))) {
-        LOG_WARNING << "Couldn't find Root metadata in the storage, trying remote repo";
-        try {
-          if (utype == UpdateType::kOffline) {
-            // TODO: [OFFUPD] Test this condition; How?
-            // TODO: [OFFUPD] Protect with an #ifdef ??
-            uptane_fetcher_offupd->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(),
-                                             Uptane::Version(v), flow_control_);
-          } else {
-            uptane_fetcher->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(), Uptane::Version(v),
-                                      flow_control_);
-          }
-        } catch (const std::exception &e) {
-          LOG_ERROR << "Root metadata could not be fetched for Secondary with serial " << secondary.getSerial()
-                    << ", skipping to the next Secondary";
-          result = data::InstallationResult(data::ResultCode::Numeric::kInternalError,
-                                            "Root metadata could not be fetched for Secondary with serial " +
-                                                secondary.getSerial().ToString() + ", skipping to the next Secondary");
-          break;
-        }
-      }
+    return {data::ResultCode::Numeric::kInternalError, "Secondary with serial " + secondary.getSerial().ToString() +
+                                                           " reported an invalid " + repo.ToString() +
+                                                           " repo Root version: " + std::to_string(sec_root_version)};
+  }
+
+  // Only send intermediate Roots that would otherwise be skipped. The latest
+  // will be sent with the complete set of the latest metadata.
+  for (int version_to_send = sec_root_version + 1; version_to_send < last_root_version; version_to_send++) {
+    std::string root;
+    if (!storage->loadRoot(&root, repo, Uptane::Version(version_to_send))) {
+      LOG_WARNING << "Couldn't find Root metadata in the storage, trying remote repo";
       try {
-        result = secondary.putRoot(root, repo == Uptane::RepositoryType::Director());
-      } catch (const std::exception &ex) {
-        result = data::InstallationResult(data::ResultCode::Numeric::kInternalError, ex.what());
-      }
-      if (!result.isSuccess()) {
-        LOG_ERROR << "Sending Root metadata to Secondary with serial " << secondary.getSerial()
-                  << " failed: " << result.result_code << " " << result.description;
-        break;
+        if (utype == UpdateType::kOffline) {
+          // TODO: [OFFUPD] Test this condition; How?
+          // TODO: [OFFUPD] Protect with an #ifdef ??
+          uptane_fetcher_offupd->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(),
+                                           Uptane::Version(version_to_send), flow_control_);
+        } else {
+          uptane_fetcher->fetchRole(&root, Uptane::kMaxRootSize, repo, Uptane::Role::Root(),
+                                    Uptane::Version(version_to_send), flow_control_);
+        }
+      } catch (const std::exception &e) {
+        LOG_ERROR << "Root metadata could not be fetched for Secondary with serial " << secondary.getSerial()
+                  << ", skipping to the next Secondary";
+        return {data::ResultCode::Numeric::kInternalError,
+                "Root metadata could not be fetched for Secondary with serial " + secondary.getSerial().ToString() +
+                    ", skipping to the next Secondary"};
       }
     }
+    try {
+      auto result = secondary.putRoot(root, repo == Uptane::RepositoryType::Director());
+      if (!result.isSuccess()) {
+        // Old (pre 2024-07-XX) versions would assume that if sec_root_version
+        // is 0, either the Secondary doesn't have Root metadata or doesn't
+        // support the Root version request and skip sending any root metadata.
+        // Unfortunatately this cause TOR-3452 where an expired root metadata
+        // would cause updates to fail. Instead assume that '0' could mean 'I
+        // don't have any root versions yet'. If we send  version 1 and it is
+        // rejected, then assume we are in the case that the code originally was
+        // defending against: the secondary can't rotate root, and treat this
+        // as a success. The previous code would have returned success in this
+        // case anyway.
+        if (version_to_send == 1) {
+          LOG_WARNING
+              << "Sending root.1.json to a secondary failed. Assuming it doesn't allow root rotation and continuing.";
+          return {data::ResultCode::Numeric::kOk, ""};
+        }
+        LOG_ERROR << "Sending Root metadata to Secondary with serial " << secondary.getSerial()
+                  << " failed: " << result.result_code << " " << result.description;
+        return result;
+      }
+    } catch (const std::exception &ex) {
+      return {data::ResultCode::Numeric::kInternalError, ex.what()};
+    }
   }
-  return result;
+  return {data::ResultCode::Numeric::kOk, ""};
 }
 
 // TODO: the function blocks until it updates all the Secondaries. Consider non-blocking operation.
