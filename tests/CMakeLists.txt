@@ -197,6 +197,9 @@ add_test(NAME test_ip_secondary
          COMMAND ${PROJECT_SOURCE_DIR}/tests/ipsecondary_test.py
          --build-dir ${PROJECT_BINARY_DIR} --src-dir ${PROJECT_SOURCE_DIR})
 set_tests_properties(test_ip_secondary PROPERTIES LABELS "noptest")
+# This test flakes when run in parallel. Force it to run serially
+# TODO Fix this test!
+set_tests_properties(test_ip_secondary PROPERTIES RUN_SERIAL ON)
 
 add_test(NAME test_ip_secondary_rotation
          COMMAND ${PROJECT_SOURCE_DIR}/tests/ipsecondary_rotation_test.py

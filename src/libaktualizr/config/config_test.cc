@@ -6,6 +6,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <fstream>
 
 #include "bootstrap/bootstrap.h"
 #include "crypto/crypto.h"
