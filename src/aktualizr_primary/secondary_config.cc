@@ -11,8 +11,6 @@
 
 namespace Primary {
 
-constexpr const char* const IPSecondariesConfig::Type;
-
 SecondaryConfigParser::Configs SecondaryConfigParser::parse_config_file(const boost::filesystem::path& config_file) {
   if (!boost::filesystem::exists(config_file)) {
     throw std::invalid_argument("Specified config file doesn't exist: " + config_file.string());

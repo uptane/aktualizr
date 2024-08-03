@@ -9,7 +9,6 @@
 #include "utilities/apiqueue.h"
 #include "utilities/timer.h"
 
-using std::make_shared;
 using std::shared_ptr;
 
 Aktualizr::Aktualizr(const Config &config)

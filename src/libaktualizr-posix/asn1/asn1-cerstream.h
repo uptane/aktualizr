@@ -12,7 +12,7 @@ namespace asn1 {
 class Token {
  public:
   enum TokType { seq_tok, endseq_tok, restseq_tok, expl_tok, peekexpl_tok, endexpl_tok, opt_tok, endopt_tok };
-  explicit Token(TokType t) { type = t; }
+  explicit Token(TokType t) : type{t} {}
   virtual ~Token() = default;
   Token(const Token&) = default;
   Token(Token&&) = default;

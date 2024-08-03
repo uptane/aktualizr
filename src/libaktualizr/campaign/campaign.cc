@@ -59,7 +59,7 @@ void Campaign::getJson(Json::Value &out) const {
 
   out["id"] = id;
   out["name"] = name;
-  out["size"] = Json::UInt(size);
+  out["size"] = static_cast<Json::UInt>(size);
   out["autoAccept"] = autoAccept;
 
   out["metadata"][0]["type"] = "DESCRIPTION";
@@ -89,7 +89,7 @@ std::vector<Campaign> Campaign::campaignsFromJson(const Json::Value &json) {
 
   for (const auto &c : campaigns_array) {
     try {
-      campaigns.emplace_back(Campaign(c));
+      campaigns.emplace_back(c);
     } catch (const CampaignParseError &exc) {
       LOG_ERROR << "Error parsing " << c << ": " << exc.what();
     }

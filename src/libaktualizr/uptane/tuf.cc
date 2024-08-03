@@ -13,7 +13,6 @@
 #include "uptane/exceptions.h"
 
 using Uptane::Target;
-using Uptane::Version;
 
 std::ostream &Uptane::operator<<(std::ostream &os, const RepositoryType &repo_type) {
   os << repo_type.ToString();
@@ -83,7 +82,7 @@ Target::Target(std::string filename, const Json::Value &content) : filename_(std
 
   length_ = content["length"].asUInt64();
 
-  const Json::Value hashes = content["hashes"];
+  const auto &hashes = content["hashes"];
   for (auto i = hashes.begin(); i != hashes.end(); ++i) {
     Hash h(i.key().asString(), (*i).asString());
     if (h.HaveAlgorithm()) {
@@ -101,7 +100,7 @@ void Target::updateCustom(const Json::Value &custom) {
   if (custom_.isMember("hardwareIds")) {
     Json::Value hwids = custom_["hardwareIds"];
     for (auto i = hwids.begin(); i != hwids.end(); ++i) {
-      hwids_.emplace_back(HardwareIdentifier((*i).asString()));
+      hwids_.emplace_back((*i).asString());
     }
   }
 

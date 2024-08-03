@@ -29,12 +29,11 @@ struct PullMetaStruct {
   PullMetaStruct(Uptane::Target target_in, const api::FlowControlToken *token_in, GCancellable *cancellable_in,
                  OstreeProgressCb progress_cb_in)
       : target{std::move(target_in)},
-        percent_complete{0},
         token{token_in},
         cancellable{cancellable_in},
         progress_cb{std::move(progress_cb_in)} {}
   Uptane::Target target;
-  unsigned int percent_complete;
+  unsigned int percent_complete{0};
   const api::FlowControlToken *token;
   GObjectUniquePtr<GCancellable> cancellable;
   OstreeProgressCb progress_cb;

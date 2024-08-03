@@ -288,7 +288,7 @@ std::string Utils::readFile(const boost::filesystem::path &filename, const bool 
   return content;
 }
 
-static constexpr size_t BSIZE = 20 * 512;
+static constexpr size_t BSIZE = 20L * 512;
 
 struct archive_state {
  public:

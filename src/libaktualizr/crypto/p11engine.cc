@@ -78,7 +78,7 @@ P11Engine::P11Engine(boost::filesystem::path module_path, std::string pass)
   LOG_DEBUG << "Slot token model.......: " << slot->token->model;
   LOG_DEBUG << "Slot token serialnr....: " << slot->token->serialnr;
 
-  uri_prefix_ = std::string("pkcs11:serial=") + slot->token->serialnr + ";pin-value=" + pass + ";id=%";
+  uri_prefix_ = std::string("pkcs11:serial=") + slot->token->serialnr + ";pin-value=" + pass_ + ";id=%";
 
   ENGINE_load_builtin_engines();
   ENGINE* engine = ENGINE_by_id("dynamic");

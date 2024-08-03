@@ -176,6 +176,6 @@ static void curlEasySetoptWrapper(CURL *curl_handle, CURLoption option, T &&...a
 // std_ used to contain an implementation of make_unique, and there are various
 // references throughout the codebase. This provides backwards compatbility.
 namespace std_ {
-using std::make_unique;
+using std::make_unique;  // NOLINT
 }
 #endif  // UTILS_H_

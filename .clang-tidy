@@ -1,18 +1,24 @@
 ---
 Checks:          >-
   boost-*,
-  bugprone-*,
-  cert-*,-cert-err58-cpp,-cert-env33-c,-cert-err60-cpp,
+  bugprone-*,-bugprone-easily-swappable-parameters,
+  cert-*,-cert-err58-cpp,-cert-env33-c,-cert-err60-cpp,-cert-err33-c,
   clang-analyzer-*,
   cppcoreguidelines-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-init-variables,-cppcoreguidelines-owning-memory,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-macro-usage,
   cppcoreguidelines-pro-*,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-type-vararg,-cppcoreguidelines-pro-type-const-cast,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-prefer-member-initialize,-cppcoreguidelines-avoid-const-or-ref-data-members,
+  -cppcoreguidelines-avoid-do-while,
   google-*,-google-runtime-references,-google-readability-todo,
+  -google-readability-casting,
   hicpp-*,-hicpp-no-array-decay,-hicpp-no-assembler,-hicpp-signed-bitwise,-hicpp-vararg,
   llvm-namespace-comment,
-  misc-*,-misc-non-private-member-variables-in-classes,
+  misc-*,-misc-non-private-member-variables-in-classes,-misc-const-correctness,
+  -misc-use-anonymous-namespace,
   modernize-*,-modernize-avoid-bind,-modernize-loop-convert,-modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,-modernize-return-braced-init-list,-cppcoreguidelines-prefer-member-initializer,
   performance-*,
   readability-*,-readability-else-after-return,-readability-identifier-naming,-readability-magic-numbers,-readability-function-cognitive-complexity,
+  -readability-identifier-length,-readability-container-data-pointer
 
 WarningsAsErrors: '*'
 AnalyzeTemporaryDtors: false

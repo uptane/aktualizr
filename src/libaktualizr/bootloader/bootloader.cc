@@ -13,7 +13,7 @@
 
 Bootloader::Bootloader(BootloaderConfig config, INvStorage& storage) : config_(std::move(config)), storage_(storage) {
   reboot_sentinel_ = config_.reboot_sentinel_dir / config_.reboot_sentinel_name;
-  reboot_command_ = config_.reboot_command;
+  reboot_command_ = config_.reboot_command;  // NOLINT
 
   if (!Utils::createSecureDirectory(config_.reboot_sentinel_dir)) {
     LOG_WARNING << "Could not create " << config_.reboot_sentinel_dir << " securely, reboot detection support disabled";
