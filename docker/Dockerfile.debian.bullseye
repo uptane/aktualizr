@@ -41,6 +41,7 @@ RUN apt-get update && apt-get -y install -\
   ninja-build \
   net-tools \
   opensc \
+  ostree \
   pkg-config \
   psmisc \
   python3-dev \
