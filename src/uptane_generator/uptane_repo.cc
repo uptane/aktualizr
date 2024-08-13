@@ -45,11 +45,11 @@ void UptaneRepo::emptyTargets() { director_repo_.emptyTargets(); }
 void UptaneRepo::oldTargets() { director_repo_.oldTargets(); }
 void UptaneRepo::generateCampaigns() { director_repo_.generateCampaigns(); }
 
-void UptaneRepo::refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role) {
+void UptaneRepo::refresh(Uptane::RepositoryType repo_type, const Uptane::Role &role, const TimeStamp &expiry) {
   if (repo_type == Uptane::RepositoryType::Director()) {
-    director_repo_.refresh(role);
+    director_repo_.refresh(role, expiry);
   } else if (repo_type == Uptane::RepositoryType::Image()) {
-    image_repo_.refresh(role);
+    image_repo_.refresh(role, expiry);
   }
 }
 

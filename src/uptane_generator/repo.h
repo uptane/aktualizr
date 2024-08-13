@@ -41,7 +41,7 @@ class Repo {
   Json::Value getTarget(const std::string &target_name);
   Json::Value signTuf(const Uptane::Role &role, const Json::Value &json);
   void generateCampaigns() const;
-  void refresh(const Uptane::Role &role);
+  void refresh(const Uptane::Role &role, const TimeStamp &expiry);
   void rotate(const Uptane::Role &role, KeyType key_type = KeyType::kRSA2048);
 
  protected:

@@ -30,7 +30,7 @@ class ImageRepository : public RepositoryCommon {
   int getRoleVersion(const Uptane::Role& role) const;
   int64_t getRoleSize(const Uptane::Role& role) const;
 
-  void checkMetaOffline(INvStorage& storage);
+  void checkMetaOffline(INvStorage& storage) override;
   void updateMeta(INvStorage& storage, const IMetadataFetcher& fetcher,
                   const api::FlowControlToken* flow_control) override;
 

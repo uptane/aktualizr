@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include "libaktualizr/config.h"
 #include "storage/sqlstorage.h"

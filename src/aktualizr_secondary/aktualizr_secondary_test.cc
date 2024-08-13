@@ -2,7 +2,9 @@
 #include <gtest/gtest.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/string_file.hpp>
 #include <boost/optional/optional_io.hpp>
+#include <fstream>
 
 #include "aktualizr_secondary_file.h"
 #include "crypto/keymanager.h"
