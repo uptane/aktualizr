@@ -18,9 +18,12 @@
 #include "openssl_compat.h"
 #include "utilities/utils.h"
 
-PublicKey::PublicKey(const boost::filesystem::path &path) : value_(Utils::readFile(path)) {
-  type_ = Crypto::IdentifyRSAKeyType(value_);
-}
+#if !AKTUALIZR_OPENSSL_PRE_3
+#include <openssl/provider.h>
+#endif
+
+PublicKey::PublicKey(const boost::filesystem::path &path)
+    : value_(Utils::readFile(path)), type_(Crypto::IdentifyRSAKeyType(value_)) {}
 
 PublicKey::PublicKey(const Json::Value &uptane_json) {
   std::string keytype;
@@ -345,7 +348,7 @@ std::string Crypto::extractSubjectCN(const std::string &cert) {
   if (len < 0) {
     throw std::runtime_error("Could not get CN from certificate");
   }
-  boost::scoped_array<char> buf(new char[len + 1]);
+  boost::scoped_array<char> buf(new char[len + 1]);  // NOLINT
   X509_NAME_get_text_by_NID(X509_get_subject_name(x.get()), NID_commonName, buf.get(), len + 1);
   return std::string(buf.get());
 }
@@ -759,3 +762,22 @@ std::ostream &operator<<(std::ostream &os, const Hash &h) {
   os << "Hash: " << h.hash_;
   return os;
 }
+
+class CryptoOpenSSlInit {
+ public:
+  // NOLINTNEXTLINE(hicpp-use-equals-default,modernize-use-equals-default)
+  CryptoOpenSSlInit() {
+#if !AKTUALIZR_OPENSSL_PRE_3
+    OSSL_PROVIDER *legacy = OSSL_PROVIDER_try_load(nullptr, "legacy", 1);
+    if (legacy == nullptr) {
+      std::cout << "Warning: could not load 'legacy' OpenSSL provider";
+    }
+    OSSL_PROVIDER *default_p = OSSL_PROVIDER_try_load(nullptr, "default", 1);
+    if (default_p == nullptr) {
+      std::cout << "Warning: could not load 'default' OpenSSL provider";
+    }
+#endif
+  }
+};
+
+CryptoOpenSSlInit const CryptoIniter{};

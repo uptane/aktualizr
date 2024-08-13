@@ -26,9 +26,10 @@ class SecondaryProvider {
                     std::shared_ptr<const PackageManagerInterface> package_manager_in)
       : config_(config_in), storage_(std::move(storage_in)), package_manager_(std::move(package_manager_in)) {}
 
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   Config& config_;
-  const std::shared_ptr<const INvStorage> storage_;
-  const std::shared_ptr<const PackageManagerInterface> package_manager_;
+  std::shared_ptr<const INvStorage> storage_;
+  std::shared_ptr<const PackageManagerInterface> package_manager_;
 };
 
 #endif  // UPTANE_SECONDARY_PROVIDER_H

@@ -76,6 +76,7 @@ void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const R
   }
 
   const std::string canonical = Utils::jsonToCanonicalStr(signed_object["signed"]);
+  // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
   const Json::Value signatures = signed_object["signatures"];
   int valid_signatures = 0;
 

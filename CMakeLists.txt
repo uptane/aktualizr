@@ -167,14 +167,17 @@ SET(CMAKE_EXE_LINKER_FLAGS_TSAN "-O1 -g -fsanitize=thread -fno-omit-frame-pointe
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
     add_definitions(-fstack-protector-all)
-    # Enable maximum set of warnings.
-    add_definitions(-Wall -Wextra -Wformat-security -Wfloat-equal -Wcast-qual -Wswitch-default -Wconversion)
+    # Enable maximum set of warnings
+    # TODO Add [[nodiscard]] everywhere and remove this
+    add_definitions(-Wall -Wextra -Wformat-security -Wfloat-equal -Wcast-qual -Wswitch-default -Wconversion -Wno-modernize-use-nodiscard)
     # only for CXX, gcc doesn't like that when building C...
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         add_definitions(-Wlogical-op)
     else ()
         add_definitions(-Wno-unused-private-field)
+        add_definitions(-Wno-unknown-warning-option)
+        add_definitions(-Wno-sign-conversion)
     endif ()
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "4.9" OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9")
@@ -302,8 +305,8 @@ else()
     message(WARNING "shellcheck not found, skipping")
 endif()
 
-# Use C++11, but without GNU or other extensions
-set(CMAKE_CXX_STANDARD 11)
+# Use C++17, but without GNU or other extensions
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Export compile_commands.json for clang-tidy
@@ -392,7 +395,7 @@ execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/amalgamate-jsoncpp.s
 include_directories(${PROJECT_BINARY_DIR}/jsoncpp)
 # jsoncpp triggers a number of warnings that are turned on by default in our build
 set_source_files_properties(${PROJECT_BINARY_DIR}/jsoncpp/jsoncpp.cc PROPERTIES
-    COMPILE_FLAGS "-Wno-error -Wno-float-equal -Wno-switch-default -Wno-deprecated-declarations")
+    COMPILE_FLAGS "-Wno-error -Wno-float-equal -Wno-switch-default -Wno-deprecated-declarations -Wno-unneeded-internal-declaration")
 add_library(jsoncpp OBJECT ${PROJECT_BINARY_DIR}/jsoncpp/jsoncpp.cc)
 
 add_subdirectory("config")

@@ -51,13 +51,7 @@ class P11Engine {
   P11Engine &operator=(const P11Engine &) = delete;
   P11Engine &operator=(P11Engine &&) = delete;
 
-  virtual ~P11Engine() {
-    if (ssl_engine_ != nullptr) {
-      ENGINE_finish(ssl_engine_);
-      ENGINE_free(ssl_engine_);
-      ENGINE_cleanup();  // for openssl < 1.1
-    }
-  }
+  virtual ~P11Engine();
 
   ENGINE *getEngine() { return ssl_engine_; }
   std::string getItemFullId(const std::string &id) const { return uri_prefix_ + id; }

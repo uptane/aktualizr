@@ -120,7 +120,7 @@ class SQLiteStatement {
 
   sqlite3* db_;
   std::unique_ptr<sqlite3_stmt, int (*)(sqlite3_stmt*)> stmt_;
-  int bind_cnt_;
+  int bind_cnt_;  // NOLINT
   // copies of data that need to persist for the object duration
   // (avoid vector because of resizing issues)
   std::list<std::string> owned_data_;

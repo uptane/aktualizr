@@ -9,7 +9,7 @@ OSTreeObject::ptr OSTreeRepo::GetObject(const uint8_t sha256[32], const OstreeOb
 
 OSTreeObject::ptr OSTreeRepo::GetObject(const OSTreeHash hash, const OstreeObjectType type) const {
   // If we've already seen this object, return another pointer to it
-  otable::const_iterator obj_it = ObjectTable.find(hash);
+  auto obj_it = ObjectTable.find(hash);
   if (obj_it != ObjectTable.cend()) {
     return obj_it->second;
   }

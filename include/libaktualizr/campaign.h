@@ -11,7 +11,7 @@ class HttpInterface;
 
 namespace campaign {
 
-constexpr int64_t kMaxCampaignsMetaSize = 1024 * 1024;
+constexpr int64_t kMaxCampaignsMetaSize = 1024L * 1024;
 
 class CampaignParseError : std::exception {
  public:

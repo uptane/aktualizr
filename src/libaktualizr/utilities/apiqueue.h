@@ -76,7 +76,7 @@ class CommandBase<void> : public ICommand {
 template <class T>
 class Command : public CommandBase<T> {
  public:
-  explicit Command(std::function<T()>&& func) : f_{move(func)} {}
+  explicit Command(std::function<T()>&& func) : f_{std::move(func)} {}
   T TaskImplementation(Context* ctx) override {
     (void)ctx;
     return f_();
@@ -89,7 +89,7 @@ class Command : public CommandBase<T> {
 template <class T>
 class CommandFlowControl : public CommandBase<T> {
  public:
-  explicit CommandFlowControl(std::function<T(const api::FlowControlToken*)>&& func) : f_{move(func)} {}
+  explicit CommandFlowControl(std::function<T(const api::FlowControlToken*)>&& func) : f_{std::move(func)} {}
   T TaskImplementation(Context* ctx) override { return f_(ctx->flow_control); }
 
  private:

@@ -277,7 +277,7 @@ bool SQLStorage::loadSecondariesInfo(std::vector<SecondaryInfo>* secondaries) co
         key = PublicKey(statement.get_result_col_str(4).value_or(""), key_type);
       }
       std::string extra = statement.get_result_col_str(5).value_or("");
-      new_secs.emplace_back(SecondaryInfo{serial, hw_id, sec_type, key, extra});
+      new_secs.emplace_back(serial, hw_id, sec_type, key, extra);
       empty = false;
     } catch (const boost::bad_optional_access&) {
       continue;
@@ -1373,7 +1373,7 @@ void SQLStorage::getPendingEcus(std::vector<std::pair<Uptane::EcuSerial, Hash>>*
   for (; statement_result != SQLITE_DONE; statement_result = statement.step()) {
     std::string ecu_serial = statement.get_result_col_str(0).value();
     std::string hash = statement.get_result_col_str(1).value();
-    ecu_res.emplace_back(std::make_pair(Uptane::EcuSerial(ecu_serial), Hash(Hash::Type::kSha256, hash)));
+    ecu_res.emplace_back(Uptane::EcuSerial(ecu_serial), Hash(Hash::Type::kSha256, hash));
   }
 
   if (pendingEcus != nullptr) {

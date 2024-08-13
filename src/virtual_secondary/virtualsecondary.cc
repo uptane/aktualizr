@@ -10,8 +10,6 @@
 
 namespace Primary {
 
-constexpr const char* const VirtualSecondaryConfig::Type;
-
 VirtualSecondaryConfig::VirtualSecondaryConfig(const Json::Value& json_config) : ManagedSecondaryConfig(Type) {
   partial_verifying = json_config["partial_verifying"].asBool();
   ecu_serial = json_config["ecu_serial"].asString();
@@ -35,7 +33,7 @@ std::vector<VirtualSecondaryConfig> VirtualSecondaryConfig::create_from_file(
   sec_configs.reserve(json_config[Type].size());
 
   for (const auto& item : json_config[Type]) {
-    sec_configs.emplace_back(VirtualSecondaryConfig(item));
+    sec_configs.emplace_back(item);
   }
   return sec_configs;
 }

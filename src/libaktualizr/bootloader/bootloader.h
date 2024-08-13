@@ -30,9 +30,13 @@ class Bootloader {
   void reboot(bool fake = false);
 
  protected:
+  // TODO Fix this
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   const BootloaderConfig config_;
 
  private:
+  // TODO Fix this
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   INvStorage& storage_;
   boost::filesystem::path reboot_sentinel_;
   std::string reboot_command_;

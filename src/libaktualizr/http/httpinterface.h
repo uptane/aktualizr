@@ -55,8 +55,8 @@ class HttpInterface {
   virtual void setCerts(const std::string &ca, CryptoSource ca_source, const std::string &cert,
                         CryptoSource cert_source, const std::string &pkey, CryptoSource pkey_source) = 0;
   static constexpr int64_t kNoLimit = 0;  // no limit the size of downloaded data
-  static constexpr int64_t kPostRespLimit = 64 * 1024;
-  static constexpr int64_t kPutRespLimit = 64 * 1024;
+  static constexpr int64_t kPostRespLimit = 64L * 1024;
+  static constexpr int64_t kPutRespLimit = 64L * 1024;
 
  protected:
   HttpInterface(const HttpInterface &) = default;

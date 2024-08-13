@@ -317,7 +317,7 @@ void Repo::refresh(const Uptane::Role &role) {
   if (current_expire_time.IsExpiredAt(TimeStamp::Now())) {
     time_t new_expiration_time;
     std::time(&new_expiration_time);
-    new_expiration_time += 60 * 60;  // make it valid for the next hour
+    new_expiration_time += 60L * 60;  // make it valid for the next hour
     struct tm new_expiration_time_str {};
     gmtime_r(&new_expiration_time, &new_expiration_time_str);
 
@@ -351,7 +351,7 @@ void Repo::rotate(const Uptane::Role &role, KeyType key_type) {
   if (current_expire_time.IsExpiredAt(TimeStamp::Now())) {
     time_t new_expiration_time;
     std::time(&new_expiration_time);
-    new_expiration_time += 60 * 60;  // make it valid for the next hour
+    new_expiration_time += 60L * 60;  // make it valid for the next hour
     struct tm new_expiration_time_str {};
     gmtime_r(&new_expiration_time, &new_expiration_time_str);
 
