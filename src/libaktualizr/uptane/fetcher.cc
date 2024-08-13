@@ -1,6 +1,7 @@
 #include "fetcher.h"
 
 #include "uptane/exceptions.h"
+#include "uptane/tuf.h"
 
 #include <boost/filesystem.hpp>
 #include <fstream>
@@ -29,6 +30,16 @@ void OfflineUpdateFetcher::fetchRole(std::string* result, int64_t maxsize, Repos
                                      const Uptane::Role& role, Version version,
                                      const api::FlowControlToken* flow_control) const {
   (void)flow_control;  // Safe, we are only looking at the local file system
+
+  // Refuse to fetch v1 root metadata from a lockbox. For online updates, we
+  // have a Trust On First Use policy for root metadata. This is reasonable
+  // because the metadata is being fetched over https anyway, so the TLS cert
+  // provides ample security in the narrow window of the first update if people
+  // don't want to provision devices with root.1.json in the factory. This
+  // doesn't apply for the offine case, so refuse to load it.
+  if (role == Uptane::Role::Root() && version == Version(1)) {
+    throw Uptane::Exception(repo, "Offline updates require initial root metadata");
+  }
   boost::filesystem::path path;
   if (repo == RepositoryType::Director()) {
     path = getMetadataPath() / "director" / version.RoleFileName(role);
