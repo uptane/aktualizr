@@ -27,7 +27,16 @@ class RepositoryCommon {
 
   /**
    * Load the initial state of the repository from storage.
-   * Note that this _required_ for correct initialization.
+   * Note that this _required_ for correct initialization. The API here is
+   * particularly error prone and should be improved:
+   *   - Until this is called the root will have a policy kRejectAll (i.e. no
+   *     updates are possible). It is therefore part of the initialization
+   *     process and so should be moved to the ctor.
+   *   - It throws an exception in a non-exceptional case: where the metadata
+   *     in the storage has expired.
+   *   - When it throws an exception, it changes the state and actually does
+   *     perform initialization, therefore violating the Strong Exception
+   *     Guarantee.
    * @throws UptaneException if the local metadata is stale (this is not a failure)
    */
   virtual void checkMetaOffline(INvStorage &storage) = 0;
