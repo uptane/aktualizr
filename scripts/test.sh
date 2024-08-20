@@ -8,7 +8,6 @@ GITREPO_ROOT="${1:-$(readlink -f "$(dirname "$0")/..")}"
 TEST_BUILD_DIR=${TEST_BUILD_DIR:-build-test}
 TEST_WITH_STATICTESTS=${TEST_WITH_STATICTESTS:-0}
 TEST_WITH_BUILD=${TEST_WITH_BUILD:-1}
-TEST_WITH_INSTALL_DEB_PACKAGES=${TEST_WITH_INSTALL_DEB_PACKAGES:-0}
 TEST_WITH_TESTSUITE=${TEST_WITH_TESTSUITE:-1}
 TEST_WITH_DOCS=${TEST_WITH_DOCS:-0}
 
@@ -37,7 +36,6 @@ git config --global --add safe.directory /home/runner/work/aktualizr/aktualizr
 CMAKE_ARGS=()
 CMAKE_ARGS+=("-G$TEST_CMAKE_GENERATOR")
 CMAKE_ARGS+=("-DCMAKE_BUILD_TYPE=${TEST_CMAKE_BUILD_TYPE}")
-if [[ $TEST_WITH_COVERAGE = 1 ]]; then CMAKE_ARGS+=("-DBUILD_WITH_CODE_COVERAGE=ON"); fi
 if [[ $TEST_WITH_SOTA_TOOLS = 1 ]]; then CMAKE_ARGS+=("-DBUILD_SOTA_TOOLS=ON"); fi
 if [[ $TEST_WITH_P11 = 1 ]]; then
     CMAKE_ARGS+=("-DBUILD_P11=ON")
@@ -151,42 +149,12 @@ if [[ $TEST_WITH_BUILD = 1 ]]; then
     fi
 fi
 
-if [[ $TEST_WITH_INSTALL_DEB_PACKAGES = 1 ]]; then
-    echo ">> Building debian package"
+if [[ $TEST_WITH_TESTSUITE = 1 ]]; then
+    echo ">> Running test suite"
     if [[ $TEST_DRYRUN != 1 ]]; then
         set -x
-        run_make package || add_failure "make package"
-
-        # install garage-deploy
-        cp ./*garage_deploy.deb "${TEST_INSTALL_DESTDIR}/garage_deploy${TEST_INSTALL_RELEASE_NAME}.deb"
-
-        # install aktualizr.deb
-        cp ./*aktualizr.deb "${TEST_INSTALL_DESTDIR}/aktualizr${TEST_INSTALL_RELEASE_NAME}.deb"
+        run_make check || add_failure "testsuite"
         set +x
-    fi
-fi
-
-if [[ $TEST_WITH_TESTSUITE = 1 ]]; then
-    if [[ $TEST_WITH_COVERAGE = 1 ]]; then
-        echo ">> Running test suite with coverage"
-        if [[ $TEST_DRYRUN != 1 ]]; then
-            set -x
-            run_make coverage || add_failure "testsuite with coverage"
-
-            if [[ -n ${CODECOV_TOKEN:-} ]]; then
-                bash <(curl -s https://codecov.io/bash) -f '!*/#usr*' -f '!*/^#third_party*' -R "${GITREPO_ROOT}" -s . > /dev/null
-            else
-                echo "Skipping codecov.io upload"
-            fi
-            set +x
-        fi
-    else
-        echo ">> Running test suite"
-        if [[ $TEST_DRYRUN != 1 ]]; then
-            set -x
-            run_make check || add_failure "testsuite"
-            set +x
-        fi
     fi
 fi
 

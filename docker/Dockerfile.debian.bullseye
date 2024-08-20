@@ -1,0 +1,64 @@
+FROM debian:bullseye
+LABEL Description="Aktualizr CI image using Debian Bullseye (oldstable)"
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && apt-get -y install --no-install-suggests --no-install-recommends debian-archive-keyring
+
+
+# It is important to run these in the same RUN command, because otherwise
+# Docker layer caching breaks us
+
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1017558
+RUN apt-get update && apt-get -y install -\
+  build-essential \
+  asn1c \
+  automake \
+  bison \
+  ccache \
+  cmake \
+  curl \
+  g++ \
+  git \
+  jq \
+  libarchive-dev \
+  libboost-dev \
+  libboost-log-dev \
+  libboost-program-options-dev \
+  libboost-system-dev \
+  libboost-test-dev \
+  libboost-thread-dev \
+  libcurl4-openssl-dev \
+  libengine-pkcs11-openssl \
+  libglib2.0-dev \
+  libgtest-dev \
+  libostree-dev \
+  libsodium-dev \
+  libsqlite3-dev \
+  libssl-dev \
+  libtool \
+  lshw \
+  ninja-build \
+  net-tools \
+  opensc \
+  ostree \
+  pkg-config \
+  psmisc \
+  python3-dev \
+  python3-gi \
+  python3-openssl \
+  python3-pip \
+  python3-venv \
+  sqlite3 \
+  zip
+
+
+
+RUN useradd testuser
+
+WORKDIR /home/testuser
+RUN chown testuser:testuser /home/testuser
+COPY . /home/testuser/source
+RUN chown -R testuser:testuser /home/testuser/source
+USER testuser
+RUN mkdir /home/testuser/.cache
