@@ -49,7 +49,7 @@ class HttpClient : public HttpInterface {
   void timeout(int64_t ms);
 
  private:
-  FRIEND_TEST(GetTest, download_speed_limit);
+  FRIEND_TEST(HttpClient, DownloadSpeedLimit);
 
   static const CurlGlobalInitWrapper manageCurlGlobalInit_;
   CURL *curl;
