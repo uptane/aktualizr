@@ -26,15 +26,12 @@ extern "C" {
 #include <condition_variable>
 #include <queue>
 
-std::ofstream outFile;
-
 std::mutex buffer_mutex;
 std::condition_variable buffer_cv;
 std::vector<char> data_buffer;
 
 // Flags to control the flow
 bool pause_download = false;
-bool stop_download = false;
 bool data_ready = false;
 bool data_read = false; 
 
@@ -78,7 +75,8 @@ static pthread_cond_t cv_end = PTHREAD_COND_INITIALIZER;
 
 int verbose = 1;
 
-std::string url = "https://link.storjshare.io/s/jwlztdmw6o6rizo6nj3f2bo6obka/gsoc/swupdate-torizon-benchmark-image-verdin-imx8mm-20240907181051.swu?download=1";
+// std::string url = "https://link.storjshare.io/s/jwlztdmw6o6rizo6nj3f2bo6obka/gsoc/swupdate-torizon-benchmark-image-verdin-imx8mm-20240907181051.swu?download=1";
+std::string url = "http://192.168.87.58:8080/swupdate-torizon-benchmark-image-verdin-imx8mm-20240907181051.swu";
 std::shared_ptr<HttpInterface> http;
 std::unique_ptr<DownloadMetaStruct> ds;
 
@@ -142,17 +140,10 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
 int readimage(char** pbuf, int* size) {
     std::unique_lock<std::mutex> lock(buffer_mutex);
 
-    buffer_cv.wait(lock, [] { return data_ready || stop_download; });
-
-    if (stop_download) {
-        std::cerr << "Download stopped, returning 0 from readimage" << std::endl;
-        return 0;
-    }
+    buffer_cv.wait(lock, [] { return data_ready; });
 
     *pbuf = data_buffer.data();
     *size = static_cast<int>(data_buffer.size());
-    outFile.write(data_buffer.data(), data_buffer.size());
-    outFile.flush();
 
     // After the data has been read, mark it as read and notify DownloadHandler
     data_ready = false;
@@ -172,8 +163,6 @@ int printstatus(ipc_message *msg) {
 }
 
 int end(RECOVERY_STATUS status) {
-  outFile.close();
-
   int end_status = (status == SUCCESS) ? EXIT_SUCCESS : EXIT_FAILURE;
   std::printf("SWUpdate %s\n", (status == FAILURE) ? "*failed* !" : "was successful !");
 
@@ -202,16 +191,11 @@ int swupdate_test_func() {
   int rc;
 
   http = std::make_shared<HttpClient>();
+  // std::dynamic_pointer_cast<HttpClient>(http)->timeout(10000000);
   Uptane::Target target("test", jsonDataOut);
   ds = std_::make_unique<DownloadMetaStruct>(target, nullptr, nullptr);
 
   swupdate_prepare_req(&req);
-
-  outFile.open("filename.swu", std::ios::out | std::ios::trunc);
-  if (!outFile) {
-      std::cerr << "Error opening file" << std::endl;
-      return 1; // Return an error code
-  }
 
   rc = swupdate_async_start(readimage, printstatus, end, &req, sizeof(req));
   if (rc < 0) {
@@ -230,7 +214,6 @@ int swupdate_test_func() {
 
   {
       std::unique_lock<std::mutex> lock(buffer_mutex);
-      stop_download = true;
       buffer_cv.notify_all(); // Notify to break out of waiting in readimage
   }
 
