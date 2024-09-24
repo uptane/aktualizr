@@ -26,6 +26,8 @@ extern "C" {
 #include <condition_variable>
 #include <queue>
 
+std::ofstream outFile;
+
 std::mutex buffer_mutex;
 std::condition_variable buffer_cv;
 std::vector<char> data_buffer;
@@ -119,6 +121,17 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
         dst->hasher().update(reinterpret_cast<const unsigned char*>(contents), downloaded);
         dst->downloaded_length += downloaded;
 
+        if (dst->downloaded_length == expected) {
+          auto final_hash = ds->hasher().getHash().HashString();
+
+          std::string val = jsonDataOut["custom"]["swupdate"]["rawHashes"]["sha256"].asString();
+          if (final_hash != val) {
+            std::fprintf(stderr, "Running post-update failed!\n");
+            exit(-1);
+          }
+          std::cerr << "Full update!!" << std::endl;
+        }
+
         data_ready = true;
         data_read = false;
 
@@ -130,7 +143,7 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
         // std::cout << "Downloaded: " << dst->downloaded_length << "/" << expected << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Exception in DownloadHandler: " << e.what() << std::endl;
-        return 0; // Abort download
+        return -1; // Abort download
     }
 
     return downloaded;
@@ -142,8 +155,12 @@ int readimage(char** pbuf, int* size) {
 
     buffer_cv.wait(lock, [] { return data_ready; });
 
-    *pbuf = data_buffer.data();
+    std::vector<char> data_buffer_copy(data_buffer.size());
+    std::memcpy(data_buffer_copy.data(), data_buffer.data(), data_buffer.size());
+
+    *pbuf = data_buffer_copy.data();
     *size = static_cast<int>(data_buffer.size());
+    outFile.write(data_buffer.data(), data_buffer.size());
 
     // After the data has been read, mark it as read and notify DownloadHandler
     data_ready = false;
@@ -163,20 +180,12 @@ int printstatus(ipc_message *msg) {
 }
 
 int end(RECOVERY_STATUS status) {
+  outFile.close();
   int end_status = (status == SUCCESS) ? EXIT_SUCCESS : EXIT_FAILURE;
   std::printf("SWUpdate %s\n", (status == FAILURE) ? "*failed* !" : "was successful !");
 
   if (status == SUCCESS) {
     std::printf("Executing post-update actions.\n");
-    // Finalize the hash
-    auto final_hash = ds->hasher().getHash().HashString();
-    std::printf("Final hash %s", final_hash.c_str());
-    std::string val = "";
-    // val = jsonDataOut["custom"]["swupdate"]["rawHashes"]["sha256"].asString();
-    if (final_hash != val) {
-      std::fprintf(stderr, "Running post-update failed!\n");
-      end_status = EXIT_FAILURE;
-    }
   }
 
   pthread_mutex_lock(&mymutex);
@@ -197,6 +206,12 @@ int swupdate_test_func() {
 
   swupdate_prepare_req(&req);
 
+  outFile.open("filename.swu", std::ios::out | std::ios::trunc);
+  if (!outFile) {
+      std::cerr << "Error opening file" << std::endl;
+      return 1; // Return an error code
+  }
+
   rc = swupdate_async_start(readimage, printstatus, end, &req, sizeof(req));
   if (rc < 0) {
     std::cout << "swupdate start error" << std::endl;
@@ -216,6 +231,8 @@ int swupdate_test_func() {
       std::unique_lock<std::mutex> lock(buffer_mutex);
       buffer_cv.notify_all(); // Notify to break out of waiting in readimage
   }
+
+  pthread_mutex_init(&mymutex, NULL);
 
   pthread_mutex_lock(&mymutex);
   pthread_cond_wait(&cv_end, &mymutex);
