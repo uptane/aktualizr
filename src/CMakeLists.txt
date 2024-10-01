@@ -16,3 +16,4 @@ add_subdirectory("cert_provider")
 add_subdirectory("aktualizr_get")
 
 add_subdirectory("swupdate_poc")
+add_subdirectory("hash_root_poc")

@@ -81,8 +81,7 @@ pthread_cond_t cv_end = PTHREAD_COND_INITIALIZER;
 
 int verbose = 1;
 
-// URL
-std::string url = "http://192.168.219.89:8080/swupdate-torizon-benchmark-image-verdin-imx8mm-20240907181051.swu";
+// std::string url = "http://192.168.86.46:8080/swupdate-torizon-benchmark-image-verdin-imx8mm-20240907181051.swu";
 std::shared_ptr<HttpInterface> http;
 std::unique_ptr<DownloadMetaStruct> ds;
 
@@ -263,6 +262,8 @@ int swupdate_test_func() {
         std::cerr << "swupdate start error" << std::endl;
         return EXIT_FAILURE;
     }
+
+    std::string url = jsonDataOut["url"].asString();
 
     // Start the download in a separate thread to avoid blocking
     std::thread download_thread([&]() {

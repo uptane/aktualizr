@@ -38,4 +38,6 @@ aktualizr_source_file_checks(fetcher_death_test.cc
                              packagemanagerfactory_test.cc
                              ostreemanager_test.cc
                              ostreemanager.cc
-                             ostreemanager.h)
+                             ostreemanager.h
+                             swupdatemanager.cc
+                             swupdatemanager.h)
