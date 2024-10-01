@@ -43,12 +43,23 @@ std::string hash_filesystem_root(const fs::path& root_path) {
 
     // Traverse the filesystem starting from root
     for (fs::recursive_directory_iterator iter(root_path), end; iter != end; ++iter) {
-        if (fs::is_regular_file(iter->path())) {
-            std::string file_hash = hash_file(iter->path());
+        const fs::path& current_path = iter->path();
+        
+        // Skip problematic directories
+        if (current_path.string().find("/run/") != std::string::npos) {
+            continue; // Skip /run and its subdirectories
+        }
+
+        // Avoid following symbolic links
+        if (fs::is_regular_file(current_path)) {
+            std::string file_hash = hash_file(current_path);
             // Combine file hash and file path into the overall hash
             SHA256_Update(&sha256, file_hash.c_str(), file_hash.size());
-            std::string file_path_str = iter->path().string();
+            std::string file_path_str = current_path.string();
             SHA256_Update(&sha256, file_path_str.c_str(), file_path_str.size());
+        } else if (fs::is_symlink(current_path)) {
+            // Optionally handle symlinks if needed, or skip them
+            continue; // Skip symlinks
         }
     }
 
