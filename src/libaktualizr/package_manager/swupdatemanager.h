@@ -16,8 +16,8 @@
 class SwupdateManager : public PackageManagerInterface {
 public:
     SwupdateManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
-                       const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http)
-        : PackageManagerInterface(pconfig, bconfig, storage, http) {}
+                const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
+                Bootloader *bootloader = nullptr);
     ~SwupdateManager() override = default;
     SwupdateManager(const SwupdateManager &) = delete;
     SwupdateManager(SwupdateManager &&) = delete;
@@ -26,11 +26,13 @@ public:
 
     std::string name() const override { return "swupdate"; }
     Json::Value getInstalledPackages() const override;
-    virtual std::string getCurrentHash() const; // added
+    virtual std::string getCurrentHash() const;
     Uptane::Target getCurrent() const override;
 
     data::InstallationResult install(const Uptane::Target &target) const override;
+    void completeInstall() const override;
     data::InstallationResult finalizeInstall(const Uptane::Target &target) override;
+    void updateNotify() override { bootloader_->updateNotify(); };
     bool fetchTarget(const Uptane::Target &target, Uptane::Fetcher &fetcher, const KeyManager &keys,
                     const FetcherProgressCb &progress_cb, const api::FlowControlToken *token) override;
 
@@ -49,6 +51,8 @@ private:
     std::atomic<bool> data_ready(false);
     std::atomic<bool> data_read(false);
     std::atomic<bool> unrecoverable_error(false);
+
+    std::unique_ptr<Bootloader> bootloader_;
 };
 
 #endif // SWUPDATEMANAGER_H
