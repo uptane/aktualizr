@@ -8,3 +8,5 @@ find_library(LIBSWUPDATE_LIBRARY
 
 message("libswupdate headers path: ${LIBSWUPDATE_INCLUDE_DIR}")
 message("libswupdate library path: ${LIBSWUPDATE_LIBRARY}")
+
+set(LIBSWUPDATE_LIBRARIES ${LIBSWUPDATE_LIBRARIES})

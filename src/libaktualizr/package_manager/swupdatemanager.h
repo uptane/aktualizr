@@ -35,7 +35,6 @@ public:
                     const FetcherProgressCb &progress_cb, const api::FlowControlToken *token) override;
 
 private:
-    // SWUpdate-specific methods
     // bool swupdate_init();
     // void swupdate_finalize();
     // std::vector<SwupdatePackage> swupdate_get_installed_packages() const;
@@ -47,7 +46,7 @@ private:
     //                               const api::FlowControlToken *token);
     // bool swupdate_verify_target(const Uptane::Target &target) const;
 
-    // std::unique_ptr<Bootloader> bootloader_;
+    std::unique_ptr<Bootloader> bootloader_;
 };
 
 #endif // SWUPDATEMANAGER_H

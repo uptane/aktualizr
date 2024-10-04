@@ -109,6 +109,10 @@ else(BUILD_OSTREE)
     endif(NOT BUILD_SOTA_TOOLS)
 endif(BUILD_OSTREE)
 
+if(BUILD_SWUPDATE)
+    find_package(swupdate REQUIRED)
+endif(BUILD_SWUPDATE)
+
 if(BUILD_P11)
     find_package(LibP11 REQUIRED)
     add_definitions(-DBUILD_P11)
@@ -362,6 +366,7 @@ set (AKTUALIZR_EXTERNAL_LIBS
     Threads::Threads
     ${sodium_LIBRARY_RELEASE}
     ${LIBOSTREE_LIBRARIES}
+    ${LIBSWUPDATE_LIBRARIES}
     ${SQLITE3_LIBRARIES}
     ${LibArchive_LIBRARIES}
     ${LIBP11_LIBRARIES}

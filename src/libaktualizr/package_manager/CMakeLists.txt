@@ -25,6 +25,14 @@ if(BUILD_OSTREE)
                        ARGS ${PROJECT_BINARY_DIR}/ostree_repo)
 endif(BUILD_OSTREE)
 
+if(BUILD_SWUPDATE)
+    target_sources(package_manager PRIVATE swupdatemanager.cc)
+    target_include_directories(package_manager PUBLIC ${LIBSWUPDATE_INCLUDE_DIR})
+
+    add_aktualizr_test(NAME swupdatemanager SOURCES swupdatemanager_test.cc PROJECT_WORKING_DIRECTORY
+                       ARGS ${PROJECT_BINARY_DIR}/ostree_repo)
+endif(BUILD_SWUPDATE)
+
 add_aktualizr_test(NAME packagemanagerconfig SOURCES packagemanagerconfig_test.cc NO_VALGRIND)
 add_aktualizr_test(NAME packagemanager_factory SOURCES packagemanagerfactory_test.cc
                    ARGS ${PROJECT_BINARY_DIR}/ostree_repo)

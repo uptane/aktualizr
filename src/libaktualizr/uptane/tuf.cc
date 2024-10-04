@@ -189,6 +189,18 @@ bool Target::IsOstree() const {
   }
 }
 
+bool Target::IsSwupdate() const {
+  // NOLINTNEXTLINE(bugprone-branch-clone)
+  if (type_ == "SWUPDATE") {
+    // Modern servers explicitly specify the type of the target
+    return true;
+  } else {
+    // If type is explicitly not SWUPDATE or the length is non-zero, then this
+    // is a firmware blob.
+    return false;
+  }
+}
+
 bool Target::MatchTarget(const Target &t2) const {
   // type_ (targetFormat) is only provided by the Image repo.
   // ecus_ is only provided by the Image repo.
