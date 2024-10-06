@@ -38,7 +38,8 @@ if (BUILD_SOTA_TOOLS)
             ${OPENSSL_LIBRARIES}
             ${sodium_LIBRARY_RELEASE}
             ${GLIB2_LIBRARIES}
-            ${LIBOSTREE_LIBRARIES})
+            ${LIBOSTREE_LIBRARIES}
+            ${LIBSWUPDATE_LIBRARIES})
 
     install(TARGETS sota_tools_lib LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT garage_deploy)
 

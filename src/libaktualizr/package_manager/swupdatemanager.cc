@@ -19,13 +19,16 @@
 #include "json/json.h"
 #include <unistd.h>
 #include <fcntl.h>
-#include <gio/gio.h>
+// #include <gio/gio.h>
 
 extern "C" {
 #include "network_ipc.h"
 }
 
 #include <sys/statvfs.h>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/filesystem.hpp>
 #include <chrono>
 #include "crypto/crypto.h"
@@ -71,6 +74,20 @@ private:
     MultiPartSHA512Hasher sha512_hasher;
 };
 
+std::mutex buffer_mutex;
+std::condition_variable buffer_cv;
+std::vector<char> data_buffer;
+std::unique_ptr<DownloadMetaStruct> ds;
+
+std::atomic<bool> data_ready(false);
+std::atomic<bool> data_read(false);
+std::atomic<bool> unrecoverable_error(false);
+
+pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cv_end = PTHREAD_COND_INITIALIZER;
+
+int verbose = 1;
+
 AUTO_REGISTER_PACKAGE_MANAGER(PACKAGE_MANAGER_SWUPDATE, SwupdateManager);
 
 Json::Value SwupdateManager::getInstalledPackages() const {
@@ -100,7 +117,6 @@ std::string SwupdateManager::getCurrentHash() const {
   return "dummy_hash";
 }
 
-// ??? implement later
 Uptane::Target SwupdateManager::getCurrent() const {
   const std::string current_hash = getCurrentHash();
   boost::optional<Uptane::Target> current_version;
@@ -112,7 +128,7 @@ Uptane::Target SwupdateManager::getCurrent() const {
     return *current_version;
   }
 
-  LOG_ERROR << "Current versions in storage and reported by OSTree do not match";
+  LOG_ERROR << "Current versions in storage and reported by Swupdate do not match";
 
   // Look into installation log to find a possible candidate. Again, despite the
   // name, this will work for Secondaries as well.
@@ -137,7 +153,7 @@ Uptane::Target SwupdateManager::getCurrent() const {
 
 // Might need to be expanded? later
 data::InstallationResult SwupdateManager::install(const Uptane::Target& target) const {
-  swupdate_install();
+  swupdate_install(target);
   return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "Application successful, need reboot");
 }
 
@@ -152,7 +168,7 @@ data::InstallationResult SwupdateManager::finalizeInstall(const Uptane::Target& 
                                     "Reboot is required for the pending update application");
   }
 
-  LOG_INFO << "Checking installation of new OSTree sysroot";
+  LOG_INFO << "Checking installation of new Swupdate sysroot";
   const std::string current_hash = getCurrentHash();
 
   data::InstallationResult install_result =
@@ -170,18 +186,14 @@ data::InstallationResult SwupdateManager::finalizeInstall(const Uptane::Target& 
 
 void SwupdateManager::updateNotify() { bootloader_->updateNotify(); }
 
-SwupdateManager::~SwupdateManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
+SwupdateManager::SwupdateManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
                              const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
                              Bootloader *bootloader)
     : PackageManagerInterface(pconfig, BootloaderConfig(), storage, http),
       bootloader_(bootloader == nullptr ? new Bootloader(bconfig, *storage) : bootloader) {
-  data_ready(false);
-  data_read(false);
-  unrecoverable_error(false);
-
-  if (imageUpdated()) {
-    bootloader_->setBootOK();
-  }
+  // data_ready(false);
+  // data_read(false);
+  // unrecoverable_error(false);
 }
 
 SwupdateManager::~SwupdateManager() { bootloader_.reset(nullptr); }
@@ -237,7 +249,7 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
         if (dst->downloaded_length == expected) {
             auto final_hash = ds->hasher().getHash().HashString();
 
-            std::string expected_hash = jsonDataOut["custom"]["swupdate"]["rawHashes"]["sha256"].asString();
+            std::string expected_hash = dst->target.sha256Hash(); // could be wrong
             if (final_hash != expected_hash) {
                 std::cerr << "Hash mismatch! Expected: " << expected_hash << ", Got: " << final_hash << std::endl;
                 unrecoverable_error.store(true);
@@ -245,9 +257,6 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
                 exit(-1);
             }
             std::cerr << "Full update verified successfully!" << std::endl;
-            if (bootloader_ != nullptr) {
-              bootloader_->rebootFlagSet();
-            }
         }
 
         data_ready.store(true);
@@ -275,7 +284,7 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
 }
 
 // Read Image Function
-int readimage(char** pbuf, int* size) {
+int SwupdateManager::readimage(char** pbuf, int* size) {
     std::unique_lock<std::mutex> lock(buffer_mutex);
 
     // Wait until data is ready or an error has occurred
@@ -301,7 +310,7 @@ int readimage(char** pbuf, int* size) {
 }
 
 // Status Print Function
-int printstatus(ipc_message *msg) {
+int SwupdateManager::printstatus(ipc_message *msg) {
     if (verbose) {
         std::printf("Status: %d message: %s\n",
                   msg->data.notify.status,
@@ -311,7 +320,7 @@ int printstatus(ipc_message *msg) {
 }
 
 // End Function
-int end_update(RECOVERY_STATUS status) {
+int SwupdateManager::endupdate(RECOVERY_STATUS status) {
     int end_status = (status == SUCCESS) ? EXIT_SUCCESS : EXIT_FAILURE;
     std::printf("SWUpdate %s\n", (status == FAILURE) ? "*failed* !" : "was successful !");
 
@@ -328,25 +337,26 @@ int end_update(RECOVERY_STATUS status) {
     return end_status;
 }
 
-int swupdate_install() {
+int SwupdateManager::swupdate_install(const Uptane::Target &target) const {
     struct swupdate_request req;
     int rc;
     std::shared_ptr<HttpInterface> http;
 
     http = std::make_shared<HttpClient>();
     // std::dynamic_pointer_cast<HttpClient>(http)->timeout(10000000);
-    Uptane::Target target("test", jsonDataOut);
+    // Uptane::Target target("test", jsonDataOut);
     ds = std_::make_unique<DownloadMetaStruct>(target, nullptr, nullptr);
 
     swupdate_prepare_req(&req);
 
-    rc = swupdate_async_start(readimage, printstatus, end_update, &req, sizeof(req));
+    rc = swupdate_async_start(readimage, printstatus, endupdate, &req, sizeof(req));
     if (rc < 0) {
         std::cerr << "swupdate start error" << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::string url = jsonDataOut["url"].asString();
+    // std::string url = jsonDataOut["url"].asString();
+    std::string url = target.uri();
 
     // Start the download in a separate thread to avoid blocking
     std::thread download_thread([&]() {

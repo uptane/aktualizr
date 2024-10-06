@@ -26,11 +26,11 @@ if(BUILD_OSTREE)
 endif(BUILD_OSTREE)
 
 if(BUILD_SWUPDATE)
+    find_package(swupdate REQUIRED)
     target_sources(package_manager PRIVATE swupdatemanager.cc)
-    target_include_directories(package_manager PUBLIC ${LIBSWUPDATE_INCLUDE_DIR})
+    target_include_directories(package_manager PUBLIC ${LIBSWUPDATE_INCLUDE_DIRS})
 
-    add_aktualizr_test(NAME swupdatemanager SOURCES swupdatemanager_test.cc PROJECT_WORKING_DIRECTORY
-                       ARGS ${PROJECT_BINARY_DIR}/ostree_repo)
+    add_aktualizr_test(NAME swupdatemanager SOURCES swupdatemanager_test.cc PROJECT_WORKING_DIRECTORY)
 endif(BUILD_SWUPDATE)
 
 add_aktualizr_test(NAME packagemanagerconfig SOURCES packagemanagerconfig_test.cc NO_VALGRIND)
@@ -47,5 +47,7 @@ aktualizr_source_file_checks(fetcher_death_test.cc
                              ostreemanager_test.cc
                              ostreemanager.cc
                              ostreemanager.h
+                             swupdatemanager_test.cc
                              swupdatemanager.cc
                              swupdatemanager.h)
+                             
