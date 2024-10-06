@@ -1,24 +1,41 @@
 #ifndef SWUPDATEMANAGER_H
 #define SWUPDATEMANAGER_H
 
-#include "libaktualizr/packagemanagerinterface.h"
-#include "bootloader/bootloader.h"
-#include "http/httpinterface.h"
-#include "storage/invstorage.h"
+#include <unistd.h>
+#include <cstdio>
+#include <fstream>
 
-#include <memory>
-#include <vector>
+#include <json/json.h>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/filesystem.hpp>
+#include <utility>
+
+#include "libaktualizr/packagemanagerfactory.h"
+
+#include "bootloader/bootloader.h"
+#include "logging/logging.h"
+#include "storage/invstorage.h"
+#include "utilities/utils.h"
+#include "http/httpclient.h"
+#include "utilities/fault_injection.h"
+
+#include <iostream>
 #include <string>
+#include <memory>
+#include <thread>
 #include <mutex>
 #include <condition_variable>
-#include <atomic>
+
+#include <pthread.h>
+#include <fcntl.h>
 
 extern "C" {
 #include "network_ipc.h"
 }
 
 #include <sys/statvfs.h>
-#include <boost/filesystem.hpp>
 #include <chrono>
 #include "crypto/crypto.h"
 #include "crypto/keymanager.h"
@@ -27,6 +44,7 @@ extern "C" {
 #include "utilities/apiqueue.h"
 
 #include <queue>
+#include <atomic>
 
 class SwupdateManager : public PackageManagerInterface {
 public:

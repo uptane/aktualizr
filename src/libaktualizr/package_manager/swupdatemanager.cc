@@ -1,35 +1,40 @@
 #include "swupdatemanager.h"
 
-#include <iostream>
+#include <unistd.h>
+#include <cstdio>
 #include <fstream>
+
+#include <json/json.h>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/filesystem.hpp>
+#include <utility>
+
+#include "libaktualizr/packagemanagerfactory.h"
+
+#include "bootloader/bootloader.h"
+#include "logging/logging.h"
+#include "storage/invstorage.h"
+#include "utilities/utils.h"
+#include "http/httpclient.h"
+#include "utilities/fault_injection.h"
+
+#include <iostream>
 #include <string>
 #include <memory>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 
-#include "logging/logging.h"
-#include "storage/invstorage.h"
-#include "http/httpclient.h"
-#include "utilities/fault_injection.h"
-#include "libaktualizr/packagemanagerfactory.h"
-
-// figure out later which to include
 #include <pthread.h>
-#include "json/json.h"
-#include <unistd.h>
 #include <fcntl.h>
-// #include <gio/gio.h>
 
 extern "C" {
 #include "network_ipc.h"
 }
 
 #include <sys/statvfs.h>
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/filesystem.hpp>
 #include <chrono>
 #include "crypto/crypto.h"
 #include "crypto/keymanager.h"

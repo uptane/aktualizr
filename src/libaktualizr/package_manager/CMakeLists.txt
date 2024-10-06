@@ -26,7 +26,6 @@ if(BUILD_OSTREE)
 endif(BUILD_OSTREE)
 
 if(BUILD_SWUPDATE)
-    find_package(swupdate REQUIRED)
     target_sources(package_manager PRIVATE swupdatemanager.cc)
     target_include_directories(package_manager PUBLIC ${LIBSWUPDATE_INCLUDE_DIRS})
 
