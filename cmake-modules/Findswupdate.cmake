@@ -1,5 +1,5 @@
-# Try to find Swupdate
-# SWUPDATE_DIR - Hint path to a local build of Swupdate
+# Try to find SWUpdate
+# SWUPDATE_DIR - Hint path to a local build of SWUpdate
 # Once done this will define
 #  SWUPDATE_FOUND
 #  SWUPDATE_LIBRARIES

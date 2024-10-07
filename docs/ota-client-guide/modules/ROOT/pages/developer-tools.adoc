@@ -68,5 +68,9 @@ For more information on using `garage-sign` to manage keys, see the topic "xref:
 
 ====
 
+| *SWUpdate* |  SWUpdate is a tool for managing Linux filesystems, and delivers atomic updates. SWUpdate is a traditional dual-bank systems, having an automatic backup partition that boots on failure.
+
+You probably won't have to use the SWUpdate CLI often, but it's handy for troubleshooting build issues.
+
 | *OTA Connect Portal* | The OTA Connect portal isn't strictly a developer tool, but you'll need it to download a provisioning key to include in your disk images. It's a web application that you use to trigger updates and push software to your devices. You can access the portal under the following URL: https://connect.ota.here.com
 |====================

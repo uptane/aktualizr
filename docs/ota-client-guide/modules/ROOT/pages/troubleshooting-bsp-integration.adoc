@@ -38,4 +38,6 @@ Building an integration with a new board involves dealing with several different
 ** https://ostreedev.github.io/ostree/deployment/[Deployments]
 ** https://ostreedev.github.io/ostree/atomic-upgrades/[Atomic Upgrades]
 
+* https://sbabic.github.io/swupdate/swupdate.html[libswupdate reference documentation]
+
 * https://u-boot.readthedocs.io/en/latest/index.html[U-Boot reference documentation]

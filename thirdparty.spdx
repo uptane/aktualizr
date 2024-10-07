@@ -12,6 +12,7 @@ Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-openssl
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-libarchive
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-libsodium
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-libostree
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-libswupdate
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-sqlite3
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-asn1c
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-libp11
@@ -149,6 +150,16 @@ PackageCopyrightText: <text>NONE</text>
 FilesAnalyzed: false
 PackageComment: <text>Dynamically linked.</text>
 
+PackageName: libswupdate
+SPDXID: SPDXRef-libswupdate
+PackageDownloadLocation: https://github.com/sbabic/swupdate/archive/master.zip
+PackageHomePage: https://sbabic.github.io/swupdate/swupdate.html
+PackageLicenseConcluded: BSD-3-Clause
+PackageLicenseDeclared: BSD-3-Clause
+PackageLicenseInfoFromFiles: BSD-3-Clause
+PackageCopyrightText: <text>NONE</text>
+FilesAnalyzed: false
+PackageComment: <text>Dynamically linked.</text>
 
 PackageName: sqlite3
 SPDXID: SPDXRef-sqlite3

@@ -69,23 +69,14 @@ public:
     bool fetchTarget(const Uptane::Target &target, Uptane::Fetcher &fetcher, const KeyManager &keys,
                     const FetcherProgressCb &progress_cb, const api::FlowControlToken *token) override;
 
-    // static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* userp);
     static int readimage(char** pbuf, int* size);
     static int printstatus(ipc_message *msg);
     static int endupdate(RECOVERY_STATUS status);
     int swupdate_install(const Uptane::Target& target) const;
 
 private:
-    // std::mutex buffer_mutex;
-    // std::condition_variable buffer_cv;
-    // std::vector<char> data_buffer;
-    // std::unique_ptr<DownloadMetaStruct> ds;
-
-    // std::atomic<bool> data_ready(false);
-    // std::atomic<bool> data_read(false);
-    // std::atomic<bool> unrecoverable_error(false);
-
     std::unique_ptr<Bootloader> bootloader_;
+    std::shared_ptr<HttpInterface> http_;
 };
 
 #endif // SWUPDATEMANAGER_H

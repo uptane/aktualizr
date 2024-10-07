@@ -1,0 +1,24 @@
+= SWUpdate
+ifdef::env-github[]
+
+[NOTE]
+====
+We recommend that you link:https://sbabic.github.io/swupdate/[view this article in the official SWUpdate documentation portal]. Not all of our articles render correctly in GitHub.
+====
+endif::[]
+
+== SWUpdate
+
+link:https://sbabic.github.io/swupdate/[SWUpdate] is an open-source tool designed to manage software updates on embedded systems in a reliable, robust way. It provides support for a variety of update formats and protocols, including local and remote updates, and enables atomic updates to ensure system stability. Developed with embedded systems in mind, SWUpdate is widely used for device management in embedded Linux environments.
+
+For an in-depth comparison with other update mechanisms, refer to xref:comparing-update-strategies.adoc[Comparing update strategies for embedded systems].
+
+.Why Not Other Update Approaches?
+****
+* Traditional Package Managers
++  
+Using a package manager like dpkg or rpm for embedded updates may appear convenient, but embedded systems typically require more robust handling of updates. Traditional package managers are not designed with atomic updates in mind, meaning a failed update or interrupted connection could leave the device in an inconsistent state, which is often difficult to recover in a remote deployment.
+* Over-the-Air Updates Without Atomicity
++  
+While some devices allow over-the-air updates by directly overwriting the root filesystem, the lack of atomic handling introduces significant risk. If a device loses power during the update process, it may become unbootable and require physical intervention. SWUpdate minimizes this risk by using dual A/B partitioning and other mechanisms to ensure a safe rollback if an update fails.
+****

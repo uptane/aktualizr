@@ -79,6 +79,8 @@ private:
     MultiPartSHA512Hasher sha512_hasher;
 };
 
+std::string alternate_url;
+
 std::mutex buffer_mutex;
 std::condition_variable buffer_cv;
 std::vector<char> data_buffer;
@@ -119,46 +121,59 @@ Json::Value SwupdateManager::getInstalledPackages() const {
 
 // unimplemented
 std::string SwupdateManager::getCurrentHash() const {
-  return "dummy_hash";
+  return "c8cfb0988662ce4fb60beff47b741705146548a8e62801fbb0cbdeaf198fa47e"; //dummy hash
 }
 
 Uptane::Target SwupdateManager::getCurrent() const {
-  const std::string current_hash = getCurrentHash();
+  // const std::string current_hash = getCurrentHash();
+  // boost::optional<Uptane::Target> current_version;
+  // // This may appear Primary-specific, but since Secondaries only know about
+  // // themselves, this actually works just fine for them, too.
+  // storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
+
+  // if (!!current_version && current_version->sha256Hash() == current_hash) {
+  //   return *current_version;
+  // }
+
+  // // intentional leaking:
+  // return *current_version;
+
+  // LOG_ERROR << "Current versions in storage and reported by Swupdate do not match";
+
+  // // Look into installation log to find a possible candidate. Again, despite the
+  // // name, this will work for Secondaries as well.
+  // std::vector<Uptane::Target> installed_versions;
+  // storage_->loadPrimaryInstallationLog(&installed_versions, false);
+
+  // // Version should be in installed versions. It's possible that multiple
+  // // targets could have the same sha256Hash. In this case the safest assumption
+  // // is that the most recent (the reverse of the vector) target is what we
+  // // should return.
+  // std::vector<Uptane::Target>::reverse_iterator it;
+  // for (it = installed_versions.rbegin(); it != installed_versions.rend(); it++) {
+  //   if (it->sha256Hash() == current_hash) {
+  //     return *it;
+  //   }
+  // }
+  // // Failed to find a matching target
+  // Uptane::EcuMap ecus;
+  // std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
+  // return {"unknown", ecus, hashes, 0, "SWUPDATE"};
   boost::optional<Uptane::Target> current_version;
-  // This may appear Primary-specific, but since Secondaries only know about
-  // themselves, this actually works just fine for them, too.
   storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
 
-  if (!!current_version && current_version->sha256Hash() == current_hash) {
+  if (!!current_version) {
     return *current_version;
   }
 
-  LOG_ERROR << "Current versions in storage and reported by Swupdate do not match";
-
-  // Look into installation log to find a possible candidate. Again, despite the
-  // name, this will work for Secondaries as well.
-  std::vector<Uptane::Target> installed_versions;
-  storage_->loadPrimaryInstallationLog(&installed_versions, false);
-
-  // Version should be in installed versions. It's possible that multiple
-  // targets could have the same sha256Hash. In this case the safest assumption
-  // is that the most recent (the reverse of the vector) target is what we
-  // should return.
-  std::vector<Uptane::Target>::reverse_iterator it;
-  for (it = installed_versions.rbegin(); it != installed_versions.rend(); it++) {
-    if (it->sha256Hash() == current_hash) {
-      return *it;
-    }
-  }
-  // Failed to find a matching target
-  Uptane::EcuMap ecus;
-  std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
-  return {"unknown", ecus, hashes, 0, "SWUPDATE"};
+  return Uptane::Target::Unknown();
 }
 
-// Might need to be expanded? later
 data::InstallationResult SwupdateManager::install(const Uptane::Target& target) const {
-  swupdate_install(target);
+  int install_res = swupdate_install(target);
+  if (install_res > 0) {
+    return data::InstallationResult(data::ResultCode::Numeric::kInstallFailed, "swupdate_install failed");
+  }
   return data::InstallationResult(data::ResultCode::Numeric::kNeedCompletion, "Application successful, need reboot");
 }
 
@@ -195,10 +210,9 @@ SwupdateManager::SwupdateManager(const PackageConfig &pconfig, const BootloaderC
                              const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
                              Bootloader *bootloader)
     : PackageManagerInterface(pconfig, BootloaderConfig(), storage, http),
-      bootloader_(bootloader == nullptr ? new Bootloader(bconfig, *storage) : bootloader) {
-  // data_ready(false);
-  // data_read(false);
-  // unrecoverable_error(false);
+      bootloader_(bootloader == nullptr ? new Bootloader(bconfig, *storage) : bootloader),
+      http_(http) {
+        // maybe I'll add stuff here later
 }
 
 SwupdateManager::~SwupdateManager() { bootloader_.reset(nullptr); }
@@ -210,6 +224,8 @@ bool SwupdateManager::fetchTarget(const Uptane::Target& target, Uptane::Fetcher&
     LOG_ERROR << "Cannot download Swupdate target " << target.filename() << " with the fake package manager!";
     return false;
   }
+
+  alternate_url = fetcher.getRepoServer() + "/targets/" + Utils::urlEncode(target.filename());
 
   return PackageManagerInterface::fetchTarget(target, fetcher, keys, progress_cb, token);
 }
@@ -228,7 +244,7 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
     uint64_t expected = dst->target.length();
 
     if ((dst->downloaded_length + downloaded) > expected) {
-        std::cerr << "Download size exceeds expected length." << std::endl;
+        LOG_ERROR << "Download size exceeds expected length.";
         unrecoverable_error.store(true);
         buffer_cv.notify_all(); // Wake up any waiting threads
         exit(-1);
@@ -256,12 +272,12 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
 
             std::string expected_hash = dst->target.sha256Hash(); // could be wrong
             if (final_hash != expected_hash) {
-                std::cerr << "Hash mismatch! Expected: " << expected_hash << ", Got: " << final_hash << std::endl;
+                LOG_ERROR << "Hash mismatch! Expected: " << expected_hash << ", Got: " << final_hash;
                 unrecoverable_error.store(true);
                 buffer_cv.notify_all();
                 exit(-1);
             }
-            std::cerr << "Full update verified successfully!" << std::endl;
+            LOG_ERROR << "Full update verified successfully!";
         }
 
         data_ready.store(true);
@@ -277,9 +293,8 @@ static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* u
             exit(-1);
         }
 
-        // std::cout << "Downloaded: " << dst->downloaded_length << "/" << expected << std::endl;
     } catch (const std::exception& e) {
-        std::cerr << "Exception in DownloadHandler: " << e.what() << std::endl;
+        LOG_ERROR << "Exception in DownloadHandler: " << e.what();
         unrecoverable_error.store(true);
         buffer_cv.notify_all(); // Wake up any waiting threads
         exit(-1);
@@ -345,28 +360,29 @@ int SwupdateManager::endupdate(RECOVERY_STATUS status) {
 int SwupdateManager::swupdate_install(const Uptane::Target &target) const {
     struct swupdate_request req;
     int rc;
-    std::shared_ptr<HttpInterface> http;
 
-    http = std::make_shared<HttpClient>();
-    // std::dynamic_pointer_cast<HttpClient>(http)->timeout(10000000);
-    // Uptane::Target target("test", jsonDataOut);
     ds = std_::make_unique<DownloadMetaStruct>(target, nullptr, nullptr);
 
     swupdate_prepare_req(&req);
 
     rc = swupdate_async_start(readimage, printstatus, endupdate, &req, sizeof(req));
+
     if (rc < 0) {
-        std::cerr << "swupdate start error" << std::endl;
+        LOG_ERROR << "swupdate start error";
         return EXIT_FAILURE;
     }
 
-    // std::string url = jsonDataOut["url"].asString();
-    std::string url = target.uri();
+    std::string target_url = target.uri();
+    if (target_url.empty()) {
+      target_url = alternate_url; 
+    }
+
+    LOG_INFO << target_url;
 
     // Start the download in a separate thread to avoid blocking
     std::thread download_thread([&]() {
-        HttpResponse response = http->download(
-            url,
+        HttpResponse response = http_->download(
+            target_url,
             DownloadHandler,
             nullptr,  // ProgressHandler can be added if needed
             ds.get(), // userp
@@ -375,7 +391,7 @@ int SwupdateManager::swupdate_install(const Uptane::Target &target) const {
 
         // Check the response for errors
         if (response.http_status_code != 200) {
-            std::cerr << "HTTP download failed with status: " << response.http_status_code << std::endl;
+            LOG_ERROR << "HTTP download failed with status: " << response.http_status_code;
             unrecoverable_error.store(true);
             buffer_cv.notify_all(); // Wake up any waiting threads
         }
@@ -394,7 +410,7 @@ int SwupdateManager::swupdate_install(const Uptane::Target &target) const {
     }
 
     if (unrecoverable_error.load()) {
-        std::cerr << "An unrecoverable error occurred. Update process stopped." << std::endl;
+        LOG_ERROR << "An unrecoverable error occurred. Update process stopped.";
         return EXIT_FAILURE;
     }
 

@@ -35,3 +35,22 @@ image::img::ostree-update-flow.svg[]
 With OSTree, you no longer need to guess how much room you might need in the future to expand your system; the OSTree content store expands and contracts as needed. You also save a significant amount of space, since only diffs between versions need to be stored. OSTree also allows you to garbage-collect old images: if you upgrade 1.0 -> 1.1 -> 1.2, for example, by default the {product-name-short} client will garbage-collect all local objects unique to 1.0. If you decided later on that you in fact did want to go back to v1.0, you still could: if you pushed v1.0 from {product-name-short}, the client would download only the diff from TreeHub, repopulate the local object store, and then reboot into that version. Of course, it's also possible to configure OSTree to keep more than two revisions on the local disk; this can be particularly useful in QA workflows, allowing for rapid testing of a feature or an external integration against multiple different firmware versions.
 
 Best yet, you get all of these benefits *without having to give up the safety of a dual-bank setup*. Updates are still strictly atomic; if power is lost during the download of an update, the client will still boot into the old system when it starts up next, and will simply resume the download it had begun. You still always have a known good image on the system to roll back to; in fact, as stated above, you can keep an arbitrarily large number of revisions--an impossibility in a dual-bank system.
+
+== SWUpdate
+
+SWUpdate is an embedded Linux software update tool that facilitates atomic updates by downloading, verifying, and installing update packages. Designed to support both single- and dual-bank configurations, SWUpdate ensures system stability by providing rollback capabilities to a known, verified version if issues arise during an update.
+
+For dual-bank setups, SWUpdate installs the update on an inactive partition. After installation and verification, the system is instructed to boot from this new version on the next restart. If the update fails, SWUpdate reverts to the last known good system image. 
+
+For single-bank setups, updates are applied directly to the current partition, with rollback options if failures occur. SWUpdate’s flexibility enables a broad range of update types, from firmware and application updates to complex multi-component updates.
+
+Update Process
+1. Download: 
+SWUpdate retrieves the update package from a specified source, downloading only necessary files as defined by the update metadata.
+2. Verification: 
+Downloaded files undergo checksum or signature validation to ensure integrity and authenticity.
+3. Installation:
+Dual-Bank Setup: The update is written to the inactive partition. If verified, the system switches to boot from the new partition upon reboot.
+Single-Bank Setup: SWUpdate updates the active partition directly, ensuring a rollback option in case of failure.
+4. Reboot and Validation: 
+After rebooting, the system boots into the new version. If it detects an issue, SWUpdate will automatically revert to the previous version, maintaining system stability.
