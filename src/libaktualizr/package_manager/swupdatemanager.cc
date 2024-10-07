@@ -45,7 +45,6 @@ extern "C" {
 #include <queue>
 #include <atomic>
 
-// duplicate declartion in packagemanager.cc
 struct DownloadMetaStruct {
 public:
     DownloadMetaStruct(Uptane::Target target_in, FetcherProgressCb progress_cb_in, const api::FlowControlToken* token_in)
@@ -71,7 +70,6 @@ public:
     Uptane::Target target;
     const api::FlowControlToken* token;
     FetcherProgressCb progress_cb;
-    // each LogProgressInterval msec log dowload progress for big files
     std::chrono::time_point<std::chrono::steady_clock> time_lastreport;
 
 private:
@@ -119,46 +117,12 @@ Json::Value SwupdateManager::getInstalledPackages() const {
   return packages;
 }
 
-// unimplemented
+// unimplemented, this is the root hash
 std::string SwupdateManager::getCurrentHash() const {
   return "c8cfb0988662ce4fb60beff47b741705146548a8e62801fbb0cbdeaf198fa47e"; //dummy hash
 }
 
 Uptane::Target SwupdateManager::getCurrent() const {
-  // const std::string current_hash = getCurrentHash();
-  // boost::optional<Uptane::Target> current_version;
-  // // This may appear Primary-specific, but since Secondaries only know about
-  // // themselves, this actually works just fine for them, too.
-  // storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
-
-  // if (!!current_version && current_version->sha256Hash() == current_hash) {
-  //   return *current_version;
-  // }
-
-  // // intentional leaking:
-  // return *current_version;
-
-  // LOG_ERROR << "Current versions in storage and reported by Swupdate do not match";
-
-  // // Look into installation log to find a possible candidate. Again, despite the
-  // // name, this will work for Secondaries as well.
-  // std::vector<Uptane::Target> installed_versions;
-  // storage_->loadPrimaryInstallationLog(&installed_versions, false);
-
-  // // Version should be in installed versions. It's possible that multiple
-  // // targets could have the same sha256Hash. In this case the safest assumption
-  // // is that the most recent (the reverse of the vector) target is what we
-  // // should return.
-  // std::vector<Uptane::Target>::reverse_iterator it;
-  // for (it = installed_versions.rbegin(); it != installed_versions.rend(); it++) {
-  //   if (it->sha256Hash() == current_hash) {
-  //     return *it;
-  //   }
-  // }
-  // // Failed to find a matching target
-  // Uptane::EcuMap ecus;
-  // std::vector<Hash> hashes{Hash(Hash::Type::kSha256, current_hash)};
-  // return {"unknown", ecus, hashes, 0, "SWUPDATE"};
   boost::optional<Uptane::Target> current_version;
   storage_->loadPrimaryInstalledVersions(&current_version, nullptr);
 
@@ -211,9 +175,7 @@ SwupdateManager::SwupdateManager(const PackageConfig &pconfig, const BootloaderC
                              Bootloader *bootloader)
     : PackageManagerInterface(pconfig, BootloaderConfig(), storage, http),
       bootloader_(bootloader == nullptr ? new Bootloader(bconfig, *storage) : bootloader),
-      http_(http) {
-        // maybe I'll add stuff here later
-}
+      http_(http) {}
 
 SwupdateManager::~SwupdateManager() { bootloader_.reset(nullptr); }
 
@@ -231,188 +193,178 @@ bool SwupdateManager::fetchTarget(const Uptane::Target& target, Uptane::Fetcher&
 }
 
 
-// Download Handler Callback
 static size_t DownloadHandler(char* contents, size_t size, size_t nmemb, void* userp) {
-    if (unrecoverable_error.load()) {
-        // If an error has already occurred, abort further processing
-        exit(-1);
-    }
+  if (unrecoverable_error.load()) {
+    exit(-1);
+  }
 
-    assert(userp);
-    auto* dst = static_cast<DownloadMetaStruct*>(userp);
-    size_t downloaded = size * nmemb;
-    uint64_t expected = dst->target.length();
+  assert(userp);
+  auto* dst = static_cast<DownloadMetaStruct*>(userp);
+  size_t downloaded = size * nmemb;
+  uint64_t expected = dst->target.length();
 
-    if ((dst->downloaded_length + downloaded) > expected) {
-        LOG_ERROR << "Download size exceeds expected length.";
-        unrecoverable_error.store(true);
-        buffer_cv.notify_all(); // Wake up any waiting threads
-        exit(-1);
-    }
+  if ((dst->downloaded_length + downloaded) > expected) {
+    LOG_ERROR << "Download size exceeds expected length.";
+    unrecoverable_error.store(true);
+    buffer_cv.notify_all();
+    exit(-1);
+  }
 
-    try {
-        std::unique_lock<std::mutex> lock(buffer_mutex);
-
-        // Wait until data_ready is false or an error occurs
-        buffer_cv.wait(lock, [] { return !data_ready.load() || unrecoverable_error.load(); });
-
-        if (unrecoverable_error.load()) {
-            exit(-1);
-        }
-
-        data_buffer.clear();
-        data_buffer.resize(downloaded);  // Resize buffer to match the downloaded size
-        std::memcpy(data_buffer.data(), contents, downloaded);
-
-        dst->hasher().update(reinterpret_cast<const unsigned char*>(contents), downloaded);
-        dst->downloaded_length += downloaded;
-
-        if (dst->downloaded_length == expected) {
-            auto final_hash = ds->hasher().getHash().HashString();
-
-            std::string expected_hash = dst->target.sha256Hash(); // could be wrong
-            if (final_hash != expected_hash) {
-                LOG_ERROR << "Hash mismatch! Expected: " << expected_hash << ", Got: " << final_hash;
-                unrecoverable_error.store(true);
-                buffer_cv.notify_all();
-                exit(-1);
-            }
-            LOG_ERROR << "Full update verified successfully!";
-        }
-
-        data_ready.store(true);
-        data_read.store(false);
-
-        // Notify readimage that data is available
-        buffer_cv.notify_one();
-
-        // Now wait until readimage has finished reading the data or an error occurs
-        buffer_cv.wait(lock, [] { return data_read.load() || unrecoverable_error.load(); });
-
-        if (unrecoverable_error.load()) {
-            exit(-1);
-        }
-
-    } catch (const std::exception& e) {
-        LOG_ERROR << "Exception in DownloadHandler: " << e.what();
-        unrecoverable_error.store(true);
-        buffer_cv.notify_all(); // Wake up any waiting threads
-        exit(-1);
-    }
-
-    return downloaded;
-}
-
-// Read Image Function
-int SwupdateManager::readimage(char** pbuf, int* size) {
+  try {
     std::unique_lock<std::mutex> lock(buffer_mutex);
 
-    // Wait until data is ready or an error has occurred
-    buffer_cv.wait(lock, [] { return data_ready.load() || unrecoverable_error.load(); });
+    buffer_cv.wait(lock, [] { return !data_ready.load() || unrecoverable_error.load(); });
 
     if (unrecoverable_error.load()) {
-        return -1; // Indicate an error to stop the update process
+      exit(-1);
     }
 
-    // Copy data to avoid data races
-    std::vector<char> data_buffer_copy(data_buffer.size());
-    std::memcpy(data_buffer_copy.data(), data_buffer.data(), data_buffer.size());
+    data_buffer.clear();
+    data_buffer.resize(downloaded);
+    std::memcpy(data_buffer.data(), contents, downloaded);
 
-    *pbuf = data_buffer_copy.data();
-    *size = static_cast<int>(data_buffer.size());
+    dst->hasher().update(reinterpret_cast<const unsigned char*>(contents), downloaded);
+    dst->downloaded_length += downloaded;
 
-    // After the data has been read, mark it as read and notify DownloadHandler
-    data_ready.store(false);
-    data_read.store(true);
+    if (dst->downloaded_length == expected) {
+      auto final_hash = ds->hasher().getHash().HashString();
+      std::string expected_hash = dst->target.sha256Hash();
+
+      if (final_hash != expected_hash) {
+        LOG_ERROR << "Hash mismatch! Expected: " << expected_hash << ", Got: " << final_hash;
+        unrecoverable_error.store(true);
+        buffer_cv.notify_all();
+        exit(-1);
+      }
+      
+      LOG_ERROR << "Full update verified successfully!";
+    }
+
+    data_ready.store(true);
+    data_read.store(false);
+
+    // Notify readimage that data is available
     buffer_cv.notify_one();
 
-    return *size;
+    // Now wait until readimage has finished reading the data or an error occurs
+    buffer_cv.wait(lock, [] { return data_read.load() || unrecoverable_error.load(); });
+
+    if (unrecoverable_error.load()) {
+      exit(-1);
+    }
+
+  } catch (const std::exception& e) {
+    LOG_ERROR << "Exception in DownloadHandler: " << e.what();
+    unrecoverable_error.store(true);
+    buffer_cv.notify_all();
+    exit(-1);
+  }
+
+  return downloaded;
 }
 
-// Status Print Function
+int SwupdateManager::readimage(char** pbuf, int* size) {
+  std::unique_lock<std::mutex> lock(buffer_mutex);
+
+  // Wait until data is ready or an error has occurred
+  buffer_cv.wait(lock, [] { return data_ready.load() || unrecoverable_error.load(); });
+
+  if (unrecoverable_error.load()) {
+    return -1;
+  }
+
+  // Copy data to avoid data races
+  std::vector<char> data_buffer_copy(data_buffer.size());
+  std::memcpy(data_buffer_copy.data(), data_buffer.data(), data_buffer.size());
+
+  *pbuf = data_buffer_copy.data();
+  *size = static_cast<int>(data_buffer.size());
+
+  // After the data has been read, mark it as read and notify DownloadHandler
+  data_ready.store(false);
+  data_read.store(true);
+  buffer_cv.notify_one();
+
+  return *size;
+}
+
 int SwupdateManager::printstatus(ipc_message *msg) {
-    if (verbose) {
-        std::printf("Status: %d message: %s\n",
-                  msg->data.notify.status,
-                  msg->data.notify.msg);
-    }
-    return 0;
+  if (verbose) {
+    std::printf("Status: %d message: %s\n",
+              msg->data.notify.status,
+              msg->data.notify.msg);
+  }
+  return 0;
 }
 
-// End Function
 int SwupdateManager::endupdate(RECOVERY_STATUS status) {
-    int end_status = (status == SUCCESS) ? EXIT_SUCCESS : EXIT_FAILURE;
-    std::printf("SWUpdate %s\n", (status == FAILURE) ? "*failed* !" : "was successful !");
+  int end_status = (status == SUCCESS) ? EXIT_SUCCESS : EXIT_FAILURE;
+  std::printf("SWUpdate %s\n", (status == FAILURE) ? "*failed* !" : "was successful !");
 
-    if (status == SUCCESS) {
-        std::printf("Executing post-update actions.\n");
-    } else {
-        std::printf("Update failed. Performing cleanup.\n");
-    }
+  if (status == SUCCESS) {
+    std::printf("Executing post-update actions.\n");
+  } else {
+    std::printf("Update failed. Performing cleanup.\n");
+  }
 
-    pthread_mutex_lock(&mymutex);
-    pthread_cond_signal(&cv_end);
-    pthread_mutex_unlock(&mymutex);
+  pthread_mutex_lock(&mymutex);
+  pthread_cond_signal(&cv_end);
+  pthread_mutex_unlock(&mymutex);
 
-    return end_status;
+  return end_status;
 }
 
 int SwupdateManager::swupdate_install(const Uptane::Target &target) const {
-    struct swupdate_request req;
-    int rc;
+  struct swupdate_request req;
+  int rc;
 
-    ds = std_::make_unique<DownloadMetaStruct>(target, nullptr, nullptr);
+  ds = std_::make_unique<DownloadMetaStruct>(target, nullptr, nullptr);
 
-    swupdate_prepare_req(&req);
+  swupdate_prepare_req(&req);
 
-    rc = swupdate_async_start(readimage, printstatus, endupdate, &req, sizeof(req));
+  rc = swupdate_async_start(readimage, printstatus, endupdate, &req, sizeof(req));
 
-    if (rc < 0) {
-        LOG_ERROR << "swupdate start error";
-        return EXIT_FAILURE;
+  if (rc < 0) {
+    LOG_ERROR << "swupdate start error";
+    return EXIT_FAILURE;
+  }
+
+  std::string target_url = target.uri();
+  if (target_url.empty()) {
+    target_url = alternate_url; 
+  }
+
+  // Start the download in a separate thread to avoid blocking
+  std::thread download_thread([&]() {
+    HttpResponse response = http_->download(
+      target_url,
+      DownloadHandler,
+      nullptr,  // ProgressHandler can be added if needed
+      ds.get(),
+      static_cast<curl_off_t>(ds->downloaded_length)
+    );
+
+    if (response.http_status_code != 200) {
+      LOG_ERROR << "HTTP download failed with status: " << response.http_status_code;
+      unrecoverable_error.store(true);
+      buffer_cv.notify_all();
     }
+  });
 
-    std::string target_url = target.uri();
-    if (target_url.empty()) {
-      target_url = alternate_url; 
-    }
+  pthread_mutex_init(&mymutex, NULL);
 
-    LOG_INFO << target_url;
+  pthread_mutex_lock(&mymutex);
+  pthread_cond_wait(&cv_end, &mymutex);
+  pthread_mutex_unlock(&mymutex);
 
-    // Start the download in a separate thread to avoid blocking
-    std::thread download_thread([&]() {
-        HttpResponse response = http_->download(
-            target_url,
-            DownloadHandler,
-            nullptr,  // ProgressHandler can be added if needed
-            ds.get(), // userp
-            static_cast<curl_off_t>(ds->downloaded_length)  // from
-        );
+  if (download_thread.joinable()) {
+    download_thread.join();
+  }
 
-        // Check the response for errors
-        if (response.http_status_code != 200) {
-            LOG_ERROR << "HTTP download failed with status: " << response.http_status_code;
-            unrecoverable_error.store(true);
-            buffer_cv.notify_all(); // Wake up any waiting threads
-        }
-    });
+  if (unrecoverable_error.load()) {
+    LOG_ERROR << "An unrecoverable error occurred. Update process stopped.";
+    return EXIT_FAILURE;
+  }
 
-    // Initialize the mutex before waiting
-    pthread_mutex_init(&mymutex, NULL);
-
-    pthread_mutex_lock(&mymutex);
-    pthread_cond_wait(&cv_end, &mymutex);
-    pthread_mutex_unlock(&mymutex);
-
-    // Join the download thread to ensure clean exit
-    if (download_thread.joinable()) {
-        download_thread.join();
-    }
-
-    if (unrecoverable_error.load()) {
-        LOG_ERROR << "An unrecoverable error occurred. Update process stopped.";
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
