@@ -937,6 +937,12 @@ result::UpdateCheck SotaUptaneClient::checkUpdates() {
       if (target.uri().empty() && !image_target->uri().empty()) {
         target.setUri(image_target->uri());
       }
+      if (image_target->custom_data().isMember("rauc")) {
+        Json::Value custom_data_temp = target.custom_data();
+        custom_data_temp["rauc"] = image_target->custom_data()["rauc"];
+        custom_data_temp["targetFormat"] = image_target->custom_data()["targetFormat"];
+        target.updateCustom(custom_data_temp);
+      }
     }
   } catch (const std::exception &e) {
     last_exception = std::current_exception();
@@ -1167,6 +1173,8 @@ bool SotaUptaneClient::isInstallCompletionRequired() {
                                       [&primary_ecu_serial](const std::pair<Uptane::EcuSerial, Hash> &ecu) -> bool {
                                         return ecu.first == primary_ecu_serial;
                                       }) != pending_ecus.end();
+  LOG_INFO << "pending_for_ecu: " << pending_for_ecu;
+  LOG_INFO << "config.uptane.force_install_completion: " << config.uptane.force_install_completion;
 
   return pending_for_ecu && config.uptane.force_install_completion;
 }
