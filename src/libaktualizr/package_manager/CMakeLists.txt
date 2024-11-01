@@ -25,6 +25,21 @@ if(BUILD_OSTREE)
                        ARGS ${PROJECT_BINARY_DIR}/ostree_repo)
 endif(BUILD_OSTREE)
 
+# RAUC backend
+if(BUILD_RAUC)
+    target_sources(package_manager PRIVATE raucmanager.cc)
+    target_include_directories(package_manager PUBLIC ${LIBRAUC_INCLUDE_DIRS})
+    set_target_properties(package_manager PROPERTIES
+                      CXX_STANDARD 17
+                      CXX_EXTENSIONS off)
+    target_link_libraries(package_manager PUBLIC SDBusCpp::sdbus-c++)
+
+    add_aktualizr_test(NAME raucmanager SOURCES raucmanager_test.cc PROJECT_WORKING_DIRECTORY)
+    set_target_properties(t_raucmanager PROPERTIES
+                      CXX_STANDARD 17
+                      CXX_EXTENSIONS off)
+endif(BUILD_RAUC)
+
 add_aktualizr_test(NAME packagemanagerconfig SOURCES packagemanagerconfig_test.cc NO_VALGRIND)
 add_aktualizr_test(NAME packagemanager_factory SOURCES packagemanagerfactory_test.cc
                    ARGS ${PROJECT_BINARY_DIR}/ostree_repo)
@@ -38,4 +53,7 @@ aktualizr_source_file_checks(fetcher_death_test.cc
                              packagemanagerfactory_test.cc
                              ostreemanager_test.cc
                              ostreemanager.cc
-                             ostreemanager.h)
+                             ostreemanager.h
+                             raucmanager_test.cc
+                             raucmanager.cc
+                             raucmanager.h)
