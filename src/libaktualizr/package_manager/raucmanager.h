@@ -1,33 +1,32 @@
 #ifndef RAUC_H_
 #define RAUC_H_
 
+#include <sdbus-c++/sdbus-c++.h>
+#include <sys/stat.h>
+#include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <boost/optional/optional.hpp>
-#include <sdbus-c++/sdbus-c++.h>
 #include <string>
-#include <atomic>
-#include "libaktualizr/packagemanagerinterface.h"
-#include "utilities/utils.h"
-#include "json/json.h"  
-#include <sys/stat.h>
 #include "bootloader/bootloader.h"
+#include "json/json.h"
+#include "libaktualizr/packagemanagerinterface.h"
 #include "libaktualizr/types.h"
 #include "storage/invstorage.h"
+#include "utilities/utils.h"
 
 class RaucManager : public PackageManagerInterface {
  public:
   // Constructor, using PackageManagerInterface's constructor
-  RaucManager(const PackageConfig &pconfig, const BootloaderConfig &bconfig,
-                const std::shared_ptr<INvStorage> &storage, const std::shared_ptr<HttpInterface> &http,
-                Bootloader *bootloader = nullptr);
+  RaucManager(const PackageConfig& pconfig, const BootloaderConfig& bconfig, const std::shared_ptr<INvStorage>& storage,
+              const std::shared_ptr<HttpInterface>& http, Bootloader* bootloader = nullptr);
 
   // Destructor
   ~RaucManager() override = default;
 
-  RaucManager(const RaucManager &) = delete;
-  RaucManager(RaucManager &&) = delete;
-  RaucManager &operator=(const RaucManager &) = delete;
-  RaucManager &operator=(RaucManager &&) = delete;
+  RaucManager(const RaucManager&) = delete;
+  RaucManager(RaucManager&&) = delete;
+  RaucManager& operator=(const RaucManager&) = delete;
+  RaucManager& operator=(RaucManager&&) = delete;
 
   // Overriding necessary functions from PackageManagerInterface
   std::string name() const override { return "rauc"; };
@@ -45,8 +44,7 @@ class RaucManager : public PackageManagerInterface {
  private:
   // Signal handlers for installation progress and completion
   void onCompleted(const std::int32_t& status);
-  void onProgressChanged(const std::string& interfaceName,
-                         const std::map<std::string, sdbus::Variant>& changedProps);
+  void onProgressChanged(const std::string& interfaceName, const std::map<std::string, sdbus::Variant>& changedProps);
 
   // Method to send the installation request to RAUC via D-Bus
   void sendRaucInstallRequest(const std::string& bundlePath) const;
@@ -68,7 +66,7 @@ class RaucManager : public PackageManagerInterface {
   mutable std::atomic<bool> currentHashCalculated;
 
   const std::string raucDestination = "de.pengutronix.rauc";
-  const std::string raucObjectPath = "/" ;
+  const std::string raucObjectPath = "/";
   const std::string installBundleInterface = "de.pengutronix.rauc.Installer";
   const std::string installBundleMethod = "InstallBundle";
   const std::string completedSignal = "Completed";

@@ -112,7 +112,7 @@ void Target::updateCustom(const Json::Value &custom) {
 
   if (custom_.isMember("targetFormat")) {
     type_ = custom_["targetFormat"].asString();
-    if(type_ == "BINARY" && custom_.isMember("rauc")) {
+    if (type_ == "BINARY" && custom_.isMember("rauc")) {
       type_ = "RAUC";
     }
   }
