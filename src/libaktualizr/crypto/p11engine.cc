@@ -12,6 +12,7 @@
 #include <boost/scoped_array.hpp>
 
 #include "crypto/crypto.h"
+#include "logging/logging.h"
 #include "utilities/config_utils.h"
 #include "utilities/utils.h"
 
@@ -175,9 +176,11 @@ PKCS11_SLOT* P11Engine::findTokenSlot() const {
 
 bool P11Engine::readUptanePublicKey(const std::string& uptane_key_id, std::string* key_out) {
   if (module_path_.empty()) {
+    LOG_WARNING << "P11Engine has no module_path_";
     return false;
   }
   if ((uptane_key_id.length() % 2) != 0U) {
+    LOG_ERROR << "Invalid uptane_key_id:" << uptane_key_id;
     return false;  // id is a hex string
   }
 
