@@ -63,7 +63,8 @@ ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) :
     director_repo_->checkMetaOffline(*storage_);
   } catch (const std::exception &e) {
     // This is actually safe. We've done enough initialization to get
-    // director_repo_ into a valid configuration
+    // director_repo_ into a valid configuration. See the documentation for
+    // RepositoryCommon::checkMetaOffline() for details.
     LOG_INFO << "No valid Director metadata found in storage: " << e.what();
   }
   try {
