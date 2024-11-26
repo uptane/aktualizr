@@ -435,6 +435,7 @@ class Target {
    * root commit object.
    */
   bool IsOstree() const;
+  bool IsRauc() const;
   std::string type() const { return type_; }
 
   // Comparison is usually not meaningful. Use MatchTarget instead.

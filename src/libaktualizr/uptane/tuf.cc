@@ -112,6 +112,9 @@ void Target::updateCustom(const Json::Value &custom) {
 
   if (custom_.isMember("targetFormat")) {
     type_ = custom_["targetFormat"].asString();
+    if (type_ == "BINARY" && custom_.isMember("rauc")) {
+      type_ = "RAUC";
+    }
   }
 
   if (custom_.isMember("uri")) {
@@ -183,6 +186,18 @@ bool Target::IsOstree() const {
     return true;
   } else {
     // If type is explicitly not OSTREE or the length is non-zero, then this
+    // is a firmware blob.
+    return false;
+  }
+}
+
+bool Target::IsRauc() const {
+  // NOLINTNEXTLINE(bugprone-branch-clone)
+  if (type_ == "RAUC") {
+    // Modern servers explicitly specify the type of the target
+    return true;
+  } else {
+    // If type is explicitly not RAUC or the length is non-zero, then this
     // is a firmware blob.
     return false;
   }

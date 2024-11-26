@@ -22,6 +22,7 @@ option(WARNING_AS_ERROR "Treat warnings as errors" ON)
 option(PEDANTIC_WARNINGS "Compile with pedantic warnings" OFF)
 option(BUILD_WITH_CODE_COVERAGE "Enable gcov code coverage" OFF)
 option(BUILD_OSTREE "Set to ON to compile with OSTree support" OFF)
+option(BUILD_RAUC "Set to ON to compile with RAUC support" ON)
 option(BUILD_DEB "Set to ON to compile with debian packages support" OFF)
 option(BUILD_P11 "Support for key storage in a HSM via PKCS#11" OFF)
 option(BUILD_SOTA_TOOLS "Set to ON to build SOTA tools" OFF)
@@ -108,6 +109,11 @@ else(BUILD_OSTREE)
         unset(LIBOSTREE_LIBRARIES CACHE)
     endif(NOT BUILD_SOTA_TOOLS)
 endif(BUILD_OSTREE)
+
+if(BUILD_RAUC)
+    find_package(sdbus-c++ REQUIRED)
+    add_definitions(-DBUILD_RAUC)
+endif(BUILD_RAUC)
 
 if(BUILD_P11)
     find_package(LibP11 REQUIRED)
@@ -319,6 +325,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third_party/googletest/googlete
 include_directories(SYSTEM ${JSONCPP_INCLUDE_DIRS})
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 include_directories(SYSTEM ${LIBOSTREE_INCLUDE_DIRS})
+include_directories(SYSTEM ${LIBRAUC_INCLUDE_DIRS})
 include_directories(SYSTEM ${SQLITE3_INCLUDE_DIRS})
 include_directories(SYSTEM ${LIBP11_INCLUDE_DIR})
 include_directories(SYSTEM ${sodium_INCLUDE_DIR})
@@ -365,6 +372,7 @@ set (AKTUALIZR_EXTERNAL_LIBS
     Threads::Threads
     ${sodium_LIBRARY_RELEASE}
     ${LIBOSTREE_LIBRARIES}
+    SDBusCpp::sdbus-c++
     ${SQLITE3_LIBRARIES}
     ${LibArchive_LIBRARIES}
     ${LIBP11_LIBRARIES}
