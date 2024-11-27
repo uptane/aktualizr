@@ -145,12 +145,6 @@ You can then build the project from the `build` directory using Make:
 make
 ----
 
-You can also create a link:docs/ota-client-guide/modules/ROOT/pages/deb-package-install.adoc[debian package]:
-
-----
-make package
-----
-
 To use CMake's link:https://ninja-build.org/[Ninja] backend, add `-G Ninja` to the first CMake invocation. It has the advantage of running all targets in parallel by default and is recommended for local development.
 
 === Running tests
