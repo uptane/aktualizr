@@ -48,3 +48,6 @@ CMakeLists.txt.user
 /docs/ota-client-guide/modules/ROOT/pages/_junk
 *.code-workspace
 .vscode/launch.json
+
+# clangd
+/.cache
