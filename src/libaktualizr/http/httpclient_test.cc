@@ -1,23 +1,26 @@
 #include <gtest/gtest.h>
 
-#include <errno.h>
-#include <stdio.h>
-#include <cstdlib>
+#include "http/httpclient.h"
 
+#include <atomic>
+#include <boost/filesystem/operations.hpp>
 #include <boost/process.hpp>
+#include <chrono>
+#include <cstdlib>
+#include <string>
+#include <thread>
 
 #include "json/json.h"
-
-#include <chrono>
-#include <thread>
-#include "http/httpclient.h"
-#include "libaktualizr/types.h"
+#include "logging/logging.h"
 #include "test_utils.h"
+#include "utilities/flow_control.h"
 #include "utilities/utils.h"
 
+// NOLINTNEXTLINE(*non-const*)
 static std::string server = "http://127.0.0.1:";
 
-TEST(CopyConstructorTest, copied) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, CopyConstructorTest) {
   HttpClient http;
   HttpClient http_copy(http);
   std::string path = "/path/1/2/3";
@@ -25,14 +28,16 @@ TEST(CopyConstructorTest, copied) {
   EXPECT_EQ(resp["path"].asString(), path);
 }
 
-TEST(GetTest, get_performed) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, Get) {
   HttpClient http;
   std::string path = "/path/1/2/3";
   Json::Value response = http.get(server + path, HttpInterface::kNoLimit, nullptr).getJson();
   EXPECT_EQ(response["path"].asString(), path);
 }
 
-TEST(GetTestWithHeaders, get_performed) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, GetWithHeaders) {
   std::vector<std::string> headers = {"Authorization: Bearer token"};
   HttpClient http(&headers);
   std::string path = "/auth_call";
@@ -41,7 +46,8 @@ TEST(GetTestWithHeaders, get_performed) {
 }
 
 /* Reject http GET responses that exceed size limit. */
-TEST(GetTest, download_size_limit) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, DownloadSizeLimit) {
   HttpClient http;
   std::string path = "/large_file";
   HttpResponse resp = http.get(server + path, 1024, nullptr);
@@ -50,7 +56,8 @@ TEST(GetTest, download_size_limit) {
 }
 
 /* Reject http GET responses that do not meet speed limit. */
-TEST(GetTest, download_speed_limit) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, DownloadSpeedLimit) {
   HttpClient http;
   std::string path = "/slow_file";
 
@@ -59,13 +66,14 @@ TEST(GetTest, download_speed_limit) {
   EXPECT_EQ(resp.curl_code, CURLE_OPERATION_TIMEDOUT);
 }
 
-TEST(GetTest, cancellation) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, Cancellation) {
   HttpClient http;
   std::string path = "/slow_file";
   api::FlowControlToken token;
-  std::atomic<bool> did_abort;
+  std::atomic<bool> did_abort{false};
   auto end = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-  std::thread t1([&token, end, &did_abort] {
+  std::thread abort_thread([&token, end, &did_abort] {
     std::this_thread::sleep_until(end);
     token.setAbort();
     did_abort = true;
@@ -80,10 +88,11 @@ TEST(GetTest, cancellation) {
   EXPECT_LE(0, diff);
   EXPECT_LE(diff, 3000);
   EXPECT_EQ(resp.curl_code, CURLE_ABORTED_BY_CALLBACK);
-  t1.join();
+  abort_thread.join();
 }
 
-TEST(PostTest, post_performed) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, Post) {
   HttpClient http;
   std::string path = "/path/1/2/3";
   Json::Value data;
@@ -94,7 +103,8 @@ TEST(PostTest, post_performed) {
   EXPECT_EQ(response["data"]["key"].asString(), "val");
 }
 
-TEST(PostTest, put_performed) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, Put) {
   HttpClient http;
   std::string path = "/path/1/2/3";
   Json::Value data;
@@ -106,7 +116,8 @@ TEST(PostTest, put_performed) {
   EXPECT_EQ(json["data"]["key"].asString(), "val");
 }
 
-TEST(HttpClient, user_agent) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, UserAgent) {
   {
     // test the default, when setUserAgent hasn't been called yet
     HttpClient http;
@@ -126,7 +137,8 @@ TEST(HttpClient, user_agent) {
   }
 }
 
-TEST(Headers, update_header) {
+// NOLINTNEXTLINE(*non-const*)
+TEST(HttpClient, UpdateHeader) {
   std::vector<std::string> headers = {"Authorization: Bearer bad"};
   HttpClient http(&headers);
 
@@ -141,17 +153,20 @@ TEST(Headers, update_header) {
   EXPECT_EQ(response["status"].asString(), "good");
 }
 
-// TODO(OTA-4546): add tests for HttpClient::download
-
-#ifndef __NO_MAIN__
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
   std::string port = TestUtils::getFreePort();
   server += port;
-  boost::process::child server_process("tests/fake_http_server/fake_test_server.py", port, "-f");
+  const char* server_path = "tests/fake_http_server/fake_test_server.py";
+  if (!boost::filesystem::exists(server_path)) {
+    char* process_name = argv[0];  // NOLINT
+    std::cout << "Server script " << server_path << " not found. " << process_name
+              << " should be run from the project root directory.";
+    return EXIT_FAILURE;
+  }
+  boost::process::child server_process(server_path, port, "-f");
   TestUtils::waitForServer(server + "/");
 
   return RUN_ALL_TESTS();
 }
-#endif
