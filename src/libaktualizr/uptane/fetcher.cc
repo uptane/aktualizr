@@ -16,7 +16,7 @@ void Fetcher::fetchRole(std::string* result, int64_t maxsize, RepositoryType rep
     throw Uptane::LocallyAborted(repo);
   }
   if (!response.isOk()) {
-    throw Uptane::MetadataFetchFailure(repo.ToString(), role.ToString());
+    throw Uptane::MetadataFetchFailure(repo, role.ToString());
   }
   *result = response.body;
 }

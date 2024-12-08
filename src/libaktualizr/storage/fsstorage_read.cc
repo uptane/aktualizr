@@ -109,24 +109,18 @@ bool FSStorageRead::loadTlsPkey(std::string* pkey) const { return loadTlsCommon(
 
 bool FSStorageRead::loadRoot(std::string* data, Uptane::RepositoryType repo, Uptane::Version version) const {
   boost::filesystem::path metafile;
-  switch (repo) {
-    case (Uptane::RepositoryType::Director()):
-      if (version.version() < 0) {
-        version = latest_director_root;
-      }
-      metafile =
-          config_.uptane_metadata_path.get(config_.path) / "director" / version.RoleFileName(Uptane::Role::Root());
-      break;
-
-    case (Uptane::RepositoryType::Image()):
-      if (version.version() < 0) {
-        version = latest_director_root;
-      }
-      metafile = config_.uptane_metadata_path.get(config_.path) / "repo" / version.RoleFileName(Uptane::Role::Root());
-      break;
-
-    default:
-      return false;
+  if (repo == Uptane::RepositoryType::Director()) {
+    if (version.version() < 0) {
+      version = latest_director_root;
+    }
+    metafile = config_.uptane_metadata_path.get(config_.path) / "director" / version.RoleFileName(Uptane::Role::Root());
+  } else if (repo == Uptane::RepositoryType::Image()) {
+    if (version.version() < 0) {
+      version = latest_image_root;
+    }
+    metafile = config_.uptane_metadata_path.get(config_.path) / "repo" / version.RoleFileName(Uptane::Role::Root());
+  } else {
+    return false;
   }
 
   if (version.version() < 0) {
@@ -145,17 +139,12 @@ bool FSStorageRead::loadRoot(std::string* data, Uptane::RepositoryType repo, Upt
 
 bool FSStorageRead::loadNonRoot(std::string* data, Uptane::RepositoryType repo, const Uptane::Role& role) const {
   boost::filesystem::path metafile;
-  switch (repo) {
-    case (Uptane::RepositoryType::Director()):
-      metafile = config_.uptane_metadata_path.get(config_.path) / "director" / Uptane::Version().RoleFileName(role);
-      break;
-
-    case (Uptane::RepositoryType::Image()):
-      metafile = config_.uptane_metadata_path.get(config_.path) / "repo" / Uptane::Version().RoleFileName(role);
-      break;
-
-    default:
-      return false;
+  if (repo == Uptane::RepositoryType::Director()) {
+    metafile = config_.uptane_metadata_path.get(config_.path) / "director" / Uptane::Version().RoleFileName(role);
+  } else if (repo == Uptane::RepositoryType::Image()) {
+    metafile = config_.uptane_metadata_path.get(config_.path) / "repo" / Uptane::Version().RoleFileName(role);
+  } else {
+    return false;
   }
 
   if (!boost::filesystem::exists(metafile)) {
@@ -319,15 +308,12 @@ void FSStorageRead::clearTlsCreds() {
 
 void FSStorageRead::clearNonRootMeta(Uptane::RepositoryType repo) {
   boost::filesystem::path meta_path;
-  switch (repo) {
-    case Uptane::RepositoryType::Image():
-      meta_path = config_.uptane_metadata_path.get(config_.path) / "repo";
-      break;
-    case Uptane::RepositoryType::Director():
-      meta_path = config_.uptane_metadata_path.get(config_.path) / "director";
-      break;
-    default:
-      return;
+  if (repo == Uptane::RepositoryType::Image()) {
+    meta_path = config_.uptane_metadata_path.get(config_.path) / "repo";
+  } else if (repo == Uptane::RepositoryType::Director()) {
+    meta_path = config_.uptane_metadata_path.get(config_.path) / "director";
+  } else {
+    return;
   }
 
   boost::filesystem::directory_iterator it{meta_path};

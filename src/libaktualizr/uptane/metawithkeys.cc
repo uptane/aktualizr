@@ -61,8 +61,6 @@ void Uptane::MetaWithKeys::ParseRole(const RepositoryType repo, const Json::Valu
 
 void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const Role &role,
                                               const Json::Value &signed_object) {
-  const std::string repository = repo;
-
   const Uptane::Role type(signed_object["signed"]["_type"].asString());
   if (role.IsDelegation()) {
     if (type != Uptane::Role::Targets()) {
@@ -84,7 +82,7 @@ void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const R
   for (auto sig = signatures.begin(); sig != signatures.end(); ++sig) {
     const std::string keyid = (*sig)["keyid"].asString();
     if (used_keyids.count(keyid) != 0) {
-      throw NonUniqueSignatures(repository, role.ToString());
+      throw NonUniqueSignatures(repo, role.ToString());
     }
     used_keyids.insert(keyid);
 
@@ -92,7 +90,7 @@ void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const R
     std::transform(method.begin(), method.end(), method.begin(), ::tolower);
 
     if (method != "rsassa-pss" && method != "rsassa-pss-sha256" && method != "ed25519") {
-      throw SecurityException(repository, std::string("Unsupported sign method: ") + (*sig)["method"].asString());
+      throw SecurityException(repo, std::string("Unsupported sign method: ") + (*sig)["method"].asString());
     }
 
     if (keys_.count(keyid) == 0U) {
@@ -113,14 +111,14 @@ void Uptane::MetaWithKeys::UnpackSignedObject(const RepositoryType repo, const R
   }
   const int64_t threshold = thresholds_for_role_[role];
   if (threshold < kMinSignatures || kMaxSignatures < threshold) {
-    throw IllegalThreshold(repository, "Invalid signature threshold");
+    throw IllegalThreshold(repo, "Invalid signature threshold");
   }
   // One signature and it is bad: throw bad key ID.
   // Multiple signatures but not enough good ones to pass threshold: throw unmet threshold.
   if (signatures.size() == 1 && valid_signatures == 0) {
-    throw BadKeyId(repository);
+    throw BadKeyId(repo);
   }
   if (valid_signatures < threshold) {
-    throw UnmetThreshold(repository, role.ToString());
+    throw UnmetThreshold(repo, role.ToString());
   }
 }

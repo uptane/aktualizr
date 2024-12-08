@@ -27,13 +27,11 @@ Root::Root(const RepositoryType repo, const Json::Value &json) : MetaWithKeys(js
 }
 
 void Uptane::Root::UnpackSignedObject(const RepositoryType repo, const Role &role, const Json::Value &signed_object) {
-  const std::string repository = repo;
-
   if (policy_ == Policy::kAcceptAll) {
     return;
   }
   if (policy_ == Policy::kRejectAll) {
-    throw SecurityException(repository, "Root policy is Policy::kRejectAll");
+    throw SecurityException(repo, "Root policy is Policy::kRejectAll");
   }
   assert(policy_ == Policy::kCheck);
 

@@ -1,5 +1,6 @@
 #include "iterator.h"
 
+#include "libaktualizr/types.h"
 #include "storage/invstorage.h"
 #include "uptane/exceptions.h"
 
@@ -15,7 +16,7 @@ Targets getTrustedDelegation(const Role &delegate_role, const Targets &parent_ta
     auto version = extractVersionUntrusted(delegation_meta);
 
     if (version > version_in_snapshot) {
-      throw SecurityException("image", "Rollback attempt on delegated targets");
+      throw SecurityException(RepositoryType::Image(), "Rollback attempt on delegated targets");
     } else if (version < version_in_snapshot) {
       delegation_meta.clear();
       storage.deleteDelegation(delegate_role);
@@ -46,12 +47,12 @@ Targets getTrustedDelegation(const Role &delegate_role, const Targets &parent_ta
 
   auto delegation = ImageRepository::verifyDelegation(delegation_meta, delegate_role, parent_targets);
   if (delegation == nullptr) {
-    throw SecurityException("image", "Delegation verification failed");
+    throw SecurityException(RepositoryType::Image(), "Delegation verification failed");
   }
 
   if (delegation_remote) {
     if (delegation->version() != version_in_snapshot) {
-      throw VersionMismatch("image", delegate_role.ToString());
+      throw VersionMismatch(RepositoryType::Image(), delegate_role.ToString());
     }
     storage.storeDelegation(delegation_meta, delegate_role);
   }

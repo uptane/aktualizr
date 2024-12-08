@@ -4,34 +4,40 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include "libaktualizr/types.h"
+#include "uptane/tuf.h"
 
 namespace Uptane {
 
 class Exception : public std::logic_error {
  public:
-  Exception(std::string reponame, const std::string& what_arg)
-      : std::logic_error(what_arg.c_str()), reponame_(std::move(reponame)) {}
-  virtual std::string getName() const { return reponame_; };
+  Exception(RepositoryType repo_type, const std::string& what_arg)
+      : std::logic_error(what_arg.c_str()), subject_{repo_type.ToString()} {}
+  Exception(std::string subject, const std::string& what_arg)
+      : std::logic_error(what_arg.c_str()), subject_{std::move(subject)} {}
+  [[nodiscard]] virtual std::string getName() const { return subject_; };
 
  protected:
-  std::string reponame_;
+  std::string subject_;
 };
 
 class MetadataFetchFailure : public Exception {
  public:
-  MetadataFetchFailure(const std::string& reponame, const std::string& role)
-      : Exception(reponame, std::string("Failed to fetch role ") + role + " in " + reponame + " repository.") {}
+  MetadataFetchFailure(RepositoryType repo_type, const std::string& role)
+      : Exception(repo_type,
+                  std::string("Failed to fetch role ") + role + " in " + repo_type.ToString() + " repository.") {}
 };
 
 class SecurityException : public Exception {
  public:
-  SecurityException(const std::string& reponame, const std::string& what_arg) : Exception(reponame, what_arg) {}
+  SecurityException(RepositoryType repo_type, const std::string& what_arg) : Exception(repo_type, what_arg) {}
 };
 
 class TargetContentMismatch : public Exception {
  public:
   explicit TargetContentMismatch(const std::string& targetname)
-      : Exception(targetname, "Director Target filename matches currently installed version, but content differs.") {}
+      : Exception(RepositoryType::Director(), "Director Target filename " + targetname +
+                                                  " matches currently installed version, but content differs.") {}
 };
 
 class TargetHashMismatch : public Exception {
@@ -48,30 +54,26 @@ class OversizedTarget : public Exception {
 
 class IllegalThreshold : public Exception {
  public:
-  IllegalThreshold(const std::string& reponame, const std::string& what_arg) : Exception(reponame, what_arg) {}
-};
-
-class MissingRepo : public Exception {
- public:
-  explicit MissingRepo(const std::string& reponame) : Exception(reponame, "The " + reponame + " repo is missing.") {}
+  IllegalThreshold(RepositoryType repo_type, const std::string& what_arg) : Exception(repo_type, what_arg) {}
 };
 
 class UnmetThreshold : public Exception {
  public:
-  UnmetThreshold(const std::string& reponame, const std::string& role)
-      : Exception(reponame, "The " + role + " metadata had an unmet threshold.") {}
+  UnmetThreshold(RepositoryType repo_type, const std::string& role)
+      : Exception(repo_type, "The " + role + " metadata had an unmet threshold.") {}
 };
 
 class ExpiredMetadata : public Exception {
  public:
-  ExpiredMetadata(const std::string& reponame, const std::string& role)
-      : Exception(reponame, "The " + role + " metadata was expired.") {}
+  ExpiredMetadata(RepositoryType repo_type, const std::string& role)
+      : Exception(repo_type, "The " + role + " metadata was expired.") {}
 };
 
 class InvalidMetadata : public Exception {
  public:
-  InvalidMetadata(const std::string& reponame, const std::string& role, const std::string& reason)
-      : Exception(reponame, "The " + role + " metadata failed to parse: " + reason) {}
+  InvalidMetadata(RepositoryType repo_type, const std::string& role, const std::string& reason)
+      : Exception(repo_type, "The " + role + " metadata failed to parse: " + reason) {}
+  explicit InvalidMetadata(const std::string& reason) : Exception("", "The metadata failed to parse: " + reason) {}
 };
 
 class TargetMismatch : public Exception {
@@ -82,13 +84,13 @@ class TargetMismatch : public Exception {
 
 class NonUniqueSignatures : public Exception {
  public:
-  NonUniqueSignatures(const std::string& reponame, const std::string& role)
-      : Exception(reponame, "The role " + role + " had non-unique signatures.") {}
+  NonUniqueSignatures(RepositoryType repo_type, const std::string& role)
+      : Exception(repo_type, "The role " + role + " had non-unique signatures.") {}
 };
 
 class BadKeyId : public Exception {
  public:
-  explicit BadKeyId(const std::string& reponame) : Exception(reponame, "A key has an incorrect associated key ID") {}
+  explicit BadKeyId(RepositoryType repo_type) : Exception(repo_type, "A key has an incorrect associated key ID") {}
 };
 
 class BadEcuId : public Exception {
@@ -105,14 +107,14 @@ class BadHardwareId : public Exception {
 
 class RootRotationError : public Exception {
  public:
-  explicit RootRotationError(const std::string& reponame)
-      : Exception(reponame, "Version in Root metadata does not match its expected value.") {}
+  explicit RootRotationError(RepositoryType repo_type)
+      : Exception(repo_type, "Version in Root metadata does not match its expected value.") {}
 };
 
 class VersionMismatch : public Exception {
  public:
-  VersionMismatch(const std::string& reponame, const std::string& role)
-      : Exception(reponame, "The version of role " + role + " does not match the entry in Snapshot metadata.") {}
+  VersionMismatch(RepositoryType repo_type, const std::string& role)
+      : Exception(repo_type, "The version of role " + role + " does not match the entry in Snapshot metadata.") {}
 };
 
 class DelegationHashMismatch : public Exception {
@@ -136,7 +138,7 @@ class InvalidTarget : public Exception {
 
 class LocallyAborted : public Exception {
  public:
-  explicit LocallyAborted(const std::string& reponame) : Exception(reponame, "Update was aborted on the client") {}
+  explicit LocallyAborted(RepositoryType repo_type) : Exception(repo_type, "Update was aborted on the client") {}
 };
 
 }  // namespace Uptane

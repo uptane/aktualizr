@@ -10,9 +10,6 @@
 
 namespace Uptane {
 
-const std::string RepositoryType::DIRECTOR = "director";
-const std::string RepositoryType::IMAGE = "image";
-
 void RepositoryCommon::initRoot(RepositoryType repo_type, const std::string& root_raw) {
   try {
     root = Root(type, Utils::parseJSON(root_raw));        // initialization and format check
@@ -38,7 +35,7 @@ void RepositoryCommon::verifyRoot(const std::string& root_raw) {
     if (root.version() != prev_version + 1) {
       LOG_ERROR << "Version " << root.version() << " in Root metadata doesn't match the expected value "
                 << prev_version + 1;
-      throw Uptane::RootRotationError(type.ToString());
+      throw Uptane::RootRotationError(type);
     }
   } catch (const std::exception& e) {
     LOG_ERROR << "Signature verification for Root metadata failed: " << e.what();
@@ -84,7 +81,7 @@ void RepositoryCommon::updateRoot(INvStorage& storage, const IMetadataFetcher& f
   // lower than the expiration timestamp in the latest Root metadata file.
   // (Checks for a freeze attack.)
   if (rootExpired()) {
-    throw Uptane::ExpiredMetadata(repo_type.ToString(), Role::ROOT);
+    throw Uptane::ExpiredMetadata(repo_type, Role::ROOT);
   }
 }
 
