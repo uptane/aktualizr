@@ -20,7 +20,7 @@ TEST(Director, EmptyTargets) {
   uptane_gen.run({"generate", "--path", meta_dir.PathString(), "--correlationid", "cid1"});
 
   DirectorRepository director;
-  EXPECT_NO_THROW(director.initRoot(Uptane::RepositoryType(Uptane::RepositoryType::DIRECTOR),
+  EXPECT_NO_THROW(director.initRoot(Uptane::RepositoryType::Director(),
                                     Utils::readFile(meta_dir.Path() / "repo/director/root.json")));
 
   EXPECT_NO_THROW(director.verifyTargets(Utils::readFile(meta_dir.Path() / "repo/director/targets.json")));

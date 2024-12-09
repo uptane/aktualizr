@@ -449,7 +449,7 @@ TEST(sqlstorage, migrate_root_works) {
   std::string raw_director_root;
   storage.loadRoot(&raw_director_root, Uptane::RepositoryType::Director(), Uptane::Version());
   Uptane::DirectorRepository director;
-  EXPECT_NO_THROW(director.initRoot(Uptane::RepositoryType(Uptane::RepositoryType::DIRECTOR), raw_director_root));
+  EXPECT_NO_THROW(director.initRoot(Uptane::RepositoryType::Director(), raw_director_root));
 
   std::string raw_director_targets;
   storage.loadNonRoot(&raw_director_targets, Uptane::RepositoryType::Director(), Uptane::Role::Targets());
@@ -460,7 +460,7 @@ TEST(sqlstorage, migrate_root_works) {
   std::string raw_image_root;
   storage.loadRoot(&raw_image_root, Uptane::RepositoryType::Image(), Uptane::Version());
   Uptane::ImageRepository imagerepository;
-  EXPECT_NO_THROW(imagerepository.initRoot(Uptane::RepositoryType(Uptane::RepositoryType::IMAGE), raw_image_root));
+  EXPECT_NO_THROW(imagerepository.initRoot(Uptane::RepositoryType::Image(), raw_image_root));
 
   // Check that the roots are different and haven't been swapped
   EXPECT_NE(raw_director_root, raw_image_root);

@@ -290,14 +290,14 @@ std::ostream &Uptane::operator<<(std::ostream &os, const Target &t) {
 void Uptane::BaseMeta::init(const Json::Value &json) {
   if (!json.isObject() || !json.isMember("signed")) {
     LOG_ERROR << "Failure during base metadata initialization from json";
-    throw Uptane::InvalidMetadata("", "", "invalid metadata json");
+    throw Uptane::InvalidMetadata("invalid metadata json");
   }
 
   version_ = json["signed"]["version"].asInt();
   try {
     expiry_ = TimeStamp(json["signed"]["expires"].asString());
   } catch (const TimeStamp::InvalidTimeStamp &exc) {
-    throw Uptane::InvalidMetadata("", "", "invalid timestamp");
+    throw Uptane::InvalidMetadata("invalid timestamp");
   }
   original_object_ = json;
 }
@@ -306,7 +306,7 @@ Uptane::BaseMeta::BaseMeta(const Json::Value &json) { init(json); }
 Uptane::BaseMeta::BaseMeta(RepositoryType repo, const Role &role, const Json::Value &json,
                            const std::shared_ptr<MetaWithKeys> &signer) {
   if (!json.isObject() || !json.isMember("signed")) {
-    throw Uptane::InvalidMetadata("", "", "invalid metadata json");
+    throw Uptane::InvalidMetadata("invalid metadata json");
   }
 
   signer->UnpackSignedObject(repo, role, json);
@@ -316,20 +316,20 @@ Uptane::BaseMeta::BaseMeta(RepositoryType repo, const Role &role, const Json::Va
 
 std::string Uptane::BaseMeta::signature() const {
   if (!original_object_.isMember("signatures")) {
-    throw Uptane::InvalidMetadata("", "", "invalid metadata json, missing signatures");
+    throw Uptane::InvalidMetadata("invalid metadata json, missing signatures");
   }
   if (!original_object_["signatures"].isArray()) {
-    throw Uptane::InvalidMetadata("", "", "invalid metadata json, signatures are not an array");
+    throw Uptane::InvalidMetadata("invalid metadata json, signatures are not an array");
   }
   const auto signs{original_object_["signatures"]};
   if (signs.empty()) {
-    throw Uptane::InvalidMetadata("", "", "invalid metadata json, no any signatures found");
+    throw Uptane::InvalidMetadata("invalid metadata json, no any signatures found");
   }
   if (signs.size() > 1) {
     LOG_WARNING << "Metadata contains more than one signature\n" << original_object_;
   }
   if (!signs[0].isMember("sig")) {
-    throw Uptane::InvalidMetadata("", "", "invalid metadata json, missing signature");
+    throw Uptane::InvalidMetadata("invalid metadata json, missing signature");
   }
 
   return signs[0]["sig"].asString();
@@ -337,7 +337,7 @@ std::string Uptane::BaseMeta::signature() const {
 
 void Uptane::Targets::init(const Json::Value &json) {
   if (!json.isObject() || json["signed"]["_type"] != "Targets") {
-    throw Uptane::InvalidMetadata("", "targets", "invalid targets.json");
+    throw Uptane::InvalidMetadata("invalid targets.json");
   }
 
   const Json::Value target_list = json["signed"]["targets"];
@@ -389,7 +389,7 @@ void Uptane::TimestampMeta::init(const Json::Value &json) {
   Json::Value meta_version = json["signed"]["meta"]["snapshot.json"]["version"];
   if (!json.isObject() || json["signed"]["_type"] != "Timestamp" || !hashes_list.isObject() ||
       !meta_size.isIntegral() || !meta_version.isIntegral()) {
-    throw Uptane::InvalidMetadata("", "timestamp", "invalid timestamp.json");
+    throw Uptane::InvalidMetadata("invalid timestamp.json");
   }
 
   for (auto it = hashes_list.begin(); it != hashes_list.end(); ++it) {
@@ -411,7 +411,7 @@ Uptane::TimestampMeta::TimestampMeta(RepositoryType repo, const Json::Value &jso
 void Uptane::Snapshot::init(const Json::Value &json) {
   Json::Value meta_list = json["signed"]["meta"];
   if (!json.isObject() || json["signed"]["_type"] != "Snapshot" || !meta_list.isObject()) {
-    throw Uptane::InvalidMetadata("", "snapshot", "invalid snapshot.json");
+    throw Uptane::InvalidMetadata("invalid snapshot.json");
   }
 
   for (auto it = meta_list.begin(); it != meta_list.end(); ++it) {
@@ -420,7 +420,7 @@ void Uptane::Snapshot::init(const Json::Value &json) {
     Json::Value meta_version = (*it)["version"];
 
     if (!meta_version.isIntegral()) {
-      throw Uptane::InvalidMetadata("", "snapshot", "invalid snapshot.json");
+      throw Uptane::InvalidMetadata("invalid snapshot.json");
     }
 
     auto role_name =

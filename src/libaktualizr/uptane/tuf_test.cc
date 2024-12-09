@@ -283,6 +283,17 @@ TEST(Target, HashMismatch) {
   EXPECT_FALSE(target2.MatchTarget(target1));
 }
 
+/* RepositoryType roundtrips via a string, and has the name we expect */
+TEST(RepositoryType, StringRoundTrip) {
+  auto d = Uptane::RepositoryType::Director();
+  EXPECT_EQ(Uptane::RepositoryType(d.ToString()), d);
+  EXPECT_EQ(d.ToString(), "director");
+
+  auto i = Uptane::RepositoryType::Image();
+  EXPECT_EQ(Uptane::RepositoryType(i.ToString()), i);
+  EXPECT_EQ(i.ToString(), "image");
+}
+
 #ifndef __NO_MAIN__
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

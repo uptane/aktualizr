@@ -21,33 +21,30 @@ class RepositoryType {
   enum class Type { kUnknown = -1, kImage = 0, kDirector = 1 };
 
  public:
-  static const std::string IMAGE;
-  static const std::string DIRECTOR;
-
   RepositoryType() = default;
-  static constexpr int Director() { return static_cast<int>(Type::kDirector); }
-  static constexpr int Image() { return static_cast<int>(Type::kImage); }
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  RepositoryType(int type) { type_ = static_cast<RepositoryType::Type>(type); }
+  static constexpr RepositoryType Director() { return RepositoryType(Type::kDirector); }
+  static constexpr RepositoryType Image() { return RepositoryType(Type::kImage); }
+  explicit constexpr RepositoryType(Type type) : type_{type} {}
   explicit RepositoryType(const std::string &repo_type) {
-    if (repo_type == DIRECTOR) {
+    if (repo_type == "director") {
       type_ = RepositoryType::Type::kDirector;
-    } else if (repo_type == IMAGE) {
+    } else if (repo_type == "image") {
       type_ = RepositoryType::Type::kImage;
     } else {
       throw std::runtime_error(std::string("Incorrect repo type: ") + repo_type);
     }
   }
+
+  bool operator==(RepositoryType other) const { return type_ == other.type_; }
+  explicit constexpr operator int() const { return static_cast<int>(type_); }
   // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  operator int() const { return static_cast<int>(type_); }
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  operator std::string() const { return ToString(); }
-  Type type_;
-  std::string ToString() const {
+  explicit operator std::string() const { return ToString(); }  // TODO: fix this!
+  Type type_{Type::kUnknown};
+  [[nodiscard]] std::string ToString() const {
     if (type_ == RepositoryType::Type::kDirector) {
-      return DIRECTOR;
+      return "director";
     } else if (type_ == RepositoryType::Type::kImage) {
-      return IMAGE;
+      return "image";
     } else {
       return "";
     }
