@@ -83,8 +83,8 @@ TEST(VirtualSecondary, RootRotationExpires) {  // NOLINT
 
   uptane_repo.refresh(Uptane::RepositoryType::Image(), Uptane::Role::Root(), TimeStamp("2024-01-01T16:43:12Z"));
   uptane_repo.refresh(Uptane::RepositoryType::Director(), Uptane::Role::Root(), TimeStamp("2024-01-01T16:43:12Z"));
-  uptane_repo.refresh(Uptane::RepositoryType::Image(), Uptane::Role::Root(), TimeStamp("2025-01-01T16:43:12Z"));
-  uptane_repo.refresh(Uptane::RepositoryType::Director(), Uptane::Role::Root(), TimeStamp("2025-01-01T16:43:12Z"));
+  uptane_repo.refresh(Uptane::RepositoryType::Image(), Uptane::Role::Root(), TimeStamp("2035-01-01T16:43:12Z"));
+  uptane_repo.refresh(Uptane::RepositoryType::Director(), Uptane::Role::Root(), TimeStamp("2035-01-01T16:43:12Z"));
 
   {
     LOG_INFO << "Starting second run";
