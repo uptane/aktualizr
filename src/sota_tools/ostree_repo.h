@@ -52,7 +52,7 @@ class OSTreeRepo {
 
   bool CheckForObject(const OSTreeHash& hash, OstreeObjectType type, OSTreeObject::ptr* object) const;
 
-  using otable = std::map<OSTreeHash, OSTreeObject::ptr>;
+  using otable = std::map<std::pair<OSTreeHash, OstreeObjectType>, OSTreeObject::ptr>;
   mutable otable ObjectTable;  // Makes sure that the same commit object is not added twice
 };
 

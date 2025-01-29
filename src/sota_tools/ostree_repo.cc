@@ -9,7 +9,8 @@ OSTreeObject::ptr OSTreeRepo::GetObject(const uint8_t sha256[32], const OstreeOb
 
 OSTreeObject::ptr OSTreeRepo::GetObject(const OSTreeHash hash, const OstreeObjectType type) const {
   // If we've already seen this object, return another pointer to it
-  auto obj_it = ObjectTable.find(hash);
+  auto obj_key = std::make_pair(hash, type);
+  auto obj_it = ObjectTable.find(obj_key);
   if (obj_it != ObjectTable.cend()) {
     return obj_it->second;
   }
@@ -39,6 +40,9 @@ OSTreeObject::ptr OSTreeRepo::GetObject(const OSTreeHash hash, const OstreeObjec
       if (CheckForObject(hash, OSTREE_OBJECT_TYPE_COMMIT, &object)) {
         return object;
       }
+      if (CheckForObject(hash, OSTREE_OBJECT_TYPE_COMMIT_META, &object)) {
+        return object;
+      }
     }
   }
   // We don't already have the object, and can't fetch it after a few retries => fail
@@ -50,7 +54,8 @@ bool OSTreeRepo::CheckForObject(const OSTreeHash &hash, OstreeObjectType type, O
   path /= GetPathForHash(hash, type);
   if (FetchObject(path)) {
     auto object = OSTreeObject::ptr(new OSTreeObject(*this, hash, type));
-    ObjectTable[hash] = object;
+    auto objkey = std::make_pair(hash, type);
+    ObjectTable[objkey] = object;
     *object_out = object;
     LOG_DEBUG << "Fetched OSTree object " << path;
     return true;
@@ -80,6 +85,9 @@ boost::filesystem::path OSTreeRepo::GetPathForHash(OSTreeHash hash, OstreeObject
       break;
     case OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT:
       objpath += ".commit";
+      break;
+    case OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT_META:
+      objpath += ".commitmeta";
       break;
     default:
       throw OSTreeUnsupportedObjectType(type);
