@@ -1,5 +1,8 @@
 #ifndef ASN1_MESSAGE_H_
 #define ASN1_MESSAGE_H_
+
+#include <atomic>
+
 #include <boost/intrusive_ptr.hpp>
 
 #include "AKIpUptaneMes.h"
@@ -55,9 +58,12 @@ class Asn1Message {
    */
   static Asn1Message::Ptr FromRaw(AKIpUptaneMes_t** msg) { return new Asn1Message(msg); }
 
-  friend void intrusive_ptr_add_ref(Asn1Message* m) { m->ref_count_++; }
+  friend void intrusive_ptr_add_ref(Asn1Message* m) { m->ref_count_.fetch_add(1, std::memory_order_relaxed); }
+
   friend void intrusive_ptr_release(Asn1Message* m) {
-    if (--m->ref_count_ == 0) {
+    const int prev_count = m->ref_count_.fetch_sub(1, std::memory_order_release);
+    if (prev_count == 1) {
+      std::atomic_thread_fence(std::memory_order_acquire);
       delete m;
     }
   }
@@ -144,8 +150,7 @@ class Asn1Message {
   AKIpUptaneMes_t msg_{};  // Note that this must be zero-initialized
 
  private:
-  int ref_count_{0};
-
+  std::atomic<int> ref_count_{0};
   Asn1Message() = default;
 
   explicit Asn1Message(AKIpUptaneMes_t** msg) {
