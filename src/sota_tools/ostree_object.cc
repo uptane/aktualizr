@@ -101,6 +101,16 @@ void OSTreeObject::PopulateChildren() {
   g_variant_ref_sink(contents);
 
   if (is_commit) {
+    // Detached commit metadata is optional; add it as child only when present.
+    try {
+      OSTreeObject::ptr cmeta_object;
+      cmeta_object = repo_.GetObject(hash_, OstreeObjectType::OSTREE_OBJECT_TYPE_COMMIT_META);
+      LOG_INFO << "Commitmeta object found for commit " << hash_;
+      AppendChild(cmeta_object);
+    } catch (const OSTreeObjectMissing &error) {
+      LOG_INFO << "No commitmeta object found for commit " << hash_;
+    }
+
     // * - ay - Root tree contents
     GVariant *content_csum_variant = nullptr;
     g_variant_get_child(contents, 6, "@ay", &content_csum_variant);
@@ -269,7 +279,7 @@ void OSTreeObject::Upload(TreehubServer &push_target, CURLM *curl_multi_handle, 
 void OSTreeObject::CheckChildren(RequestPool &pool, const long rescode) {  // NOLINT(google-runtime-int)
   try {
     PopulateChildren();
-    LOG_TRACE << "Children of " << *this << ": " << children_.size();
+    LOG_DEBUG << "Children of " << *this << ": " << children_.size();
     if (children_ready()) {
       if (rescode != 200) {
         pool.AddUpload(this);
@@ -325,6 +335,7 @@ void OSTreeObject::CurlDone(CURLM *curl_multi_handle, RequestPool &pool) {
         NotifyParents(pool);
       }
     } else if (rescode == 404) {
+      LOG_DEBUG << "Not present: " << *this;
       is_on_server_ = PresenceOnServer::kObjectMissing;
       last_operation_result_ = ServerResponse::kOk;
       CheckChildren(pool, rescode);
@@ -376,6 +387,11 @@ OSTreeObject::ptr ostree_object_from_curl(CURL *curlhandle) {
 }
 
 bool OSTreeObject::Fsck() const {
+  if (type_ == OSTREE_OBJECT_TYPE_COMMIT_META) {
+    // Apparently commitmeta cannot be checked.
+    LOG_DEBUG << "Not Fsck'ing commitmeta objects";
+    return true;
+  }
   GFile *repo_path_file = g_file_new_for_path(repo_.root().c_str());  // Never fails
   OstreeRepo *repo = ostree_repo_new(repo_path_file);
   GError *err = nullptr;
@@ -406,7 +422,7 @@ bool OSTreeObject::Fsck() const {
     return false;
   }
 
-  LOG_DEBUG << "Object is OK";
+  LOG_DEBUG << "Object " << *this << " is OK";
   return true;
 }
 
