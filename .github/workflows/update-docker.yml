@@ -1,10 +1,11 @@
 name: Aktualizr CI docker images update
 on:
   push:
-    branches: [ master ]
+    branches: [master]
 jobs:
   update-bionic:
     name: Update Ubuntu Bionic Image
+    if: github.repository == 'uptane/aktualizr'
     runs-on: ubuntu-latest
     env:
       DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bionic-master
@@ -21,6 +22,7 @@ jobs:
 
   update-ubuntu-focal:
     name: Update Ubuntu Focal Image
+    if: github.repository == 'uptane/aktualizr'
     runs-on: ubuntu-latest
     env:
       DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:ubuntu-focal-master
