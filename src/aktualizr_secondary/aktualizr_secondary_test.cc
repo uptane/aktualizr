@@ -34,7 +34,7 @@ class UpdateAgentMock : public FileUpdateAgent {
 
 class AktualizrSecondaryWrapper {
  public:
-  AktualizrSecondaryWrapper(VerificationType verification_type) {
+  explicit AktualizrSecondaryWrapper(VerificationType verification_type) {
     AktualizrSecondaryConfig config;
     config.pacman.type = PACKAGE_MANAGER_NONE;
     config.uptane.verification_type = verification_type;
@@ -51,18 +51,18 @@ class AktualizrSecondaryWrapper {
 
   std::shared_ptr<AktualizrSecondaryFile>& operator->() { return secondary_; }
 
-  Uptane::Target getPendingVersion() const {
+  [[nodiscard]] Uptane::Target getPendingVersion() const {
     boost::optional<Uptane::Target> pending_target;
 
     storage_->loadInstalledVersions(secondary_->serial().ToString(), nullptr, &pending_target);
     return *pending_target;
   }
 
-  std::string hardwareID() const { return secondary_->hwID().ToString(); }
+  [[nodiscard]] std::string hardwareID() const { return secondary_->hwID().ToString(); }
 
-  std::string serial() const { return secondary_->serial().ToString(); }
+  [[nodiscard]] std::string serial() const { return secondary_->serial().ToString(); }
 
-  boost::filesystem::path targetFilepath() const {
+  [[nodiscard]] boost::filesystem::path targetFilepath() const {
     return storage_dir_.Path() / AktualizrSecondaryFile::FileUpdateDefaultFile;
   }
 
@@ -128,7 +128,7 @@ class UptaneRepoWrapper {
                                 custom);
   }
 
-  Uptane::MetaBundle getCurrentMetadata() const {
+  [[nodiscard]] Uptane::MetaBundle getCurrentMetadata() const {
     Uptane::MetaBundle meta_bundle;
     std::string metadata;
 
@@ -151,7 +151,9 @@ class UptaneRepoWrapper {
     return meta_bundle;
   }
 
-  std::string getTargetImagePath(const std::string& targetname) const { return (root_dir_ / targetname).string(); }
+  [[nodiscard]] std::string getTargetImagePath(const std::string& targetname) const {
+    return (root_dir_ / targetname).string();
+  }
 
   void refreshRoot(Uptane::RepositoryType repo) { uptane_repo_.refresh(repo, Uptane::Role::Root()); }
 
@@ -174,7 +176,6 @@ class UptaneRepoWrapper {
     file.close();
   }
 
- private:
   TemporaryDirectory root_dir_;
   boost::filesystem::path director_dir_{root_dir_ / "repo/director"};
   boost::filesystem::path imagerepo_dir_{root_dir_ / "repo/repo"};
@@ -184,7 +185,7 @@ class UptaneRepoWrapper {
 
 class SecondaryTest : public ::testing::Test {
  public:
-  SecondaryTest(VerificationType verification_type = VerificationType::kFull, bool default_target = true)
+  explicit SecondaryTest(VerificationType verification_type = VerificationType::kFull, bool default_target = true)
       : secondary_(verification_type), update_agent_(*(secondary_.update_agent_)) {
     if (default_target) {
       uptane_repo_.addImageFile(default_target_, secondary_->hwID().ToString(), secondary_->serial().ToString(),
@@ -300,7 +301,7 @@ class SecondaryTestNegative
     Uptane::Role role_;
   };
 
-  MetadataInvalidator currentMetadata() const {
+  [[nodiscard]] MetadataInvalidator currentMetadata() const {
     return MetadataInvalidator(uptane_repo_.getCurrentMetadata(), std::get<0>(GetParam()), std::get<1>(GetParam()));
   }
 

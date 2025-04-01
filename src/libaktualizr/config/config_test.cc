@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -20,7 +21,7 @@ boost::filesystem::path build_dir;
 TEST(config, DefaultValues) {
   Config conf;
   EXPECT_EQ(conf.uptane.key_type, KeyType::kRSA2048);
-  EXPECT_EQ(conf.uptane.polling_sec, 10u);
+  EXPECT_EQ(conf.uptane.polling_sec, 10U);
 }
 
 TEST(config, TomlBasic) {
@@ -32,14 +33,14 @@ TEST(config, TomlEmpty) {
   Config conf;
   conf.updateFromTomlString("");
   EXPECT_EQ(conf.uptane.key_type, KeyType::kRSA2048);
-  EXPECT_EQ(conf.uptane.polling_sec, 10u);
+  EXPECT_EQ(conf.uptane.polling_sec, 10U);
 }
 
 TEST(config, TomlInt) {
   Config conf;
   conf.updateFromTomlString("[uptane]\nkey_type = \"ED25519\"\npolling_sec = 99\n");
   EXPECT_EQ(conf.uptane.key_type, KeyType::kED25519);
-  EXPECT_EQ(conf.uptane.polling_sec, 99u);
+  EXPECT_EQ(conf.uptane.polling_sec, 99U);
 }
 
 /*
@@ -127,30 +128,30 @@ TEST(config, SharedCredReuseMode) {
 TEST(config, TomlConsistentEmpty) {
   TemporaryDirectory temp_dir;
   Config config1;
-  std::ofstream sink1((temp_dir / "output1.toml").c_str(), std::ofstream::out);
+  std::ofstream sink1(temp_dir / "output1.toml", std::ofstream::out);
   config1.writeToStream(sink1);
 
-  Config config2((temp_dir / "output1.toml").string());
-  std::ofstream sink2((temp_dir / "output2.toml").c_str(), std::ofstream::out);
+  Config config2(temp_dir / "output1.toml");
+  std::ofstream sink2(temp_dir / "output2.toml", std::ofstream::out);
   config2.writeToStream(sink2);
 
-  std::string conf_str1 = Utils::readFile((temp_dir / "output1.toml").string());
-  std::string conf_str2 = Utils::readFile((temp_dir / "output2.toml").string());
+  std::string conf_str1 = Utils::readFile(temp_dir / "output1.toml");
+  std::string conf_str2 = Utils::readFile(temp_dir / "output2.toml");
   EXPECT_EQ(conf_str1, conf_str2);
 }
 
 TEST(config, TomlConsistentNonempty) {
   TemporaryDirectory temp_dir;
   Config config1("tests/config/basic.toml");
-  std::ofstream sink1((temp_dir / "output1.toml").c_str(), std::ofstream::out);
+  std::ofstream sink1(temp_dir / "output1.toml", std::ofstream::out);
   config1.writeToStream(sink1);
 
-  Config config2((temp_dir / "output1.toml").string());
-  std::ofstream sink2((temp_dir / "output2.toml").c_str(), std::ofstream::out);
+  Config config2(temp_dir / "output1.toml");
+  std::ofstream sink2(temp_dir / "output2.toml", std::ofstream::out);
   config2.writeToStream(sink2);
 
-  std::string conf_str1 = Utils::readFile((temp_dir / "output1.toml").string());
-  std::string conf_str2 = Utils::readFile((temp_dir / "output2.toml").string());
+  std::string conf_str1 = Utils::readFile(temp_dir / "output1.toml");
+  std::string conf_str2 = Utils::readFile(temp_dir / "output2.toml");
   EXPECT_EQ(conf_str1, conf_str2);
 }
 
@@ -240,10 +241,10 @@ void checkConfigExpectations(const Config &conf) {
  * reading a second config file. */
 TEST(config, TwoTomlCorrectness) {
   TemporaryDirectory temp_dir;
-  const std::string conf_path_str = (temp_dir.Path() / "config.toml").string();
-  TestUtils::writePathToConfig("tests/config/minimal.toml", conf_path_str, temp_dir.Path());
+  const auto conf_path = temp_dir.Path() / "config.toml";
+  TestUtils::writePathToConfig("tests/config/minimal.toml", conf_path, temp_dir.Path());
   {
-    std::ofstream cs(conf_path_str.c_str(), std::ofstream::app);
+    std::ofstream cs(conf_path, std::ofstream::app);
     cs << "type = \"sqlite\"\n";
     cs << "\n";
     cs << "[pacman]\n";
@@ -269,13 +270,13 @@ TEST(config, TwoTomlCorrectness) {
     ("config,c", bpo::value<std::vector<boost::filesystem::path> >()->composing(), "configuration directory");
   // clang-format on
 
-  const char *argv1[] = {"aktualizr", "-c", conf_path_str.c_str(), "-c", "tests/config/minimal.toml"};
+  const char *argv1[] = {"aktualizr", "-c", conf_path.c_str(), "-c", "tests/config/minimal.toml"};
   bpo::store(bpo::parse_command_line(5, argv1, description), cmd);
   Config conf1(cmd);
   checkConfigExpectations(conf1);
 
   // Try the reverse order, too, just to make sure.
-  const char *argv2[] = {"aktualizr", "-c", "tests/config/minimal.toml", "-c", conf_path_str.c_str()};
+  const char *argv2[] = {"aktualizr", "-c", "tests/config/minimal.toml", "-c", conf_path.c_str()};
   bpo::store(bpo::parse_command_line(5, argv2, description), cmd);
   Config conf2(cmd);
   checkConfigExpectations(conf2);

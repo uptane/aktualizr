@@ -13,7 +13,7 @@
 #include <string>
 #include <thread>
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/process.hpp>
 
@@ -88,7 +88,7 @@ Process::Result Process::spawn(const std::string &executable_to_run, const std::
   std::future<std::string> output;
   std::future<std::string> err_output;
   std::future<int> child_process_exit_code;
-  boost::asio::io_service io_service;
+  boost::asio::io_context io_context;
 
   try {
     std::string executable_path;
@@ -99,9 +99,9 @@ Process::Result Process::spawn(const std::string &executable_to_run, const std::
     }
     boost::process::child child_process(boost::process::exe = executable_path, boost::process::args = executable_args,
                                         boost::process::std_out > output, boost::process::std_err > err_output,
-                                        boost::process::on_exit = child_process_exit_code, io_service);
+                                        boost::process::on_exit = child_process_exit_code, io_context);
 
-    io_service.run();
+    io_context.run();
 
     bool wait_successfull = child_process.wait_for(std::chrono::seconds(60));
     if (!wait_successfull) {
