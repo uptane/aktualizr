@@ -55,14 +55,17 @@ class Asn1Message {
    */
   static Asn1Message::Ptr FromRaw(AKIpUptaneMes_t** msg) { return new Asn1Message(msg); }
 
-  friend void intrusive_ptr_add_ref(Asn1Message* m) { m->ref_count_++; }
-  friend void intrusive_ptr_release(Asn1Message* m) {
-    if (--m->ref_count_ == 0) {
-      delete m;
+  friend void intrusive_ptr_add_ref(Asn1Message* msg) { msg->ref_count_++; }
+
+  // noinline is necessary to work around a gcc 12 use-after-free analysis FP
+  // https://github.com/uptane/aktualizr/pull/130
+  friend __attribute__((noinline)) void intrusive_ptr_release(Asn1Message* msg) {
+    if (--msg->ref_count_ == 0) {
+      delete msg;
     }
   }
 
-  AKIpUptaneMes_PR present() const { return msg_.present; }
+  [[nodiscard]] AKIpUptaneMes_PR present() const { return msg_.present; }
   Asn1Message& present(AKIpUptaneMes_PR present) {
     msg_.present = present;
     return *this;
@@ -103,7 +106,7 @@ class Asn1Message {
   case MessageID:                               \
     return #MessageID;
 
-  const char* toStr() const {
+  [[nodiscard]] const char* toStr() const {
     switch (present()) {
       default:
         ASN1_MESSAGE_DEFINE_STR_NAME(AKIpUptaneMes_PR_NOTHING);

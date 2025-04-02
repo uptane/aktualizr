@@ -72,7 +72,7 @@ jobs:
         run: |
           docker pull "$DOCKER_TAG" || true
           docker build --cache-from "$DOCKER_TAG" --pull -t "$DOCKER_TAG" -f "$DOCKERFILE" .
-      - uses: actions/cache@v1.1.0
+      - uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.ccache
           key: ubuntu-bionic-${{ github.run_id }}
@@ -107,7 +107,7 @@ jobs:
         run: |
           docker pull "$DOCKER_TAG" || true
           docker build --cache-from "$DOCKER_TAG" --pull -t "$DOCKER_TAG" -f "$DOCKERFILE" .
-      - uses: actions/cache@v1.1.0
+      - uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.ccache
           key: ubuntu-focal-${{ github.run_id }}
