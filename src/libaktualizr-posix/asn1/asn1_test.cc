@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iomanip>
 #include <iostream>
 #include <string>
 
@@ -55,26 +56,38 @@ asn1::Deserializer& operator>>(asn1::Deserializer& des, TlsConfig& tls_conf) {
 
 void printStringHex(const std::string& s) {
   for (char c : s) {
-    std::cerr << std::setfill('0') << std::setw(2) << std::hex << (((unsigned int)c) & 0xFF);
+    std::cerr << std::setfill('0') << std::setw(2) << std::hex << ((static_cast<unsigned int>(c)) & 0xFF);
     std::cerr << ' ';
   }
 
   std::cerr << std::dec << std::endl;
 }
 
-std::string CCString(OCTET_STRING_t par) { return std::string((const char*)par.buf, (size_t)par.size); }
+std::string CCString(OCTET_STRING_t par) {
+  return std::string(reinterpret_cast<const char*>(par.buf), static_cast<size_t>(par.size));
+}
 bool operator==(const AKTlsConfig& cc_config, const TlsConfig& config) {
-  if (config.server != CCString(cc_config.server)) return false;
-  if (config.server_url_path.string() != CCString(cc_config.serverUrlPath)) return false;
-  if (static_cast<int>(config.ca_source) != cc_config.caSource) return false;
-  if (static_cast<int>(config.pkey_source) != cc_config.pkeySource) return false;
-  if (static_cast<int>(config.cert_source) != cc_config.certSource) return false;
+  if (config.server != CCString(cc_config.server)) {
+    return false;
+  }
+  if (config.server_url_path.string() != CCString(cc_config.serverUrlPath)) {
+    return false;
+  }
+  if (static_cast<int>(config.ca_source) != cc_config.caSource) {
+    return false;
+  }
+  if (static_cast<int>(config.pkey_source) != cc_config.pkeySource) {
+    return false;
+  }
+  if (static_cast<int>(config.cert_source) != cc_config.certSource) {
+    return false;
+  }
   return true;
 }
 
 bool operator==(const TlsConfig& config, const AKTlsConfig& cc_config) { return cc_config == config; }
 
-TEST(asn1_config, tls_config) {
+TEST(Asn1Config, TlsConfig) {
   TlsConfig conf;
 
   conf.server = "https://example.com";
@@ -96,14 +109,14 @@ TEST(asn1_config, tls_config) {
   EXPECT_EQ(conf.cert_source, conf2.cert_source);
 }
 
-TEST(asn1_config, tls_config_asn1cc_to_man) {
+TEST(Asn1Config, TlsConfigAsn1ccToMan) {
   AKTlsConfig_t cc_tls_conf;
   memset(&cc_tls_conf, 0, sizeof(cc_tls_conf));
 
   std::string server = "https://example.com";
   EXPECT_EQ(0, OCTET_STRING_fromBuf(&cc_tls_conf.server, server.c_str(), static_cast<int>(server.length())));
 
-  std::string server_url_path = "";
+  std::string server_url_path;
   EXPECT_EQ(0, OCTET_STRING_fromBuf(&cc_tls_conf.serverUrlPath, server_url_path.c_str(),
                                     static_cast<int>(server_url_path.length())));
 
@@ -124,7 +137,7 @@ TEST(asn1_config, tls_config_asn1cc_to_man) {
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_AKTlsConfig, &cc_tls_conf);
 }
 
-TEST(asn1_config, tls_config_man_to_asn1cc) {
+TEST(Asn1Config, TlsConfigManToAsn1cc) {
   TlsConfig conf;
 
   conf.server = "https://example.com";
@@ -138,14 +151,14 @@ TEST(asn1_config, tls_config_man_to_asn1cc) {
   ser << conf;
 
   AKTlsConfig_t* cc_tls_conf = nullptr;
-  asn_dec_rval_t ret =
-      ber_decode(0, &asn_DEF_AKTlsConfig, (void**)&cc_tls_conf, ser.getResult().c_str(), ser.getResult().length());
+  asn_dec_rval_t ret = ber_decode(nullptr, &asn_DEF_AKTlsConfig, reinterpret_cast<void**>(&cc_tls_conf),
+                                  ser.getResult().c_str(), ser.getResult().length());
   EXPECT_EQ(ret.code, RC_OK);
   EXPECT_EQ(*cc_tls_conf, conf);
   ASN_STRUCT_FREE(asn_DEF_AKTlsConfig, cc_tls_conf);
 }
 
-TEST(asn1_common, longstring) {
+TEST(Asn1Common, LongString) {
   std::string in =
       "-----BEGIN PUBLIC KEY-----\
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAumdoILJANzcKUn0IZi1B\
@@ -166,7 +179,7 @@ zQIDAQAB\
   EXPECT_EQ(in, out);
 }
 
-TEST(asn1_common, longlongstring) {
+TEST(Asn1Common, LongLongString) {
   std::string in =
       "-----BEGIN PUBLIC KEY-----\
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAumdoILJANzcKUn0IZi1B\
@@ -214,7 +227,7 @@ zQIDAQAB\
   EXPECT_EQ(in, out);
 }
 
-TEST(asn1_common, Asn1MessageSimple) {
+TEST(Asn1Common, Asn1MessageSimple) {
   // Fill in a message
   Asn1Message::Ptr original(Asn1Message::Empty());
   original->present(AKIpUptaneMes_PR_getInfoResp);
@@ -249,7 +262,7 @@ TEST(asn1_common, Asn1MessageSimple) {
   EXPECT_EQ(ToString(resp->hwId), "hd-id-001");
 }
 
-TEST(asn1_common, parse) {
+TEST(Asn1Common, Parse) {
   std::string data = Utils::fromBase64("pgkwBwQFaGVsbG8=");
   // BER decode
   asn_codec_ctx_t context;
@@ -263,7 +276,7 @@ TEST(asn1_common, parse) {
   EXPECT_EQ(AKIpUptaneMes_PR_sendFirmwareReq, msg->present());
 }
 
-TEST(asn1_common, Asn1MessageFromRawNull) {
+TEST(Asn1Common, Asn1MessageFromRawNull) {
   Asn1Message::FromRaw(nullptr);
   AKIpUptaneMes_t* m = nullptr;
   Asn1Message::FromRaw(&m);

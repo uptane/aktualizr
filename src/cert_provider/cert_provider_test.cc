@@ -3,6 +3,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/format.hpp>
+#include <fstream>
 
 #include "cert_provider_test.h"
 #include "crypto/crypto.h"
@@ -14,7 +15,7 @@ static boost::filesystem::path CERT_PROVIDER_PATH;
 class AktualizrCertProviderTest : public ::testing::Test {
  protected:
   struct TestArgs {
-    TestArgs(const TemporaryDirectory& tmp_dir) : test_dir{tmp_dir.PathString()} {}
+    explicit TestArgs(const TemporaryDirectory& tmp_dir) : test_dir{tmp_dir.PathString()} {}
 
     const std::string test_dir;
     const std::string fleet_ca_cert = "tests/test_data/CAcert.pem";
@@ -23,18 +24,23 @@ class AktualizrCertProviderTest : public ::testing::Test {
 
   class Cert {
    public:
-    Cert(const std::string& cert_file_path) {
+    explicit Cert(const std::string& cert_file_path) {
       fp_ = fopen(cert_file_path.c_str(), "r");
-      if (!fp_) {
+      if (fp_ == nullptr) {
         throw std::invalid_argument("Cannot open the specified cert file: " + cert_file_path);
       }
 
-      cert_ = PEM_read_X509(fp_, NULL, NULL, NULL);
-      if (!cert_) {
+      cert_ = PEM_read_X509(fp_, nullptr, nullptr, nullptr);
+      if (cert_ == nullptr) {
         fclose(fp_);
         throw std::runtime_error("Failed to read the cert file: " + cert_file_path);
       }
     }
+
+    Cert(const Cert&) = delete;
+    Cert(Cert&&) = delete;
+    Cert& operator=(const Cert&) = delete;
+    Cert& operator=(Cert&&) = delete;
 
     ~Cert() {
       X509_free(cert_);
@@ -62,7 +68,6 @@ class AktualizrCertProviderTest : public ::testing::Test {
     X509* cert_;
   };
 
- protected:
   TemporaryDirectory tmp_dir_;
   TestArgs test_args_{tmp_dir_};
   DeviceCredGenerator device_cred_gen_{CERT_PROVIDER_PATH.string()};
@@ -206,7 +211,7 @@ TEST_F(AktualizrCertProviderTest, ConfigFilePathUsage) {
   config.import.tls_clientcert_path = utils::BasedPath(cert_file);
 
   auto test_conf_file = tmp_dir_ / "conf.toml";
-  boost::filesystem::ofstream conf_file(test_conf_file);
+  std::ofstream conf_file(test_conf_file);
   config.writeToStream(conf_file);
   conf_file.close();
 
@@ -287,7 +292,7 @@ TEST_F(AktualizrCertProviderTest, DeviceCertParams) {
 
   // check subject's params
   Cert cert(device_cred_path.certFileFullPath.string());
-  for (auto subject_item : subject_items) {
+  for (const auto& subject_item : subject_items) {
     ASSERT_EQ(cert.getSubjectItemValue(subject_item.first), subject_item.second);
   }
 

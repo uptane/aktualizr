@@ -49,6 +49,12 @@ add_custom_target(check COMMAND CTEST_OUTPUT_ON_FAILURE=1 ${CMAKE_CTEST_COMMAND}
 # to this list.
 set(TEST_SOURCES httpfake.h metafake.h test_utils.cc test_utils.h uptane_vector_tests.cc)
 
+# Recent versions of Boost (e.g. v1.87) deprecated boost::process::v1::child::wait_for since it is
+# unreliable. However the new v2 API isn;t available in the 1.74 version we support in Debian
+# oldstable. For now disable the warning
+# https://www.boost.org/doc/libs/1_74_0/doc/html/process.html
+#
+set_source_files_properties(test_utils.cc PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
 
 include(CMakeParseArguments)
 

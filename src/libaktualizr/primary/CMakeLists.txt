@@ -53,6 +53,12 @@ if (BUILD_OSTREE)
                        PROJECT_WORKING_DIRECTORY
                        ARGS ${PROJECT_BINARY_DIR}/ostree_repo)
     set_target_properties(t_aktualizr_lite PROPERTIES LINK_FLAGS -Wl,--export-dynamic)
+    # Recent versions of Boost (e.g. v1.87) deprecated boost::process::v1::child::wait_for since it is
+    # unreliable. However the new v2 API isn;t available in the 1.74 version we support in Debian
+    # oldstable. For now disable the warning
+    # https://www.boost.org/doc/libs/1_74_0/doc/html/process.html
+    #
+    set_source_files_properties(aktualizr_lite_test.cc PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
     add_dependencies(t_aktualizr_lite make_ostree_sysroot)
 else (BUILD_OSTREE)
     aktualizr_source_file_checks(aktualizr_fullostree_test.cc download_nonostree_test.cc aktualizr_lite_test.cc)
