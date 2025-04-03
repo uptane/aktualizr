@@ -219,8 +219,9 @@ if(TESTSUITE_VALGRIND)
 endif()
 add_custom_target(build_tests)
 
-find_program(CLANG_FORMAT NAMES clang-format-11)
-find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-11)
+# The clang 14 is the default in Debian Bookworm (stable)
+find_program(CLANG_FORMAT NAMES clang-format-14 clang-format-11)
+find_program(CLANG_TIDY NAMES clang-tidy-14 clang-tidy-11)
 
 if(CLANG_FORMAT)
     function(aktualizr_clang_format)

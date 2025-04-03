@@ -7,19 +7,12 @@ on:
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
 jobs:
-  coverage:
+  bulseye-p11:
     name: Build and Test on Debian Bullseye
     runs-on: ubuntu-latest
     env:
       DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bullseye-master
       DOCKERFILE: docker/Dockerfile.debian.bullseye
-      DARGS: >-
-        -eCCACHE_DIR
-        -eTEST_CMAKE_BUILD_TYPE=Valgrind
-        -eTEST_WITH_P11=1
-        -eTEST_WITH_FAULT_INJECTION=1
-        -eTEST_TESTSUITE_EXCLUDE=credentials
-        -eTEST_SOTA_PACKED_CREDENTIALS=dummy-credentials
     steps:
       - uses: actions/checkout@main
       - run: |
@@ -43,23 +36,18 @@ jobs:
         run: docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -xf- < ${{github.workspace}}/cache/cache.tar || echo "No cache found"
       - name: Test
         run: |
-          docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache  -t "$DOCKER_TAG" source/scripts/build-and-test.sh
+          docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache  -t "$DOCKER_TAG" source/scripts/build-and-test-bullseye.sh
       - name: Stash ccache
         run: |
           mkdir -p ${{github.workspace}}/cache
           docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -cf- .cache > ${{github.workspace}}/cache/cache.tar
 
-  nop11:
-    name: Tests with PKCS#11 support on Ubuntu Bionic
+  bookworm-release-nop11:
+    name: Build and Test on Debian Bookworm
     runs-on: ubuntu-latest
     env:
-      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bionic-master
-      DOCKERFILE: docker/Dockerfile.ubuntu.bionic
-      DARGS: >-
-        -eCCACHE_DIR
-        -eTEST_CMAKE_BUILD_TYPE=Debug
-        -eTEST_WITH_P11=1
-        -eTEST_WITH_TESTSUITE=0
+      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bookworm-master
+      DOCKERFILE: docker/Dockerfile.debian.bookworm
     steps:
       - uses: actions/checkout@main
       - run: |
@@ -74,13 +62,20 @@ jobs:
           docker build --cache-from "$DOCKER_TAG" --pull -t "$DOCKER_TAG" -f "$DOCKERFILE" .
       - uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/.ccache
-          key: ubuntu-bionic-${{ github.run_id }}
+          path: ${{ github.workspace }}/cache
+          key: debian-bookworm-${{ github.run_id }}
           restore-keys: |
-            ubuntu-bionic-${{ github.run_id }}
-            ubuntu-bionic-
+            debian-bookworm-${{ github.run_id }}
+            debian-bookworm-
+      - name: Unpack ccache
+        run: docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -xf- < ${{github.workspace}}/cache/cache.tar || echo "No cache found"
       - name: Test
-        run: docker run -v "$PWD:$PWD" -w "$PWD" $DARGS -t "$DOCKER_TAG" ./scripts/test.sh
+        run: |
+          docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache  -t "$DOCKER_TAG" source/scripts/build-and-test-bookworm.sh
+      - name: Stash ccache
+        run: |
+          mkdir -p ${{github.workspace}}/cache
+          docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -cf- .cache > ${{github.workspace}}/cache/cache.tar
 
   static-checks:
     name: Static checks on Ubuntu Focal
