@@ -1,5 +1,5 @@
 #include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/bind/bind.hpp>
@@ -151,7 +151,7 @@ class SecondaryWaiter {
 
   Aktualizr& aktualizr_;
 
-  boost::asio::io_service io_context_;
+  boost::asio::io_context io_context_;
   boost::asio::ip::tcp::endpoint endpoint_;
   boost::asio::ip::tcp::acceptor acceptor_{io_context_, endpoint_};
   boost::asio::ip::tcp::socket con_socket_{io_context_};

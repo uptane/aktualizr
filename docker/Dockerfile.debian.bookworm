@@ -1,5 +1,5 @@
-FROM debian:bullseye
-LABEL Description="Aktualizr CI image using Debian Bullseye (oldstable)"
+FROM debian:bookworm
+LABEL Description="Aktualizr CI image using Debian Bookworm (stable)"
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -16,9 +16,10 @@ RUN apt-get update && apt-get -y install -\
   automake \
   bison \
   ccache \
+  clang-tidy \
+  clang-format \
   cmake \
   curl \
-  fiu-utils \
   g++ \
   git \
   jq \
@@ -31,7 +32,6 @@ RUN apt-get update && apt-get -y install -\
   libboost-thread-dev \
   libcurl4-openssl-dev \
   libengine-pkcs11-openssl \
-  libfiu-dev \
   libglib2.0-dev \
   libgtest-dev \
   libostree-dev \
@@ -52,7 +52,6 @@ RUN apt-get update && apt-get -y install -\
   python3-openssl \
   python3-pip \
   python3-venv \
-  softhsm2 \
   sqlite3 \
   zip
 

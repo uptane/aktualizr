@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/path.hpp>
+#include <fstream>
+#include <utility>
 
 #include "libaktualizr/config.h"
 #include "storage/sqlstorage.h"
@@ -22,7 +24,7 @@ class AktualizrInfoTest : public ::testing::Test {
     logger_set_threshold(config_.logger);
 
     // dump a config into a toml file so the executable can use it as an input configuration
-    boost::filesystem::ofstream conf_file(test_conf_file_);
+    std::ofstream conf_file(test_conf_file_);
     config_.writeToStream(conf_file);
     conf_file.close();
 
@@ -30,7 +32,7 @@ class AktualizrInfoTest : public ::testing::Test {
     db_storage_ = INvStorage::newStorage(config_.storage);
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     device_id = "aktualizr-info-test-device_ID-fd1fc55c-3abc-4de8-a2ca-32d455ae9c11";
     primary_ecu_serial = Uptane::EcuSerial("82697cac-f54c-40ea-a8f2-76c203b7bf2f");
     primary_hw_id = Uptane::HardwareIdentifier("primary-hdwr-e96c08e0-38a0-4903-a021-143cf5427bc9");
@@ -38,20 +40,18 @@ class AktualizrInfoTest : public ::testing::Test {
     db_storage_->storeDeviceId(device_id);
   }
 
-  virtual void TearDown() {}
+  void TearDown() override {}
 
   class AktualizrInfoProcess : public Process {
    public:
-    AktualizrInfoProcess(AktualizrInfoTest& test_ctx, const boost::filesystem::path& conf_file)
-        : Process("./aktualizr-info"), test_ctx_{test_ctx}, conf_file_{conf_file} {}
+    AktualizrInfoProcess(AktualizrInfoTest& test_ctx, boost::filesystem::path conf_file)
+        : Process("./aktualizr-info"), test_ctx_{test_ctx}, conf_file_{std::move(conf_file)} {}
     virtual ~AktualizrInfoProcess() {}
 
-    void run(const std::vector<std::string> args = {}) {
+    void run(const std::vector<std::string>& extra_args = {}) {
       std::vector<std::string> all_args = {"-c", conf_file_.string()};
 
-      if (args.size() > 0) {
-        all_args.insert(all_args.end(), args.begin(), args.end());
-      }
+      all_args.insert(all_args.end(), extra_args.begin(), extra_args.end());
 
       test_ctx_.aktualizr_info_output.clear();
       Process::run(all_args);
@@ -64,7 +64,6 @@ class AktualizrInfoTest : public ::testing::Test {
     const boost::filesystem::path conf_file_;
   };
 
- protected:
   TemporaryDirectory test_dir_;
   boost::filesystem::path test_conf_file_;
   boost::filesystem::path test_db_file_;
@@ -730,7 +729,7 @@ TEST_F(AktualizrInfoTest, PrintMetadataWarning) {
                                          "--director-root",   "--director-target", "--images-snapshot",
                                          "--images-timestamp"};
 
-  for (auto arg : args) {
+  for (const auto& arg : args) {
     aktualizr_info_process_.run({arg});
     ASSERT_FALSE(aktualizr_info_output.empty());
     EXPECT_NE(aktualizr_info_output.find(std::string(warning_no_meta_data)), std::string::npos);

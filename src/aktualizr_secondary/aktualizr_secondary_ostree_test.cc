@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <ostree.h>
+#include <boost/filesystem/string_file.hpp>
 
 #include "boost/algorithm/string/trim.hpp"
 #include "boost/process.hpp"
@@ -14,7 +15,7 @@
 
 class Treehub {
  public:
-  Treehub(const std::string& server_path)
+  explicit Treehub(const std::string& server_path)
       : port_(TestUtils::getFreePort()),
         url_("http://127.0.0.1:" + port_),
         process_(server_path, "-p", port_, "-d", root_dir_.PathString(), "-s0.5", "--create") {
@@ -27,6 +28,11 @@ class Treehub {
     LOG_INFO << "Treehub is running on: " << port_ << " current revision: " << cur_rev_;
   }
 
+  Treehub(const Treehub&) = delete;
+  Treehub(Treehub&&) = delete;
+  Treehub& operator=(const Treehub&) = delete;
+  Treehub& operator=(Treehub&&) = delete;
+
   ~Treehub() {
     process_.terminate();
     process_.wait_for(std::chrono::seconds(10));
@@ -37,9 +43,8 @@ class Treehub {
     }
   }
 
- public:
-  const std::string& url() const { return url_; }
-  const std::string& curRev() const { return cur_rev_; }
+  [[nodiscard]] const std::string& url() const { return url_; }
+  [[nodiscard]] const std::string& curRev() const { return cur_rev_; }
 
  private:
   TemporaryDirectory root_dir_;
@@ -51,19 +56,19 @@ class Treehub {
 
 class OstreeRootfs {
  public:
-  OstreeRootfs(const std::string& rootfs_template) {
+  explicit OstreeRootfs(const std::string& rootfs_template) {
     auto sysroot_copy = Process("cp").run({"-r", rootfs_template, getPath().c_str()});
     EXPECT_EQ(std::get<0>(sysroot_copy), 0)
         << "stdout: " << std::get<1>(sysroot_copy) << " stderr:" << std::get<2>(sysroot_copy);
     resetDeployment();
   }
 
-  const boost::filesystem::path& getPath() const { return sysroot_dir_; }
-  const char* getDeploymentRev() const { return rev_.c_str(); }
-  int getDeploymentSerial() const { return 0; }
-  const char* getOSName() const { return os_name_.c_str(); }
+  [[nodiscard]] const boost::filesystem::path& getPath() const { return sysroot_dir_; }
+  [[nodiscard]] const char* getDeploymentRev() const { return rev_.c_str(); }
+  static int getDeploymentSerial() { return 0; }
+  [[nodiscard]] const char* getOSName() const { return os_name_.c_str(); }
 
-  OstreeDeployment* getDeployment() const { return deployment_.get(); }
+  [[nodiscard]] OstreeDeployment* getDeployment() const { return deployment_.get(); }
   void setNewDeploymentRev(const std::string& new_rev) { rev_ = new_rev; }
 
   void resetDeployment() {
@@ -123,11 +128,11 @@ class AktualizrSecondaryWrapper {
 
   std::shared_ptr<AktualizrSecondaryOstree>& operator->() { return secondary_; }
 
-  Uptane::Target getPendingVersion() const { return getVersion().first; }
+  [[nodiscard]] Uptane::Target getPendingVersion() const { return getVersion().first; }
 
-  Uptane::Target getCurrentVersion() const { return getVersion().second; }
+  [[nodiscard]] Uptane::Target getCurrentVersion() const { return getVersion().second; }
 
-  std::pair<Uptane::Target, Uptane::Target> getVersion() const {
+  [[nodiscard]] std::pair<Uptane::Target, Uptane::Target> getVersion() const {
     boost::optional<Uptane::Target> current_target;
     boost::optional<Uptane::Target> pending_target;
 
@@ -137,9 +142,9 @@ class AktualizrSecondaryWrapper {
                           !current_target ? Uptane::Target::Unknown() : *current_target);
   }
 
-  std::string hardwareID() const { return secondary_->hwID().ToString(); }
+  [[nodiscard]] std::string hardwareID() const { return secondary_->hwID().ToString(); }
 
-  std::string serial() const { return secondary_->serial().ToString(); }
+  [[nodiscard]] std::string serial() const { return secondary_->serial().ToString(); }
 
   void reboot() {
     boost::filesystem::remove(storage_dir_ / config_.bootloader.reboot_sentinel_name);
@@ -167,7 +172,7 @@ class UptaneRepoWrapper {
     return Uptane::SecondaryMetadata(getCurrentMetadata());
   }
 
-  Uptane::MetaBundle getCurrentMetadata() const {
+  [[nodiscard]] Uptane::MetaBundle getCurrentMetadata() const {
     Uptane::MetaBundle meta_bundle;
     std::string metadata;
 
@@ -191,7 +196,7 @@ class UptaneRepoWrapper {
     return meta_bundle;
   }
 
-  std::shared_ptr<std::string> getImageData(const std::string& targetname) const {
+  [[nodiscard]] std::shared_ptr<std::string> getImageData(const std::string& targetname) const {
     auto image_data = std::make_shared<std::string>();
     boost::filesystem::load_string_file(root_dir_ / targetname, *image_data);
     return image_data;
@@ -231,7 +236,6 @@ class SecondaryOstreeTest : public ::testing::TestWithParam<VerificationType> {
     sysroot_.reset();
   }
 
- protected:
   SecondaryOstreeTest() {
     if (needs_reset_) {
       sysroot_->resetDeployment();
@@ -252,9 +256,9 @@ class SecondaryOstreeTest : public ::testing::TestWithParam<VerificationType> {
     return currentMetadata();
   }
 
-  Uptane::MetaBundle currentMetadata() const { return uptane_repo_.getCurrentMetadata(); }
+  [[nodiscard]] Uptane::MetaBundle currentMetadata() const { return uptane_repo_.getCurrentMetadata(); }
 
-  std::string getCredsToSend() const {
+  static std::string getCredsToSend() {
     std::map<std::string, std::string> creds_map = {
         {"ca.pem", ""}, {"client.pem", ""}, {"pkey.pem", ""}, {"server.url", treehub_->url()}};
 
@@ -268,7 +272,6 @@ class SecondaryOstreeTest : public ::testing::TestWithParam<VerificationType> {
   Hash sysrootCurRevHash() const { return Hash(Hash::Type::kSha256, sysroot_->getDeploymentRev()); }
   const std::string& treehubCurRev() const { return treehub_->curRev(); }
 
- protected:
   static std::shared_ptr<Treehub> treehub_;
   static std::string ostree_rootfs_template_;
   static std::shared_ptr<OstreeRootfs> sysroot_;

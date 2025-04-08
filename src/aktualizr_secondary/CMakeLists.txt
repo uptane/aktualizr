@@ -74,6 +74,12 @@ if(BUILD_OSTREE)
                        LIBRARIES aktualizr_secondary_lib uptane_generator_lib $<TARGET_OBJECTS:campaign>)
 
     set_target_properties(t_aktualizr_secondary_ostree PROPERTIES LINK_FLAGS -Wl,--export-dynamic)
+    # Recent versions of Boost (e.g. v1.87) deprecated boost::process::v1::child::wait_for since it is
+    # unreliable. However the new v2 API isn;t available in the 1.74 version we support in Debian
+    # oldstable. For now disable the warning
+    # https://www.boost.org/doc/libs/1_74_0/doc/html/process.html
+    #
+    set_source_files_properties(aktualizr_secondary_ostree_test.cc PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
 else(BUILD_OSTREE)
     list(APPEND TEST_SOURCES aktualizr_secondary_ostree_test.cc update_agent_ostree.cc aktualizr_secondary_ostree.cc)
     list(APPEND ALL_AKTUALIZR_SECONDARY_HEADERS update_agent_ostree.h aktualizr_secondary_ostree.h)
