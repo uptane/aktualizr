@@ -1590,7 +1590,7 @@ TEST(Aktualizr, TargetAutoremove) {
   Utils::createDirectories(local_metadir, S_IRWXU);
   auto http = std::make_shared<HttpFake>(temp_dir.Path(), "", local_metadir / "repo");
 
-  UptaneRepo repo{local_metadir, "2025-07-04T16:33:27Z", "id0"};
+  UptaneRepo repo{local_metadir, "2029-07-04T16:33:27Z", "id0"};
   repo.generateRepo(KeyType::kED25519);
   const std::string hwid = "primary_hw";
   repo.addImage(fake_meta_dir / "fake_meta/primary_firmware.txt", "primary_firmware.txt", hwid);
@@ -1700,7 +1700,7 @@ TEST(Aktualizr, MultibyteUnicodeChars) {
   Utils::createDirectories(local_metadir, S_IRWXU);
   auto http = std::make_shared<HttpFake>(temp_dir.Path(), "", local_metadir / "repo");
 
-  UptaneRepo repo{local_metadir, "2025-07-04T16:33:27Z", "id0"};
+  UptaneRepo repo{local_metadir, "2029-07-04T16:33:27Z", "id0"};
   repo.generateRepo(KeyType::kED25519);
   const std::string hwid = "primary_hw";
   std::string target_name = "\u30C4\U0001F600.txt";
