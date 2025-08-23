@@ -391,8 +391,7 @@ TEST(uptane_generator, sign) {
   }
   cmd = generate_repo_exec + " sign " + temp_dir.Path().string();
   cmd += " --repotype director --keyname snapshot";
-  std::string sign_cmd =
-      "echo \"{\\\"_type\\\":\\\"Snapshot\\\",\\\"expires\\\":\\\"2025-07-04T16:33:27Z\\\"}\" | " + cmd;
+  std::string sign_cmd = R"(echo "{\"_type\":\"Snapshot\",\"expires\":\"2029-07-04T16:33:27Z\"}" | )" + cmd;
   output.clear();
   retval = Utils::shell(sign_cmd, &output);
   if (retval) {
