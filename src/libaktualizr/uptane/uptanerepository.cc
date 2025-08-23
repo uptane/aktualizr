@@ -60,7 +60,7 @@ void RepositoryCommon::updateRoot(INvStorage& storage, const IMetadataFetcher& f
   }
 
   // 5.4.4.3.2. Update to the latest Root metadata file.
-  for (int version = rootVersion() + 1; version < kMaxRotations; ++version) {
+  for (int version = rootVersion() + 1;; ++version) {
     // 5.4.4.3.2.2. Try downloading a new version N+1 of the Root metadata file.
     std::string root_raw;
     try {
