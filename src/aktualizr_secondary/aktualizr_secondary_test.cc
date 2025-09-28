@@ -359,7 +359,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 class SecondaryTestVerification : public SecondaryTest, public ::testing::WithParamInterface<VerificationType> {
  public:
-  SecondaryTestVerification() : SecondaryTest(GetParam()){};
+  SecondaryTestVerification() : SecondaryTest(GetParam()) {};
 };
 
 /**
@@ -465,7 +465,7 @@ class SecondaryTestTuf
  public:
   // No default Targets so as to be able to more thoroughly test the Target
   // comparison.
-  SecondaryTestTuf() : SecondaryTest(VerificationType::kTuf, false){};
+  SecondaryTestTuf() : SecondaryTest(VerificationType::kTuf, false) {};
 };
 
 /**

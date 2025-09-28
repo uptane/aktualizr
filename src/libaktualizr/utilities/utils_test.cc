@@ -225,7 +225,7 @@ TEST(Utils, TemporaryDirectory) {
     EXPECT_TRUE(boost::filesystem::exists(p));               // The dir should exist
     EXPECT_NE(p.string().find("ahint"), std::string::npos);  // The hint is included in the filename
 
-    struct stat statbuf {};
+    struct stat statbuf{};
     EXPECT_GE(stat(p.parent_path().c_str(), &statbuf), 0);
     EXPECT_EQ(statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO), S_IRWXU);
   }
@@ -246,7 +246,7 @@ TEST(Utils, TemporaryFile) {
     EXPECT_TRUE(boost::filesystem::exists(p));               // The file should exist here
     EXPECT_NE(p.string().find("ahint"), std::string::npos);  // The hint is included in the filename
 
-    struct stat statbuf {};
+    struct stat statbuf{};
     EXPECT_GE(stat(p.parent_path().c_str(), &statbuf), 0);
     EXPECT_EQ(statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO), S_IRWXU);
   }

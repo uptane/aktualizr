@@ -211,7 +211,7 @@ TargetStatus PackageManagerInterface::verifyTarget(const Uptane::Target& target)
 }
 
 bool PackageManagerInterface::checkAvailableDiskSpace(const uint64_t required_bytes) const {
-  struct statvfs stvfsbuf {};
+  struct statvfs stvfsbuf{};
   const int stat_res = statvfs(config.images_path.c_str(), &stvfsbuf);
   if (stat_res < 0) {
     LOG_WARNING << "Unable to read filesystem statistics: error code " << stat_res;

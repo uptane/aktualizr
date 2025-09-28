@@ -786,7 +786,7 @@ bool Utils::createSecureDirectory(const boost::filesystem::path &path) {
   }
 
   // mkdir failed, see if the directory already exists with correct permissions
-  struct stat st {};
+  struct stat st{};
   int ret = stat(path.c_str(), &st);
   // checks: - stat succeeded
   //         - is a directory

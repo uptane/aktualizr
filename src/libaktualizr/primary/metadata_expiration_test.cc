@@ -44,7 +44,7 @@ class MetadataExpirationTest : public ::testing::Test {
       time_t new_expiration_time;
       std::time(&new_expiration_time);
       new_expiration_time += expiration_delta;
-      struct tm new_expiration_time_str {};
+      struct tm new_expiration_time_str{};
       gmtime_r(&new_expiration_time, &new_expiration_time_str);
 
       uptane_gen_.run({"addtarget", "--path", meta_dir_.PathString(), "--targetname", target_filename, "--hwid",
