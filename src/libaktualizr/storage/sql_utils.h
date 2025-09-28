@@ -47,11 +47,11 @@ class SQLiteStatement {
     bindArguments(args...);
   }
 
-  inline sqlite3_stmt* get() const { return stmt_.get(); }
-  inline int step() const { return sqlite3_step(stmt_.get()); }
+  sqlite3_stmt* get() const { return stmt_.get(); }
+  int step() const { return sqlite3_step(stmt_.get()); }
 
   // get results
-  inline boost::optional<std::string> get_result_col_blob(int iCol) {
+  boost::optional<std::string> get_result_col_blob(int iCol) {
     const auto* b = reinterpret_cast<const char*>(sqlite3_column_blob(stmt_.get(), iCol));
     if (b == nullptr) {
       return boost::none;
@@ -60,7 +60,7 @@ class SQLiteStatement {
     return std::string(b, length);
   }
 
-  inline boost::optional<std::string> get_result_col_str(int iCol) {
+  boost::optional<std::string> get_result_col_str(int iCol) {
     const auto* b = reinterpret_cast<const char*>(sqlite3_column_text(stmt_.get(), iCol));
     if (b == nullptr) {
       return boost::none;
@@ -68,7 +68,7 @@ class SQLiteStatement {
     return std::string(b);
   }
 
-  inline int64_t get_result_col_int(int iCol) { return sqlite3_column_int64(stmt_.get(), iCol); }
+  int64_t get_result_col_int(int iCol) { return sqlite3_column_int64(stmt_.get(), iCol); }
 
  private:
   void bindArgument(int v) {

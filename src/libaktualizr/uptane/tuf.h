@@ -213,9 +213,9 @@ class MetaWithKeys : public BaseMeta {
   }
 
  protected:
-  MetaWithKeys(MetaWithKeys &&) = default;
+  MetaWithKeys(MetaWithKeys &&) noexcept = default;
   MetaWithKeys &operator=(const MetaWithKeys &guard) = default;
-  MetaWithKeys &operator=(MetaWithKeys &&) = default;
+  MetaWithKeys &operator=(MetaWithKeys &&) noexcept = default;
 
   static const int64_t kMinSignatures = 1;
   static const int64_t kMaxSignatures = 1000;

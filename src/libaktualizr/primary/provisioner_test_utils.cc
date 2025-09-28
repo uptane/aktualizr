@@ -2,7 +2,8 @@
 
 #include <gtest/gtest.h>
 
-void ExpectProvisionOK(Provisioner&& provisioner) {
+void ExpectProvisionOK(Provisioner&& provisioner_in) {
+  Provisioner provisioner = std::move(provisioner_in);
   int attempts = 0;
   bool last_attempt = false;
   while (provisioner.ShouldAttemptAgain()) {
@@ -16,7 +17,8 @@ void ExpectProvisionOK(Provisioner&& provisioner) {
   EXPECT_EQ(provisioner.CurrentState(), Provisioner::State::kOk);
 }
 
-void ExpectProvisionError(Provisioner&& provisioner, const std::string& match) {
+void ExpectProvisionError(Provisioner&& provisioner_in, const std::string& match) {
+  Provisioner provisioner = std::move(provisioner_in);
   bool last_attempt;
   for (int attempt = 0; attempt < 3; attempt++) {
     EXPECT_TRUE(provisioner.ShouldAttemptAgain());

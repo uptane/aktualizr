@@ -4,12 +4,11 @@
 #include <boost/log/expressions.hpp>
 
 #include "libaktualizr/config.h"
+#include "logging/default_log_sink.h"
 
 using boost::log::trivial::severity_level;
 
 static severity_level gLoggingThreshold;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-
-extern void logger_init_sink(bool use_colors = false);
 
 int64_t get_curlopt_verbose() { return gLoggingThreshold <= boost::log::trivial::trace ? 1L : 0L; }
 
