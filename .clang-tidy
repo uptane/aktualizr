@@ -1,8 +1,8 @@
 ---
 Checks:          >-
-  boost-*,
-  bugprone-*,-bugprone-easily-swappable-parameters,
-  cert-*,-cert-err58-cpp,-cert-env33-c,-cert-err60-cpp,-cert-err33-c,
+  boost-*,-boost-use-ranges,
+  bugprone-*,-bugprone-easily-swappable-parameters,-bugprone-empty-catch,
+  cert-*,-cert-err58-cpp,-cert-env33-c,-cert-err60-cpp,-cert-err33-c,-cert-int09-c,
   clang-analyzer-*,
   cppcoreguidelines-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-init-variables,-cppcoreguidelines-owning-memory,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-macro-usage,
   cppcoreguidelines-pro-*,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-type-vararg,-cppcoreguidelines-pro-type-const-cast,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,
@@ -13,15 +13,14 @@ Checks:          >-
   hicpp-*,-hicpp-no-array-decay,-hicpp-no-assembler,-hicpp-signed-bitwise,-hicpp-vararg,
   llvm-namespace-comment,
   misc-*,-misc-non-private-member-variables-in-classes,-misc-const-correctness,
-  -misc-use-anonymous-namespace,
+  -misc-use-anonymous-namespace,-misc-include-cleaner,
   modernize-*,-modernize-avoid-bind,-modernize-loop-convert,-modernize-use-trailing-return-type,
   -modernize-use-nodiscard,-modernize-return-braced-init-list,-cppcoreguidelines-prefer-member-initializer,
-  performance-*,
+  performance-*,-performance-enum-size,-performance-avoid-endl,-performance-unnecessary-copy-initialization,
   readability-*,-readability-else-after-return,-readability-identifier-naming,-readability-magic-numbers,-readability-function-cognitive-complexity,
-  -readability-identifier-length,-readability-container-data-pointer
+  -readability-identifier-length,-readability-container-data-pointer,-readability-enum-initial-value,-readability-make-member-function-const,
 
 WarningsAsErrors: '*'
-AnalyzeTemporaryDtors: false
 CheckOptions:
   - key:             cert-dcl59-cpp.HeaderFileExtensions
     value:           h

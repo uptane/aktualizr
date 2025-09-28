@@ -172,7 +172,7 @@ class INvStorage {
   }
   void savePrimaryInstalledVersion(const Uptane::Target& target, InstalledVersionUpdateMode update_mode,
                                    const Uptane::CorrelationId& correlation_id) {
-    return saveInstalledVersion("", target, update_mode, correlation_id);
+    saveInstalledVersion("", target, update_mode, correlation_id);
   }
   bool loadPrimaryInstallationLog(std::vector<Uptane::Target>* log, bool only_installed) const {
     return loadInstallationLog("", log, only_installed);

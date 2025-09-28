@@ -40,6 +40,7 @@ static inline std::string fault_injection_last_info() { return ""; }
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <array>
 #include <cstdlib>
 #include <fstream>
 #include <mutex>

@@ -13,7 +13,7 @@
 
 namespace po = boost::program_options;
 
-KeyType parseKeyType(const po::variables_map &vm) {
+static KeyType parseKeyType(const po::variables_map &vm) {
   std::string key_type_arg = vm["keytype"].as<std::string>();
   std::istringstream key_type_str{std::string("\"") + key_type_arg + "\""};
   KeyType key_type;
@@ -21,7 +21,7 @@ KeyType parseKeyType(const po::variables_map &vm) {
   return key_type;
 }
 
-void check_info_options(const po::options_description &description, const po::variables_map &vm) {
+static void check_info_options(const po::options_description &description, const po::variables_map &vm) {
   if (vm.count("help") != 0 || (vm.count("command") == 0 && vm.count("version") == 0)) {
     std::cout << description << '\n';
     exit(EXIT_SUCCESS);

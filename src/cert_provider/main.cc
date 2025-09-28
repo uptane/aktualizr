@@ -18,7 +18,7 @@
 
 namespace bpo = boost::program_options;
 
-void checkInfoOptions(const bpo::options_description& description, const bpo::variables_map& vm) {
+static void checkInfoOptions(const bpo::options_description& description, const bpo::variables_map& vm) {
   if (vm.count("help") != 0) {
     std::cout << description << '\n';
     exit(EXIT_SUCCESS);
@@ -29,7 +29,7 @@ void checkInfoOptions(const bpo::options_description& description, const bpo::va
   }
 }
 
-bpo::variables_map parseOptions(int argc, char** argv) {
+static bpo::variables_map parseOptions(int argc, char** argv) {
   bpo::options_description description("aktualizr-cert-provider command line options");
   // clang-format off
   description.add_options()
@@ -141,7 +141,7 @@ class SSHRunner {
   int port_;
 };
 
-void copyLocal(const boost::filesystem::path& src, const boost::filesystem::path& dest) {
+static void copyLocal(const boost::filesystem::path& src, const boost::filesystem::path& dest) {
   boost::filesystem::path dest_dir = dest.parent_path();
   if (boost::filesystem::exists(dest_dir)) {
     boost::filesystem::remove(dest);
