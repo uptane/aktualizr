@@ -180,11 +180,11 @@ if __name__ == "__main__":
                 create_repo(repo_path, args.system)
             httpd = HTTPServer(('', args.port), TreehubServerHandler)
             if args.tls:
-                httpd.socket = ssl.wrap_socket(httpd.socket,
-                                               certfile='tests/fake_http_server/server.crt',
-                                               ca_certs='tests/fake_http_server/server.crt',
-                                               keyfile='tests/fake_http_server/server.key',
-                                               server_side=True)
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(certfile='tests/fake_http_server/server.crt',
+                                        keyfile='tests/fake_http_server/server.key')
+                context.load_verify_locations(cafile='tests/fake_http_server/server.crt')
+                httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
             httpd.serve_forever()
     except (SystemExit, KeyboardInterrupt) as e:
         print("%s exiting..." % sys.argv[0])

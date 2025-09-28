@@ -14,7 +14,16 @@ bool OSTreeDirRepo::LooksValid() const {
   fs::path objects_dir(root_ / "/objects");
   fs::path refs_dir(root_ / "/refs");
   fs::path config_file(root_ / "/config");
-  if (fs::is_directory(objects_dir) && fs::is_directory(refs_dir) && fs::is_regular(config_file)) {
+  // boost::filesystem::is_regular was deprecated in Boost 1.83 and removed in 1.85.
+  // It is now a member function of boost::filesystem::path. Keep compatibility
+  // with older versions of Boost (such as the one used by Yocto Kirkstone), we
+  // do this BOOST_VERSION check.
+#if BOOST_VERSION >= 108300
+  bool is_config_file_regular_file = fs::is_regular_file(config_file);
+#else
+  bool is_config_file_regular_file = fs::is_regular(config_file);
+#endif
+  if (fs::is_directory(objects_dir) && fs::is_directory(refs_dir) && is_config_file_regular_file) {
     pt::ptree config;
     try {
       pt::read_ini(config_file.string(), config);
