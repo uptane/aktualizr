@@ -22,7 +22,7 @@ static std::string cer_encode_length(size_t len) {
 }
 
 // shifting signed integers right is UB, make sure it's filled with 1s
-constexpr int32_t shr8(int32_t arg) {
+constexpr static int32_t shr8(int32_t arg) {
   return static_cast<int32_t>((static_cast<uint32_t>(arg) >> 8) | ((arg < 0) ? 0xff000000 : 0x00000000));
 }
 
@@ -156,7 +156,7 @@ uint8_t cer_decode_token(const std::string& ber, int32_t* endpos, int32_t* int_p
         }
 
         // support max. 32 bit-wide integers
-        if (content.length() > 4 || content.length() < 1) {
+        if (content.length() > 4 || content.empty()) {
           return kUnknown;
         }
 

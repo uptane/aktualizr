@@ -43,6 +43,7 @@ int main(int argc, char **argv) {
   int err;
 
   if (argc < 3) {
+    // NOLINTNEXTLINE
     fprintf(stderr, "Incorrect input params\nUsage:\n\t%s FAKE_HTTP_SERVER_PATH META_DIR_PATH\n", argv[0]);
     return EXIT_FAILURE;
   }
@@ -162,7 +163,7 @@ int main(int argc, char **argv) {
     name = NULL;
 
     if (size == 0) {
-      printf("Aktualizr_read_stored_target read 0 bytes\n");
+      printf("Aktualizr_read_stored_target read 0 bytes\n");  // NOLINT
       CLEANUP_AND_RETURN_FAILED;
     }
 
@@ -181,14 +182,6 @@ int main(int argc, char **argv) {
       CLEANUP_AND_RETURN_FAILED;
     }
   }
-
-#if 0
-  err = Aktualizr_uptane_cycle(a);
-  if (err) {
-    printf("Aktualizr_uptane_cycle failed\n");
-    CLEANUP_AND_RETURN_FAILED;
-  }
-#endif
 
   err = Aktualizr_send_manifest(a, "({\"test_field\":\"test_value\"})");
   if (err) {

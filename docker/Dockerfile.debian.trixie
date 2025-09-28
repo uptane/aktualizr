@@ -1,5 +1,5 @@
-FROM debian:bookworm
-LABEL Description="Aktualizr CI image using Debian Bookworm (stable)"
+FROM debian:trixie
+LABEL Description="Aktualizr CI image using Debian Trixie (stable)"
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -49,6 +49,7 @@ RUN apt-get update && apt-get -y install -\
   psmisc \
   python3-dev \
   python3-gi \
+  python3-legacy-cgi \
   python3-openssl \
   python3-pip \
   python3-venv \

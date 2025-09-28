@@ -39,7 +39,7 @@ class IMetadataFetcher {
 
   void fetchRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,
                  Version version) const {
-    return fetchRole(result, maxsize, repo, role, version, nullptr);
+    fetchRole(result, maxsize, repo, role, version, nullptr);
   }
 
   void fetchLatestRole(std::string* result, int64_t maxsize, RepositoryType repo, const Uptane::Role& role,

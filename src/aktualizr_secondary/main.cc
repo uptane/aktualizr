@@ -18,7 +18,7 @@
 
 namespace bpo = boost::program_options;
 
-void check_secondary_options(const bpo::options_description &description, const bpo::variables_map &vm) {
+static void check_secondary_options(const bpo::options_description &description, const bpo::variables_map &vm) {
   if (vm.count("help") != 0) {
     std::cout << description << '\n';
     exit(EXIT_SUCCESS);
@@ -29,7 +29,7 @@ void check_secondary_options(const bpo::options_description &description, const 
   }
 }
 
-bpo::variables_map parse_options(int argc, char **argv) {
+static bpo::variables_map parse_options(int argc, char **argv) {
   bpo::options_description description("aktualizr-secondary command line options");
   // clang-format off
   description.add_options()

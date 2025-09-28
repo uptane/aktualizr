@@ -53,7 +53,7 @@ std::ostream &operator<<(std::ostream &os, VerificationType vtype) {
   return os;
 }
 
-std::string TimeToString(struct tm time) {
+static std::string TimeToString(struct tm time) {
   std::array<char, 22> formatted{};
   strftime(formatted.data(), 22, "%Y-%m-%dT%H:%M:%SZ", &time);
   return std::string(formatted.data());
@@ -63,7 +63,7 @@ TimeStamp TimeStamp::Now() { return TimeStamp(CurrentTime()); }
 
 struct tm TimeStamp::CurrentTime() {
   time_t raw_time;
-  struct tm time_struct {};
+  struct tm time_struct{};
   time(&raw_time);
   gmtime_r(&raw_time, &time_struct);
 
@@ -79,7 +79,7 @@ TimeStamp::TimeStamp(std::string rfc3339) {
 
 TimeStamp::TimeStamp(struct tm time) : TimeStamp(TimeToString(time)) {}
 
-bool TimeStamp::IsValid() const { return time_.length() != 0; }
+bool TimeStamp::IsValid() const { return !time_.empty(); }
 
 bool TimeStamp::IsExpiredAt(const TimeStamp &now) const {
   if (!IsValid()) {

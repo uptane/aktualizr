@@ -5,8 +5,6 @@
 #include <sys/types.h>
 
 #include <fstream>
-#include <iostream>
-#include <utility>
 
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
@@ -191,7 +189,7 @@ bool FSStorageRead::loadEcuSerials(EcuSerials* serials) const {
   }
 
   if (serials != nullptr) {
-    serials->push_back({Uptane::EcuSerial(serial), Uptane::HardwareIdentifier(hw_id)});
+    serials->emplace_back(Uptane::EcuSerial(serial), Uptane::HardwareIdentifier(hw_id));
   }
 
   // return true for backwards compatibility
@@ -213,7 +211,7 @@ bool FSStorageRead::loadEcuSerials(EcuSerials* serials) const {
       return false;
     }
     if (serials != nullptr) {
-      serials->push_back({Uptane::EcuSerial(serial), Uptane::HardwareIdentifier(hw_id)});
+      serials->emplace_back(Uptane::EcuSerial(serial), Uptane::HardwareIdentifier(hw_id));
     }
   }
   file.close();
@@ -228,9 +226,9 @@ bool FSStorageRead::loadMisconfiguredEcus(std::vector<MisconfiguredEcu>* ecus) c
   try {
     Json::Value content_json = Utils::parseJSONFile(Utils::absolutePath(config_.path, "misconfigured_ecus").string());
     for (auto it = content_json.begin(); it != content_json.end(); ++it) {
-      ecus->push_back(MisconfiguredEcu(Uptane::EcuSerial((*it)["serial"].asString()),
-                                       Uptane::HardwareIdentifier((*it)["hardware_id"].asString()),
-                                       static_cast<EcuState>((*it)["state"].asInt())));
+      ecus->emplace_back(Uptane::EcuSerial((*it)["serial"].asString()),
+                         Uptane::HardwareIdentifier((*it)["hardware_id"].asString()),
+                         static_cast<EcuState>((*it)["state"].asInt()));
     }
   } catch (const std::exception& ex) {
     LOG_ERROR << "Unable to parse misconfigured_ecus: " << ex.what();

@@ -2,7 +2,6 @@
 #include <gtest/gtest.h>
 
 #include <boost/filesystem.hpp>
-#include <boost/filesystem/string_file.hpp>
 #include <boost/optional/optional_io.hpp>
 #include <fstream>
 
@@ -130,23 +129,20 @@ class UptaneRepoWrapper {
 
   [[nodiscard]] Uptane::MetaBundle getCurrentMetadata() const {
     Uptane::MetaBundle meta_bundle;
-    std::string metadata;
 
-    boost::filesystem::load_string_file(director_dir_ / "root.json", metadata);
-    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()), std::move(metadata));
-    boost::filesystem::load_string_file(director_dir_ / "targets.json", metadata);
+    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Root()),
+                        Utils::readFile(director_dir_ / "root.json"));
     meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Director(), Uptane::Role::Targets()),
-                        std::move(metadata));
+                        Utils::readFile(director_dir_ / "targets.json"));
 
-    boost::filesystem::load_string_file(imagerepo_dir_ / "root.json", metadata);
-    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Root()), std::move(metadata));
-    boost::filesystem::load_string_file(imagerepo_dir_ / "timestamp.json", metadata);
+    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Root()),
+                        Utils::readFile(imagerepo_dir_ / "root.json"));
     meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Timestamp()),
-                        std::move(metadata));
-    boost::filesystem::load_string_file(imagerepo_dir_ / "snapshot.json", metadata);
-    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()), std::move(metadata));
-    boost::filesystem::load_string_file(imagerepo_dir_ / "targets.json", metadata);
-    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Targets()), std::move(metadata));
+                        Utils::readFile(imagerepo_dir_ / "timestamp.json"));
+    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Snapshot()),
+                        Utils::readFile(imagerepo_dir_ / "snapshot.json"));
+    meta_bundle.emplace(std::make_pair(Uptane::RepositoryType::Image(), Uptane::Role::Targets()),
+                        Utils::readFile(imagerepo_dir_ / "targets.json"));
 
     return meta_bundle;
   }
@@ -359,7 +355,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 class SecondaryTestVerification : public SecondaryTest, public ::testing::WithParamInterface<VerificationType> {
  public:
-  SecondaryTestVerification() : SecondaryTest(GetParam()){};
+  SecondaryTestVerification() : SecondaryTest(GetParam()) {};
 };
 
 /**
@@ -465,7 +461,7 @@ class SecondaryTestTuf
  public:
   // No default Targets so as to be able to more thoroughly test the Target
   // comparison.
-  SecondaryTestTuf() : SecondaryTest(VerificationType::kTuf, false){};
+  SecondaryTestTuf() : SecondaryTest(VerificationType::kTuf, false) {};
 };
 
 /**

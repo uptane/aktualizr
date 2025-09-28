@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from http.server import HTTPServer,SimpleHTTPRequestHandler
 import argparse
-import os.path
+from os.path import join
 import socket
 import ssl
 
@@ -17,10 +17,10 @@ parser.add_argument('--noauth', action='store_true')
 args = parser.parse_args()
 
 httpd = ReUseHTTPServer(('localhost', args.port), SimpleHTTPRequestHandler)
-httpd.socket = ssl.wrap_socket (httpd.socket,
-                                certfile=os.path.join(args.cert_path, 'server.crt'),
-                                keyfile=os.path.join(args.cert_path, 'server.key'),
-                                server_side=True,
-                                cert_reqs = ssl.CERT_NONE if args.noauth else ssl.CERT_REQUIRED,
-                                ca_certs = os.path.join(args.cert_path, 'ca.crt'))
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.load_cert_chain(certfile=join(args.cert_path, 'server.crt'),
+                        keyfile=join(args.cert_path, 'server.key'))
+context.load_verify_locations(cafile=join(args.cert_path, 'ca.crt'))
+context.verify_mode = ssl.CERT_NONE if args.noauth else ssl.CERT_REQUIRED
+httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 httpd.serve_forever()

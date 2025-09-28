@@ -60,7 +60,7 @@ data::InstallationResult AktualizrSecondaryFile::installPendingTarget(const Upta
   return update_agent_->install(target);
 }
 
-void AktualizrSecondaryFile::completeInstall() { return update_agent_->completeInstall(); }
+void AktualizrSecondaryFile::completeInstall() { update_agent_->completeInstall(); }
 
 MsgHandler::ReturnCode AktualizrSecondaryFile::uploadDataHdlr(Asn1Message& in_msg, Asn1Message& out_msg) {
   if (last_msg_ != AKIpUptaneMes_PR_uploadDataReq) {

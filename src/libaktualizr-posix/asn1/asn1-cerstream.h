@@ -125,7 +125,7 @@ Serializer& operator<<(Serializer& ser, ImplicitC<Tag, T> imp) {
 
 class Deserializer {
  public:
-  explicit Deserializer(std::string d) : data(std::move(d)){};
+  explicit Deserializer(std::string d) : data(std::move(d)) {};
 
   Deserializer& operator>>(int32_t& val);
   Deserializer& operator>>(bool& val);
