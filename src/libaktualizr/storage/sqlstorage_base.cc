@@ -45,7 +45,7 @@ SQLStorageBase::SQLStorageBase(boost::filesystem::path sqldb_path, bool readonly
   if (!boost::filesystem::is_directory(db_parent_path)) {
     Utils::createDirectories(db_parent_path, S_IRWXU);
   } else {
-    struct stat st {};
+    struct stat st{};
     if (stat(db_parent_path.c_str(), &st) < 0) {
       throw StorageException(std::string("Could not check storage directory permissions: ") + std::strerror(errno));
     }

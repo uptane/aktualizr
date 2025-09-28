@@ -116,7 +116,7 @@ void RequestPool::LoopListen() {
       throw std::runtime_error("curl_multi_fdset failed with error");
     }
 
-    struct timeval timeout {};
+    struct timeval timeout{};
     if (maxfd != -1) {
       // "Wait for activities no longer than the set timeout."
       if (timeoutms == -1) {

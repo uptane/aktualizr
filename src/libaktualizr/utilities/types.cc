@@ -63,7 +63,7 @@ TimeStamp TimeStamp::Now() { return TimeStamp(CurrentTime()); }
 
 struct tm TimeStamp::CurrentTime() {
   time_t raw_time;
-  struct tm time_struct {};
+  struct tm time_struct{};
   time(&raw_time);
   gmtime_r(&raw_time, &time_struct);
 

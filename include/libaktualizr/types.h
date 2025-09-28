@@ -212,7 +212,7 @@ class TimeStamp {
 
   class InvalidTimeStamp : public std::domain_error {
    public:
-    InvalidTimeStamp() : std::domain_error("invalid timestamp"){};
+    InvalidTimeStamp() : std::domain_error("invalid timestamp") {};
     ~InvalidTimeStamp() noexcept override = default;
     InvalidTimeStamp(const InvalidTimeStamp &) noexcept = default;
     InvalidTimeStamp(InvalidTimeStamp &&) noexcept = default;

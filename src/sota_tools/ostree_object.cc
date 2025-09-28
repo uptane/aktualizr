@@ -252,7 +252,7 @@ void OSTreeObject::Upload(TreehubServer &push_target, CURLM *curl_multi_handle, 
   curlEasySetoptWrapper(curl_handle_, CURLOPT_WRITEDATA, this);
   http_response_.str("");  // Empty the response buffer
 
-  struct stat file_info {};
+  struct stat file_info{};
   auto file_path = PathOnDisk();
   fd_ = fopen(file_path.c_str(), "rb");
   if (fd_ == nullptr) {
