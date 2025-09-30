@@ -14,7 +14,7 @@ bool OSTreeDirRepo::LooksValid() const {
   fs::path objects_dir(root_ / "/objects");
   fs::path refs_dir(root_ / "/refs");
   fs::path config_file(root_ / "/config");
-  if (fs::is_directory(objects_dir) && fs::is_directory(refs_dir) && fs::is_regular(config_file)) {
+  if (fs::is_directory(objects_dir) && fs::is_directory(refs_dir) && fs::is_regular_file(config_file)) {
     pt::ptree config;
     try {
       pt::read_ini(config_file.string(), config);

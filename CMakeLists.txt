@@ -59,7 +59,7 @@ if (CCACHE)
 endif (CCACHE)
 
 # find all required libraries
-set(BOOST_COMPONENTS log_setup log system filesystem program_options)
+set(BOOST_COMPONENTS log_setup log filesystem program_options)
 set(Boost_USE_STATIC_LIBS OFF)
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
@@ -72,7 +72,7 @@ if(EXISTS /opt/homebrew/opt/libarchive/include)
   list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive/include)
 endif()
 
-find_package(Boost 1.58.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+find_package(Boost 1.69.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenSSL 1.0.2 REQUIRED)
 find_package(Threads REQUIRED)
