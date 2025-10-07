@@ -675,11 +675,11 @@ TEST(StorageImport, ImportInitialRoot) {
   EXPECT_FALSE(storage->loadLatestRoot(nullptr, Uptane::RepositoryType::Director()))
       << "Director root.json was invalid. It shouldn't have been imported";
 
-// On Boost 1.85.0 enum copy_option (which was already deprecated) was replaced by
-// copy_options, and the enumarator overwrite_if_exists was renamed as overwrite_existing.
-// To keep compatibility with older versions of Boost (such as the one used by Yocto Kirkstone),
-// we do this BOOST_VERSION check.
-#if BOOST_VERSION >= 108500
+  // copy_option was deprecated in Boost 1.83 and removed in 1.85, replaced by copy_options.
+  // The enum names changed too, from overwrite_existing to overwrite_if_exists.
+  // To keep compatibility with older versions of Boost (such as the one used by Yocto Kirkstone),
+  // we do this BOOST_VERSION check.
+#if BOOST_VERSION >= 108300
   fs::copy_options overwrite_existing = fs::copy_options::overwrite_existing;
 #else
   fs::copy_option overwrite_existing = fs::copy_option::overwrite_if_exists;

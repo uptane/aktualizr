@@ -94,4 +94,4 @@ data::InstallationResult AktualizrSecondaryOstree::installPendingTarget(const Up
   return update_agent_->install(target);
 }
 
-void AktualizrSecondaryOstree::completeInstall() { return update_agent_->completeInstall(); }
+void AktualizrSecondaryOstree::completeInstall() { update_agent_->completeInstall(); }

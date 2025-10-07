@@ -297,7 +297,7 @@ TEST(Fetcher, NotEnoughDiskSpace) {
   Uptane::Fetcher fetcher(config, http);
 
   // Find how much space is available on disk.
-  struct statvfs stvfsbuf {};
+  struct statvfs stvfsbuf{};
   EXPECT_EQ(statvfs(temp_dir.Path().c_str(), &stvfsbuf), 0);
   const uint64_t available_bytes = (stvfsbuf.f_bsize * stvfsbuf.f_bavail);
 

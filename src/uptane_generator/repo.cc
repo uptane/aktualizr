@@ -123,7 +123,7 @@ std::string Repo::getExpirationTime(const std::string &expires) {
     return expires;
   } else {
     time_t raw_time;
-    struct tm time_struct {};
+    struct tm time_struct{};
     time(&raw_time);
     gmtime_r(&raw_time, &time_struct);
     time_struct.tm_year += 3;
@@ -319,7 +319,7 @@ void Repo::refresh(const Uptane::Role &role, const TimeStamp &expiry) {
     time_t new_expiration_time;
     std::time(&new_expiration_time);
     new_expiration_time += 60L * 60;  // make it valid for the next hour
-    struct tm new_expiration_time_str {};
+    struct tm new_expiration_time_str{};
     gmtime_r(&new_expiration_time, &new_expiration_time_str);
 
     meta_raw["expires"] = TimeStamp(new_expiration_time_str).ToString();
@@ -353,7 +353,7 @@ void Repo::rotate(const Uptane::Role &role, KeyType key_type) {
     time_t new_expiration_time;
     std::time(&new_expiration_time);
     new_expiration_time += 60L * 60;  // make it valid for the next hour
-    struct tm new_expiration_time_str {};
+    struct tm new_expiration_time_str{};
     gmtime_r(&new_expiration_time, &new_expiration_time_str);
 
     meta_raw["expires"] = TimeStamp(new_expiration_time_str).ToString();

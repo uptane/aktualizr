@@ -18,7 +18,7 @@
 namespace Primary {
 
 ManagedSecondary::ManagedSecondary(Primary::ManagedSecondaryConfig sconfig_in) : sconfig(std::move(sconfig_in)) {
-  struct stat stat_buf {};
+  struct stat stat_buf{};
   if (!boost::filesystem::is_directory(sconfig.metadata_path)) {
     Utils::createDirectories(sconfig.metadata_path, S_IRWXU);
   }

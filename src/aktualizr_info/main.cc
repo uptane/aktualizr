@@ -34,7 +34,7 @@ static int loadAndPrintDelegations(const std::shared_ptr<INvStorage> &storage) {
   return EXIT_SUCCESS;
 }
 
-void checkInfoOptions(const bpo::options_description &description, const bpo::variables_map &vm) {
+static void checkInfoOptions(const bpo::options_description &description, const bpo::variables_map &vm) {
   if (vm.count("help") != 0) {
     std::cout << description << '\n';
     exit(EXIT_SUCCESS);

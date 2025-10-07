@@ -40,7 +40,7 @@ TEST(VirtualSecondary, RootRotationExpires) {  // NOLINT
   time_t new_expiration_time;
   std::time(&new_expiration_time);
   new_expiration_time += 15;  // make it valid for the next 15 seconds
-  struct tm new_expiration_time_str {};
+  struct tm new_expiration_time_str{};
   gmtime_r(&new_expiration_time, &new_expiration_time_str);
 
   auto timestamp = TimeStamp(new_expiration_time_str);

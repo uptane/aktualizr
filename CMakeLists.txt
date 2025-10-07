@@ -72,7 +72,11 @@ if(EXISTS /opt/homebrew/opt/libarchive/include)
   list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive/include)
 endif()
 
-find_package(Boost 1.69.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+# This version of Boost should be available by default in our supported platforms. Currently that is:
+# Yocto Kirkstone v1.87
+# Debian oldstable v1.74
+# Ubuntu Focal (used for CI) v1.71 <-- Minimum version
+find_package(Boost 1.71.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenSSL 1.0.2 REQUIRED)
 find_package(Threads REQUIRED)
@@ -219,9 +223,9 @@ if(TESTSUITE_VALGRIND)
 endif()
 add_custom_target(build_tests)
 
-# The clang 14 is the default in Debian Bookworm (stable)
-find_program(CLANG_FORMAT NAMES clang-format-14 clang-format-11)
-find_program(CLANG_TIDY NAMES clang-tidy-14 clang-tidy-11)
+# Clang 19 is the default in Debian Trixie (stable)
+find_program(CLANG_FORMAT NAMES clang-format-19 clang-format-11)
+find_program(CLANG_TIDY NAMES clang-tidy-19 clang-tidy-11)
 
 if(CLANG_FORMAT)
     function(aktualizr_clang_format)
@@ -244,7 +248,7 @@ if(CLANG_FORMAT)
         endforeach()
     endfunction()
 else()
-    message(WARNING "clang-format-11 not found, skipping")
+    message(WARNING "clang-format-19 not found, skipping")
     function(aktualizr_clang_format)
     endfunction()
 endif()

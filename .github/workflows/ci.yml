@@ -42,12 +42,12 @@ jobs:
           mkdir -p ${{github.workspace}}/cache
           docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -cf- .cache > ${{github.workspace}}/cache/cache.tar
 
-  bookworm-release-nop11:
-    name: Build and Test on Debian Bookworm
+  trixie-release-nop11:
+    name: Build and Test on Debian Trixie
     runs-on: ubuntu-latest
     env:
-      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:bookworm-master
-      DOCKERFILE: docker/Dockerfile.debian.bookworm
+      DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:trixie-master
+      DOCKERFILE: docker/Dockerfile.debian.trixie
     steps:
       - uses: actions/checkout@main
       - run: |
@@ -63,22 +63,22 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/cache
-          key: debian-bookworm-${{ github.run_id }}
+          key: debian-trixie-${{ github.run_id }}
           restore-keys: |
-            debian-bookworm-${{ github.run_id }}
-            debian-bookworm-
+            debian-trixie-${{ github.run_id }}
+            debian-trixie-
       - name: Unpack ccache
         run: docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -xf- < ${{github.workspace}}/cache/cache.tar || echo "No cache found"
       - name: Test
         run: |
-          docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache  -t "$DOCKER_TAG" source/scripts/build-and-test-bookworm.sh
+          docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache  -t "$DOCKER_TAG" source/scripts/build-and-test-trixie.sh
       - name: Stash ccache
         run: |
           mkdir -p ${{github.workspace}}/cache
           docker run --mount=type=volume,source=ccache,destination=/home/testuser/.cache -i "$DOCKER_TAG" tar -cf- .cache > ${{github.workspace}}/cache/cache.tar
 
-  static-checks:
-    name: Static checks on Ubuntu Focal
+  ubuntu-focal:
+    name: Build on Ubuntu Focal
     runs-on: ubuntu-latest
     env:
       DOCKER_TAG: docker.pkg.github.com/uptane/aktualizr/aktualizr-ci:ubuntu-focal-master
@@ -88,7 +88,6 @@ jobs:
         -eTEST_CC=clang
         -eTEST_CMAKE_BUILD_TYPE=Valgrind
         -eTEST_TESTSUITE_ONLY=crypto
-        -eTEST_WITH_STATICTESTS=1
         -eTEST_WITH_DOCS=1
     steps:
       - uses: actions/checkout@main

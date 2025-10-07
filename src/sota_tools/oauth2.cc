@@ -16,7 +16,7 @@ using std::stringstream;
 /**
  * Handle CURL write callbacks by appending to a stringstream
  */
-size_t curl_handle_write_sstream(void *buffer, size_t size, size_t nmemb, void *userp) {
+static size_t curl_handle_write_sstream(void *buffer, size_t size, size_t nmemb, void *userp) {
   auto *body = static_cast<stringstream *>(userp);
   body->write(static_cast<const char *>(buffer), static_cast<std::streamsize>(size * nmemb));
   return size * nmemb;

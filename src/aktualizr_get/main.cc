@@ -11,7 +11,7 @@
 
 namespace bpo = boost::program_options;
 
-void check_info_options(const bpo::options_description &description, const bpo::variables_map &vm) {
+static void check_info_options(const bpo::options_description &description, const bpo::variables_map &vm) {
   if (vm.count("help") != 0 || (vm.count("url") == 0 && vm.count("version") == 0)) {
     std::cout << description << '\n';
     exit(EXIT_SUCCESS);
@@ -22,7 +22,7 @@ void check_info_options(const bpo::options_description &description, const bpo::
   }
 }
 
-bpo::variables_map parse_options(int argc, char **argv) {
+static bpo::variables_map parse_options(int argc, char **argv) {
   bpo::options_description description(
       "A tool similar to wget that will do an HTTP get on the given URL using the device's configured credentials.");
   // clang-format off

@@ -3,7 +3,6 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
-#include <stdexcept>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -12,14 +11,13 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include "bootstrap/bootstrap.h"
 #include "utilities/utils.h"
 
 using boost::optional;
 using boost::property_tree::ptree;
 using boost::property_tree::json_parser::json_parser_error;
 
-std::unique_ptr<std::stringstream> readArchiveFile(archive *a) {
+static std::unique_ptr<std::stringstream> readArchiveFile(archive *a) {
   int r;
   const char *buff = nullptr;
   std::unique_ptr<std::stringstream> result = std_::make_unique<std::stringstream>();

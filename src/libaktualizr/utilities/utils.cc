@@ -376,9 +376,9 @@ Json::Value Utils::getNetworkInfo() {
   std::string route_content((std::istreambuf_iterator<char>(path_stream)), std::istreambuf_iterator<char>());
 
   struct Itf {
-    std::string name = std::string();
-    std::string ip = std::string();
-    std::string mac = std::string();
+    std::string name;
+    std::string ip;
+    std::string mac;
   } itf;
   std::istringstream route_stream(route_content);
   std::array<char, 200> line{};
@@ -786,7 +786,7 @@ bool Utils::createSecureDirectory(const boost::filesystem::path &path) {
   }
 
   // mkdir failed, see if the directory already exists with correct permissions
-  struct stat st {};
+  struct stat st{};
   int ret = stat(path.c_str(), &st);
   // checks: - stat succeeded
   //         - is a directory
