@@ -145,6 +145,10 @@ std::string Crypto::RSAPSSSign(ENGINE *engine, const std::string &private_key, c
   StructGuard<EVP_PKEY> key(nullptr, EVP_PKEY_free);
   StructGuard<RSA> rsa(nullptr, RSA_free);
   if (engine != nullptr) {
+#ifdef BUILD_P11
+#if OPENSSL_VERSION_MAJOR >= 4
+#error "PKCS#11 support uses the OpenSSL ENGINE API, which OpenSSL 4.0 removed; build without BUILD_P11"
+#endif
     // TODO(OTA-2138): this call leaks memory somehow...
     key.reset(ENGINE_load_private_key(engine, private_key.c_str(), nullptr, nullptr));
 
@@ -158,6 +162,10 @@ std::string Crypto::RSAPSSSign(ENGINE *engine, const std::string &private_key, c
       LOG_ERROR << "EVP_PKEY_get1_RSA failed with error " << ERR_error_string(ERR_get_error(), nullptr);
       return std::string();
     }
+#else
+    LOG_ERROR << "Built without PKCS#11 support, cannot load the private key from an engine";
+    return std::string();
+#endif
   } else {
     StructGuard<BIO> bio(BIO_new_mem_buf(const_cast<char *>(private_key.c_str()), static_cast<int>(private_key.size())),
                          BIO_vfree);
