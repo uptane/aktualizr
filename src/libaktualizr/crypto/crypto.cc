@@ -622,7 +622,7 @@ void Crypto::signCert(const std::string &cacert_path, const std::string &capkey_
   }
 
   // set issuer name
-  X509_NAME *ca_subj = X509_get_subject_name(ca_certificate.get());
+  const X509_NAME *ca_subj = X509_get_subject_name(ca_certificate.get());
   if (ca_subj == nullptr) {
     throw std::runtime_error(std::string("X509_get_subject_name failed: ") +
                              ERR_error_string(ERR_get_error(), nullptr));
